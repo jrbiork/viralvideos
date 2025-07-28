@@ -1,0 +1,25 @@
+{
+  "name": "video-generation-lambda",
+  "version": "1.0.0",
+  "description": "Lambda function for generating AI videos",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -f index.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.490.0",
+    "@runwayml/sdk": "^2.5.0",
+    "axios": "^1.6.7",
+    "openai": "^4.28.0",
+    "fluent-ffmpeg": "^2.1.2"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.133",
+    "typescript": "^5.3.3"
+  }
+}
