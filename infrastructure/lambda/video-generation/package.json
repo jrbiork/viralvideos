@@ -15,11 +15,12 @@
     "@aws-sdk/client-s3": "^3.490.0",
     "@runwayml/sdk": "^2.5.0",
     "axios": "^1.6.7",
-    "openai": "^4.28.0",
-    "fluent-ffmpeg": "^2.1.2"
+    "fluent-ffmpeg": "^2.1.2",
+    "openai": "^4.28.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.133",
+    "@types/fluent-ffmpeg": "^2.1.27",
     "typescript": "^5.3.3"
   }
 }

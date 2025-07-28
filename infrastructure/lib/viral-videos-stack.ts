@@ -43,6 +43,23 @@ export class ViralVideosStack extends cdk.Stack {
       ],
     });
 
+    // S3 Bucket for storing video parts
+    const videoPartsBucket = new s3.Bucket(this, 'VideoPartsBucket', {
+      bucketName: `video-parts-${this.account}-${this.region}`,
+      versioned: true,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For demo purposes
+      lifecycleRules: [
+        {
+          id: 'DeleteOldVideoParts',
+          enabled: true,
+          noncurrentVersionExpiration: cdk.Duration.days(7),
+          expiration: cdk.Duration.days(30),
+        },
+      ],
+    });
+
     // IAM Role for Lambda
     const lambdaRole = new iam.Role(this, 'VideoGenerationLambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -55,6 +72,17 @@ export class ViralVideosStack extends cdk.Stack {
 
     // Grant S3 permissions to Lambda
     videoBucket.grantReadWrite(lambdaRole);
+    videoPartsBucket.grantReadWrite(lambdaRole);
+
+    // Create FFmpeg Lambda Layer
+    const ffmpegLayer = new lambda.LayerVersion(this, 'FFmpegLayer', {
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../lambda/ffmpeg-layer'),
+      ),
+      compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
+      description: 'FFmpeg binaries for video processing',
+      layerVersionName: 'ffmpeg-layer',
+    });
 
     // Lambda function for video generation
     const videoGenerationLambda = new lambda.Function(
@@ -68,11 +96,14 @@ export class ViralVideosStack extends cdk.Stack {
         ),
         role: lambdaRole,
         timeout: cdk.Duration.minutes(15),
-        memorySize: 1024,
+        memorySize: 3008, // Increased for video processing
+        layers: [ffmpegLayer],
         environment: {
           VIDEO_BUCKET_NAME: videoBucket.bucketName,
+          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
           RUNWAY_API_KEY: runwayApiKey,
           OPENAI_API_KEY: openaiApiKey,
+          PATH: '/opt/ffmpeg:/opt/ffprobe:/usr/local/bin:/usr/bin/:/bin',
         },
       },
     );
@@ -88,6 +119,11 @@ export class ViralVideosStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'VideoBucketName', {
       value: videoBucket.bucketName,
       description: 'S3 Bucket for storing videos',
+    });
+
+    new cdk.CfnOutput(this, 'VideoPartsBucketName', {
+      value: videoPartsBucket.bucketName,
+      description: 'S3 Bucket for storing video parts',
     });
 
     new cdk.CfnOutput(this, 'VideoGenerationLambdaArn', {
