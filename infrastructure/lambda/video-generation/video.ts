@@ -15,6 +15,7 @@ export async function generateVideoClip(
   duration: number,
   sceneIndex: number,
   userId: string,
+  timestamp: string,
 ): Promise<string> {
   try {
     console.log(`🎬 Calling Runway SDK for scene ${sceneIndex}...`);
@@ -86,8 +87,8 @@ export async function generateVideoClip(
     const videoBuffer = await downloadVideo(videoUrl);
     console.log(`✅ Downloaded video, size: ${videoBuffer.length} bytes`);
 
-    // Save video to video-parts bucket
-    const videoKey = `${userId}/scene-${sceneIndex}.mp4`;
+    // Save video to video-parts bucket with timestamp prefix
+    const videoKey = `${userId}/${timestamp}.scene-${sceneIndex}.mp4`;
     console.log(
       `☁️ Uploading video part to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${videoKey}`,
     );

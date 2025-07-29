@@ -1,6 +1,8 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { format } from 'date-fns';
 import { generateVideoClip } from './video';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
+import { generateSubtitles } from './subtitles';
 import { combineVideoAndAudio, uploadToS3 } from './combineVideo';
 
 interface VideoGenerationRequest {
@@ -48,6 +50,10 @@ export const handler = async (
       };
     }
 
+    // Create timestamp in format mm.dd.yy.hh.mm.ss using date-fns
+    const timestamp = '12.25.23-14:30:45'; //format(new Date(), 'MM.dd.yy-HH:mm:ss');
+    console.log('🕐 Generated timestamp:', timestamp);
+
     console.log('🎬 Starting video generation for prompt:', request.prompt);
     console.log('⏱️  Video duration:', request.duration, 'seconds');
     console.log('🎬 Number of scenes:', request.sceneCount);
@@ -55,7 +61,11 @@ export const handler = async (
     // Step 1: Generate story breakdown using GPT-4
     console.log('📖 Generating story breakdown...');
     // TODO: Uncomment this once we have a dynamic story breakdown
-    let scenes; // = await generateStoryBreakdown(request.prompt, request.sceneCount, request.duration);
+    let scenes = await generateStoryBreakdown(
+      request.prompt,
+      request.sceneCount,
+      request.duration,
+    );
     console.log('✅ Generated scenes:', scenes);
 
     // Generate dynamic scenes based on parameters
@@ -113,76 +123,75 @@ export const handler = async (
       throw new Error('Failed to generate story breakdown');
     }
 
+    // TODO: Uncomment this once we have a dynamic story breakdown
     // Step 2: Generate video clips for each scene
     console.log('🎥 Generating video clips...');
-    const videoClips: string[] = [];
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
-      console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
+    // const videoClips: string[] = [];
+    // for (let i = 0; i < scenes.length; i++) {
+    //   const scene = scenes[i];
+    //   console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
 
-      try {
-        const videoClip = await generateVideoClip(
-          scene.description,
-          scene.duration,
-          i,
-          request.userId,
-        );
-        videoClips.push(videoClip);
-        console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
-      } catch (error) {
-        console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-        throw new Error(
-          `Failed to generate video for scene ${i + 1}: ${error}`,
-        );
-      }
-    }
+    //   try {
+    //     const videoClip = await generateVideoClip(
+    //       scene.description,
+    //       scene.duration,
+    //       i,
+    //       request.userId,
+    //       timestamp,
+    //     );
+    //     videoClips.push(videoClip);
+    //     console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
+    //   } catch (error) {
+    //     console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
+    //     throw new Error(
+    //       `Failed to generate video for scene ${i + 1}: ${error}`,
+    //     );
+    //   }
+    // }
 
-    if (videoClips.length === 0) {
-      console.log('❌ Error: No video clips were generated');
-      throw new Error('No video clips were generated');
-    }
+    // if (videoClips.length === 0) {
+    //   console.log('❌ Error: No video clips were generated');
+    //   throw new Error('No video clips were generated');
+    // }
 
-    console.log(`✅ Generated ${videoClips.length} video clips`);
+    // console.log(`✅ Generated ${videoClips.length} video clips`);
 
     // TODO: Remove this once we have a dynamic story breakdown
-    let audioScenes = [
-      {
-        description:
-          'A wide shot of the ocean, the camera slowly zooms in on the sun setting in the horizon. The sunlight is reflected on the water.',
-        duration: sceneDuration,
-        narration:
-          'As we begin, take a moment to gaze upon the vast open ocean. Let the warm hues of the setting sun wash over you.',
-      },
 
-      {
-        description:
-          'The camera pulls back to reveal a silhouette of a person meditating on the beach. The sun is now just a glimmer on the horizon.',
-        duration: sceneDuration,
-        narration:
-          'Imagine yourself sitting at the edge of the ocean, grounding yourself in this peaceful moment.',
-      },
-    ];
-    // Step 3: Generate narration audio
-    console.log('🎤 Generating narration audio...');
-    const narrationAudioKeys = await generateNarration(
-      audioScenes,
+    // TODO: Uncomment this once we have a dynamic story breakdown
+    // Step 3: Generate narration audio with word-level timestamps
+    console.log('🎤 Generating narration audio with word-level timestamps...');
+    const narrationResult = await generateNarration(
+      scenes,
       request.userId,
+      timestamp,
     );
-    console.log('✅ Generated narration audio keys:', narrationAudioKeys);
+    console.log('✅ narrationResult:', narrationResult);
+    console.log('✅ Generated subtitle data with word-level timestamps');
 
-    // Step 4: Combine video clips and audio
-    console.log('🎬 Combining video and audio...');
-    const finalVideo = await combineVideoAndAudio(request.userId);
+    // Step 4: Generate subtitles based on word-level timestamps
+    console.log('📝 Generating subtitles with word-level timing...');
+    const subtitleKeys = await generateSubtitles(
+      scenes,
+      request.userId,
+      timestamp,
+      narrationResult.subtitles,
+    );
+    console.log('✅ Generated subtitle keys:', subtitleKeys);
+
+    // Step 5: Combine video clips, audio, and subtitles
+    console.log('🎬 Combining video, audio, and subtitles...');
+    const finalVideo = await combineVideoAndAudio(request.userId, timestamp);
     console.log('✅ Final video generated:', finalVideo);
 
     if (!finalVideo) {
-      console.log('❌ Error: Failed to combine video and audio');
-      throw new Error('Failed to combine video and audio');
+      console.log('❌ Error: Failed to combine video, audio, and subtitles');
+      throw new Error('Failed to combine video, audio, and subtitles');
     }
 
-    // Step 5: Upload to S3
+    // Step 6: Upload to S3
     console.log('☁️ Uploading to S3...');
-    const videoKey = await uploadToS3(finalVideo, request.userId);
+    const videoKey = await uploadToS3(finalVideo, request.userId, timestamp);
     console.log('✅ Uploaded to S3:', videoKey);
 
     console.log('🎉 Video generation completed successfully');

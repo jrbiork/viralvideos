@@ -1,4 +1,8 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
 import OpenAI from 'openai';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
@@ -10,18 +14,40 @@ export interface Scene {
   narration: string;
 }
 
+export interface SubtitleWord {
+  word: string;
+  start: number;
+  end: number;
+}
+
+export interface SubtitleData {
+  sceneIndex: number;
+  words: SubtitleWord[];
+  fullText: string;
+}
+
+export interface NarrationResult {
+  audioKeys: string[];
+  subtitles: SubtitleData[];
+}
+
 export async function generateNarration(
   scenes: Scene[],
   userId: string,
-): Promise<string[]> {
-  console.log('🎤 Generating narration from scenes...');
+  timestamp: string,
+): Promise<NarrationResult> {
+  console.log(
+    '🎤 Generating narration from scenes with word-level timestamps...',
+  );
   try {
     const audioKeys: string[] = [];
+    const subtitles: SubtitleData[] = [];
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
       console.log(`🎤 Generating narration for scene ${i}:`, scene.narration);
 
+      // Generate speech with standard format
       const response = await openai.audio.speech.create({
         model: 'tts-1',
         voice: 'alloy',
@@ -33,8 +59,8 @@ export async function generateNarration(
         `✅ Generated audio for scene ${i}, size: ${audioBuffer.length} bytes`,
       );
 
-      // Save to S3 with consistent naming
-      const audioKey = `${userId}/scene-${i}.mp3`;
+      // Save to S3 with timestamp prefix
+      const audioKey = `${userId}/${timestamp}.scene-${i}.mp3`;
       console.log(
         `☁️ Uploading audio to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${audioKey}`,
       );
@@ -50,9 +76,71 @@ export async function generateNarration(
       console.log(`✅ Uploaded audio to S3: ${audioKey}`);
 
       audioKeys.push(audioKey);
+
+      // Get word-level timestamps using transcription
+      console.log(
+        `🎤 Transcribing audio for scene ${i} to get word timestamps...`,
+      );
+
+      // Write audio buffer to temporary file for transcription
+      const fs = require('fs');
+      const os = require('os');
+      const path = require('path');
+
+      const tempAudioPath = path.join(os.tmpdir(), `scene-${i}.mp3`);
+      fs.writeFileSync(tempAudioPath, audioBuffer);
+
+      // Create file object for OpenAI API
+      const audioFile = fs.createReadStream(tempAudioPath);
+
+      const transcription = await openai.audio.transcriptions.create({
+        file: audioFile,
+        model: 'whisper-1',
+        response_format: 'verbose_json',
+        timestamp_granularities: ['word'],
+      });
+
+      // Clean up temporary file
+      fs.unlinkSync(tempAudioPath);
+
+      const subtitleData: SubtitleData = {
+        sceneIndex: i,
+        words: [],
+        fullText: transcription.text,
+      };
+
+      // Extract word-level timestamps from the transcription response
+      if (transcription.words && Array.isArray(transcription.words)) {
+        subtitleData.words = transcription.words.map((word: any) => ({
+          word: word.word,
+          start: word.start,
+          end: word.end,
+        }));
+        console.log(
+          `📝 Extracted ${subtitleData.words.length} word timestamps for scene ${i}`,
+        );
+      } else {
+        console.log(
+          `⚠️ No word timestamps available for scene ${i}, using fallback`,
+        );
+        // Fallback: create a simple word-level breakdown without precise timestamps
+        const words = scene.narration
+          .split(' ')
+          .filter((word) => word.length > 0);
+        const estimatedDuration = scene.duration;
+        const timePerWord = estimatedDuration / words.length;
+
+        subtitleData.words = words.map((word, index) => ({
+          word,
+          start: index * timePerWord,
+          end: (index + 1) * timePerWord,
+        }));
+      }
+
+      subtitles.push(subtitleData);
     }
 
-    return audioKeys;
+    return { audioKeys, subtitles };
   } catch (error) {
     console.error('❌ Error in generateNarration:', error);
     throw error;

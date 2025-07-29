@@ -3,5 +3,19 @@ export interface Scene {
     duration: number;
     narration: string;
 }
-export declare function generateNarration(scenes: Scene[], userId: string): Promise<string[]>;
+export interface SubtitleWord {
+    word: string;
+    start: number;
+    end: number;
+}
+export interface SubtitleData {
+    sceneIndex: number;
+    words: SubtitleWord[];
+    fullText: string;
+}
+export interface NarrationResult {
+    audioKeys: string[];
+    subtitles: SubtitleData[];
+}
+export declare function generateNarration(scenes: Scene[], userId: string, timestamp: string): Promise<NarrationResult>;
 export declare function generateStoryBreakdown(prompt: string, sceneCount: number, totalDuration: number): Promise<Scene[]>;

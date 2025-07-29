@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Video, Sparkles, Download, Play } from 'lucide-react';
 import VideoGenerator from '@/components/VideoGenerator';
 import VideoPreview from '@/components/VideoPreview';
+import VideoGallery from '@/components/VideoGallery';
 
 export default function Home() {
   const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
@@ -111,6 +112,11 @@ export default function Home() {
             </div>
           </div>
         )}
+
+        {/* Video Gallery Section */}
+        <div className="mt-8">
+          <VideoGallery />
+        </div>
       </div>
 
       <div className="mt-20 text-center animate-fade-in-up">
