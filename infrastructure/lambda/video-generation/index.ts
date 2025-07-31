@@ -17,7 +17,7 @@ export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   console.log('🚀 Lambda function started');
-  console.log('📄 Event received:', JSON.stringify(event, null, 2));
+  console.log('📄   ', JSON.stringify(event, null, 2));
 
   try {
     console.log('AWS_REGION:', process.env.AWS_REGION);

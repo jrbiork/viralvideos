@@ -1,27 +1,26 @@
 {
   "name": "video-generation-lambda",
   "version": "1.0.0",
-  "description": "Lambda function for generating AI videos",
+  "description": "Lambda function for video generation",
   "main": "index.js",
-  "engines": {
-    "node": ">=20.0.0",
-    "npm": ">=10.0.0"
-  },
   "scripts": {
     "build": "tsc",
-    "clean": "rm -f index.js"
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.490.0",
     "@runwayml/sdk": "^2.5.0",
     "axios": "^1.6.7",
-    "date-fns": "^3.6.0",
     "fluent-ffmpeg": "^2.1.2",
     "openai": "^4.28.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.133",
     "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/node": "^22.0.0",
     "typescript": "^5.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

@@ -37,30 +37,29 @@ export async function generateSubtitles(
         );
       }
 
-      // Create ASS format directly for better FFmpeg compatibility
-      const assContent = convertSRTtoASS(srtContent);
-      const assSubtitleBuffer = Buffer.from(assContent, 'utf-8');
+      // Use SRT format directly for testing
+      const srtSubtitleBuffer = Buffer.from(srtContent, 'utf-8');
       console.log(
-        `✅ Generated ASS subtitle for scene ${i}, size: ${assSubtitleBuffer.length} bytes`,
+        `✅ Generated SRT subtitle for scene ${i}, size: ${srtSubtitleBuffer.length} bytes`,
       );
 
-      // Save ASS to S3 with timestamp prefix
-      const assSubtitleKey = `${userId}/${timestamp}.scene-${i}.ass`;
+      // Save SRT to S3 with timestamp prefix
+      const srtSubtitleKey = `${userId}/${timestamp}.scene-${i}.srt`;
       console.log(
-        `☁️ Uploading ASS subtitle to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${assSubtitleKey}`,
+        `☁️ Uploading SRT subtitle to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${srtSubtitleKey}`,
       );
 
       await s3.send(
         new PutObjectCommand({
           Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: assSubtitleKey,
-          Body: assSubtitleBuffer,
+          Key: srtSubtitleKey,
+          Body: srtSubtitleBuffer,
           ContentType: 'text/plain',
         }),
       );
-      console.log(`✅ Uploaded ASS subtitle to S3: ${assSubtitleKey}`);
+      console.log(`✅ Uploaded SRT subtitle to S3: ${srtSubtitleKey}`);
 
-      subtitleKeys.push(assSubtitleKey);
+      subtitleKeys.push(srtSubtitleKey);
       currentTime += scene.duration;
     }
 
@@ -171,7 +170,7 @@ function convertSRTtoASS(srtContent: string): string {
   assContent +=
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
   assContent +=
-    'Style: Default,Arial,24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1\n\n';
+    'Style: Default,Liberation Sans,24,&H00FFFFFF,&H000000FF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,10,10,10,1\n\n';
   assContent += '[Events]\n';
   assContent +=
     'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';

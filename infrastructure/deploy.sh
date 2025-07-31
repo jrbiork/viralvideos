@@ -53,9 +53,22 @@ fi
 echo "🔨 Building TypeScript..."
 npm run build
 
+# Install and build Lambda dependencies
+echo "📦 Installing Lambda dependencies..."
+cd lambda/video-generation
+npm install
+../../node_modules/.bin/tsc
+cd ../..
+echo "✅ Lambda dependencies installed and built"
+
 # Deploy the stack
 echo "🚀 Deploying CDK stack..."
 npm run deploy
+
+# Clean up temporary files (if any)
+echo "🧹 Cleaning up temporary files..."
+# Remove any temporary files if needed
+echo "✅ Cleanup complete"
 
 echo "✅ Deployment complete!"
 echo ""

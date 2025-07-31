@@ -103,8 +103,9 @@ export class ViralVideosStack extends cdk.Stack {
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
           RUNWAY_API_KEY: runwayApiKey,
           OPENAI_API_KEY: openaiApiKey,
-          PATH: '/opt/ffmpeg:/opt/ffprobe:/usr/local/bin:/usr/bin/:/bin',
-          FONTCONFIG_PATH: '/etc/fonts',
+          PATH: '/opt/bin:/usr/local/bin:/usr/bin/:/bin',
+          FONTCONFIG_PATH: '/opt/etc/fonts',
+          FONTCONFIG_FILE: '/opt/etc/fonts/fonts.conf',
         },
       },
     );
