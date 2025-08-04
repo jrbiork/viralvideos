@@ -301,12 +301,28 @@ export async function combineVideoAndAudio(
           }
         }
 
-        // Add scene duration to current time for next scene
-        if (videoPaths[i]) {
-          // Get video duration using ffprobe
-          const videoDuration = await getVideoDuration(videoPaths[i]);
-          currentTime += videoDuration;
+        // Calculate the duration of this subtitle and add to current time for next scene
+        let subtitleDuration = 0;
+        for (const line of subtitleLines) {
+          if (line.startsWith('Dialogue:')) {
+            const dialogueMatch = line.match(
+              /Dialogue: (\d+),(\d+:\d+:\d+\.\d+),(\d+:\d+:\d+\.\d+),([^,]*),([^,]*),(\d+),(\d+),(\d+),([^,]*),(.*)/,
+            );
+            if (dialogueMatch) {
+              const startTime = dialogueMatch[2];
+              const endTime = dialogueMatch[3];
+              const startSeconds = parseASSTime(startTime);
+              const endSeconds = parseASSTime(endTime);
+              subtitleDuration = Math.max(subtitleDuration, endSeconds);
+            }
+          }
         }
+
+        // Add subtitle duration to current time for next scene
+        currentTime += subtitleDuration;
+        console.log(
+          `📝 Scene ${i} subtitle duration: ${subtitleDuration}s, current time: ${currentTime}s`,
+        );
       }
 
       fs.writeFileSync(concatenatedSubtitlePath, concatenatedSubtitleContent);

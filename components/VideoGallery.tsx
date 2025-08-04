@@ -27,6 +27,19 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     fetchVideos();
   }, []);
 
+  // Auto-select the latest video when videos are loaded
+  useEffect(() => {
+    if (videos.length > 0 && !selectedVideo) {
+      // Sort videos by timestamp (newest first) and select the first one
+      const sortedVideos = [...videos].sort(
+        (a, b) => b.timestamp - a.timestamp,
+      );
+      const latestVideo = sortedVideos[0];
+      setSelectedVideo(latestVideo);
+      onVideoSelect?.(latestVideo);
+    }
+  }, [videos, selectedVideo, onVideoSelect]);
+
   const fetchVideos = async () => {
     try {
       setLoading(true);
