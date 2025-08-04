@@ -279,11 +279,27 @@ async function combineVideoAndAudio(userId, timestamp) {
             '-shortest',
         ];
         if (subtitlePaths.length > 0 && fs.existsSync(concatenatedSubtitlePath)) {
-            const testAssPath = path.join(__dirname, 'test.ass');
-            console.log('🧪 Using test ASS file for debugging:', testAssPath);
-            const subtitleFilter = `scale=1080:1920,ass=${testAssPath}`;
+            console.log('🔍 Debugging ASS subtitle embedding...');
+            console.log('📁 ASS file path:', concatenatedSubtitlePath);
+            console.log('📄 ASS file exists:', fs.existsSync(concatenatedSubtitlePath));
+            console.log('📏 ASS file size:', fs.statSync(concatenatedSubtitlePath).size, 'bytes');
+            try {
+                const assContent = fs.readFileSync(concatenatedSubtitlePath, 'utf-8');
+                console.log('📄 ASS file content preview:', assContent.substring(0, 500));
+                console.log('🔍 ASS file contains Dialogue entries:', (assContent.match(/Dialogue:/g) || []).length);
+            }
+            catch (error) {
+                console.error('❌ Error reading ASS file:', error);
+            }
+            const subtitleFilter = `scale=1080:1920,ass=${concatenatedSubtitlePath}:fontsdir=/opt/fonts`;
             outputOptions.push('-vf', subtitleFilter);
-            console.log('📝 Added scale and ASS subtitle embedding filter:', subtitleFilter);
+            console.log('📝 Added scale and ASS subtitle embedding filter with fontsdir:', subtitleFilter);
+            console.log('🔄 Alternative: Will also try subtitles filter if ass fails');
+            const alternativeFilter = `scale=1080:1920,subtitles='${concatenatedSubtitlePath}'`;
+            console.log('🔄 Alternative filter:', alternativeFilter);
+            console.log('🧪 Testing ASS filter with fontsdir, checking FFmpeg logs for errors');
+            outputOptions.push('-loglevel', 'debug');
+            console.log('🔍 Added debug logging to FFmpeg command');
         }
         else if (videoFilter) {
             outputOptions.push('-vf', videoFilter);
@@ -373,26 +389,30 @@ function formatSecondsToTime(seconds) {
         .padStart(3, '0')}`;
 }
 function parseASSTime(assTime) {
-    const match = assTime.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
-    if (match) {
-        const hours = parseInt(match[1]);
-        const minutes = parseInt(match[2]);
-        const seconds = parseInt(match[3]);
-        const milliseconds = parseInt(match[4]);
-        return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+    const match = assTime.match(/^(\d+):(\d{2}):(\d{2})\.(\d{2,3})$/);
+    if (!match)
+        return 0;
+    const hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const seconds = parseInt(match[3]);
+    let fraction = match[4];
+    let ms = 0;
+    if (fraction.length === 2) {
+        ms = parseInt(fraction) * 10;
     }
-    return 0;
+    else {
+        ms = parseInt(fraction);
+    }
+    return hours * 3600 + minutes * 60 + seconds + ms / 1000;
 }
 function formatASSTime(seconds) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    const milliseconds = Math.floor((seconds % 1) * 1000);
-    return `${hours.toString().padStart(2, '0')}:${minutes
+    const centis = Math.round((seconds % 1) * 100);
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${secs
         .toString()
-        .padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds
-        .toString()
-        .padStart(3, '0')}`;
+        .padStart(2, '0')}.${centis.toString().padStart(2, '0')}`;
 }
 function createASSStyleHeader() {
     let header = '[Script Info]\n';
@@ -407,7 +427,7 @@ function createASSStyleHeader() {
     header +=
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
     header +=
-        'Style: Default,Arial,72,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1\n\n';
+        'Style: Default,LiberationSans,72,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,10,10,10,1\n\n';
     header += '[Events]\n';
     header +=
         'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';

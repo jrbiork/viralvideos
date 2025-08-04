@@ -14,6 +14,8 @@ async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
             const assContent = createSimpleASSSubtitle(i + 1, currentTime, scene.duration, scene.narration);
             const assSubtitleBuffer = Buffer.from(assContent, 'utf-8');
             console.log(`✅ Generated ASS subtitle for scene ${i}, size: ${assSubtitleBuffer.length} bytes`);
+            console.log('📄 Generated ASS content preview:', assContent.substring(0, 300));
+            console.log('🔍 ASS contains Dialogue entries:', (assContent.match(/Dialogue:/g) || []).length);
             const assSubtitleKey = `${userId}/${timestamp}.scene-${i}.ass`;
             console.log(`☁️ Uploading ASS subtitle to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${assSubtitleKey}`);
             await s3.send(new client_s3_1.PutObjectCommand({
@@ -50,11 +52,12 @@ function createSimpleASSSubtitle(index, startTime, duration, text) {
     const assContent = createASSStyleHeader();
     const startTimeFormatted = formatASSTime(startTime);
     const endTimeFormatted = formatASSTime(startTime + duration);
+    const subtitleText = text || `Scene ${index + 1}`;
     return (assContent +
-        `Dialogue: 0,${startTimeFormatted},${endTimeFormatted},Default,,0,0,0,,${text}\n`);
+        `Dialogue: 0,${startTimeFormatted},${endTimeFormatted},Default,,0,0,0,,${subtitleText}\n`);
 }
 function createASSStyleHeader(opts = {}) {
-    const { fontName = 'Arial', fontSize = 72, primaryColor = '&H00FFFFFF', outlineColor = '&H00000000', } = opts;
+    const { fontName = 'LiberationSans', fontSize = 72, primaryColor = '&H00FFFFFF', outlineColor = '&H00000000', } = opts;
     return `[Script Info]
 Title: Test
 ScriptType: v4.00+
@@ -66,7 +69,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${fontName},${fontSize},${primaryColor},&H000000FF,${outlineColor},&H80000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1
+Style: Default,${fontName},${fontSize},${primaryColor},${primaryColor},${outlineColor},&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,10,10,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -76,8 +79,8 @@ function formatASSTime(seconds) {
     const hours = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = Math.floor(seconds % 60);
-    const centiseconds = Math.floor((seconds % 1) * 100);
+    const centis = Math.round((seconds % 1) * 100);
     return `${hours}:${minutes.toString().padStart(2, '0')}:${secs
         .toString()
-        .padStart(2, '0')}.${centiseconds.toString().padStart(2, '0')}`;
+        .padStart(2, '0')}.${centis.toString().padStart(2, '0')}`;
 }

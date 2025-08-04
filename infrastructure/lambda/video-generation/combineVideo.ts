@@ -425,17 +425,57 @@ export async function combineVideoAndAudio(
 
     // Add subtitle overlay if subtitle file is available
     if (subtitlePaths.length > 0 && fs.existsSync(concatenatedSubtitlePath)) {
-      // For testing: Use a simple test ASS file
-      const testAssPath = path.join(__dirname, 'test.ass');
-      console.log('🧪 Using test ASS file for debugging:', testAssPath);
+      // Try different ASS filter approaches for debugging
+      console.log('🔍 Debugging ASS subtitle embedding...');
+      console.log('📁 ASS file path:', concatenatedSubtitlePath);
+      console.log(
+        '📄 ASS file exists:',
+        fs.existsSync(concatenatedSubtitlePath),
+      );
+      console.log(
+        '📏 ASS file size:',
+        fs.statSync(concatenatedSubtitlePath).size,
+        'bytes',
+      );
 
-      // Scale to target resolution and embed ASS subtitles into video
-      const subtitleFilter = `scale=1080:1920,ass=${testAssPath}`;
+      // Read and log the ASS file content for debugging
+      try {
+        const assContent = fs.readFileSync(concatenatedSubtitlePath, 'utf-8');
+        console.log(
+          '📄 ASS file content preview:',
+          assContent.substring(0, 500),
+        );
+        console.log(
+          '🔍 ASS file contains Dialogue entries:',
+          (assContent.match(/Dialogue:/g) || []).length,
+        );
+      } catch (error) {
+        console.error('❌ Error reading ASS file:', error);
+      }
+
+      // Try with ass filter and fontsdir parameter
+      const subtitleFilter = `scale=1080:1920,ass=${concatenatedSubtitlePath}:fontsdir=/opt/fonts`;
       outputOptions.push('-vf', subtitleFilter);
       console.log(
-        '📝 Added scale and ASS subtitle embedding filter:',
+        '📝 Added scale and ASS subtitle embedding filter with fontsdir:',
         subtitleFilter,
       );
+
+      // Also try alternative approach with subtitles filter as fallback
+      console.log(
+        '🔄 Alternative: Will also try subtitles filter if ass fails',
+      );
+      const alternativeFilter = `scale=1080:1920,subtitles='${concatenatedSubtitlePath}'`;
+      console.log('🔄 Alternative filter:', alternativeFilter);
+
+      // Try both approaches - comment out one to test the other
+      console.log(
+        '🧪 Testing ASS filter with fontsdir, checking FFmpeg logs for errors',
+      );
+
+      // Add more verbose FFmpeg logging
+      outputOptions.push('-loglevel', 'debug');
+      console.log('🔍 Added debug logging to FFmpeg command');
     } else if (videoFilter) {
       outputOptions.push('-vf', videoFilter);
     }
@@ -540,29 +580,29 @@ function formatSecondsToTime(seconds: number): string {
 }
 
 function parseASSTime(assTime: string): number {
-  // Parse ASS time format: HH:MM:SS.mmm (e.g., "00:00:00.000")
-  const match = assTime.match(/(\d{2}):(\d{2}):(\d{2})\.(\d{3})/);
-  if (match) {
-    const hours = parseInt(match[1]);
-    const minutes = parseInt(match[2]);
-    const seconds = parseInt(match[3]);
-    const milliseconds = parseInt(match[4]);
-    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
+  const match = assTime.match(/^(\d+):(\d{2}):(\d{2})\.(\d{2,3})$/);
+  if (!match) return 0;
+  const hours = parseInt(match[1]);
+  const minutes = parseInt(match[2]);
+  const seconds = parseInt(match[3]);
+  let fraction = match[4];
+  let ms = 0;
+  if (fraction.length === 2) {
+    ms = parseInt(fraction) * 10; // centiseconds to ms
+  } else {
+    ms = parseInt(fraction); // already milliseconds
   }
-  return 0;
+  return hours * 3600 + minutes * 60 + seconds + ms / 1000;
 }
 
 function formatASSTime(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  const milliseconds = Math.floor((seconds % 1) * 1000);
-
-  return `${hours.toString().padStart(2, '0')}:${minutes
+  const centis = Math.round((seconds % 1) * 100);
+  return `${hours}:${minutes.toString().padStart(2, '0')}:${secs
     .toString()
-    .padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds
-    .toString()
-    .padStart(3, '0')}`;
+    .padStart(2, '0')}.${centis.toString().padStart(2, '0')}`;
 }
 
 function createASSStyleHeader(): string {
@@ -579,9 +619,9 @@ function createASSStyleHeader(): string {
   header +=
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
 
-  // Style with Arial font, white text on black background, positioned at bottom center
+  // Style with LiberationSans font, simple white text, positioned at bottom center
   header +=
-    'Style: Default,Arial,72,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1\n\n';
+    'Style: Default,LiberationSans,72,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,10,10,10,1\n\n';
 
   header += '[Events]\n';
   header +=
