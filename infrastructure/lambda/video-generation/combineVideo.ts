@@ -117,10 +117,10 @@ export async function combineVideoAndAudio(
     // Filter and sort subtitle files
     const subtitleFiles =
       subtitleListResponse.Contents?.filter((obj) =>
-        obj.Key?.endsWith('.srt'),
+        obj.Key?.endsWith('.ass'),
       )?.sort((a, b) => {
-        const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.srt/)?.[1] || '0');
-        const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.srt/)?.[1] || '0');
+        const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
+        const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
         return aIndex - bIndex;
       }) || [];
 
@@ -198,7 +198,7 @@ export async function combineVideoAndAudio(
       const subtitleFile = subtitleFiles[i];
       if (!subtitleFile.Key) continue;
 
-      const subtitlePath = path.join(os.tmpdir(), `subtitle-${i}.srt`);
+      const subtitlePath = path.join(os.tmpdir(), `subtitle-${i}.ass`);
 
       console.log(`📥 Downloading ${subtitleFile.Key} to ${subtitlePath}`);
       const subtitleObject = await s3.send(
@@ -252,9 +252,9 @@ export async function combineVideoAndAudio(
     // Create concatenated subtitle file
     const concatenatedSubtitlePath = path.join(
       os.tmpdir(),
-      'concatenated-subtitles.srt',
+      'concatenated-subtitles.ass',
     );
-    console.log('📝 Concatenating subtitle files...');
+    console.log('📝 Concatenating ASS subtitle files...');
 
     if (subtitlePaths.length > 0) {
       console.log(
@@ -263,43 +263,40 @@ export async function combineVideoAndAudio(
         'files',
       );
 
-      let concatenatedSubtitleContent = '';
+      let concatenatedSubtitleContent = createASSStyleHeader();
       let currentTime = 0;
-      let subtitleIndex = 1;
 
       // Process each subtitle file and adjust timestamps
       for (let i = 0; i < subtitlePaths.length; i++) {
         const subtitleContent = fs.readFileSync(subtitlePaths[i], 'utf-8');
         const subtitleLines = subtitleContent.split('\n');
 
-        for (let j = 0; j < subtitleLines.length; j += 4) {
-          if (
-            subtitleLines[j] &&
-            subtitleLines[j + 1] &&
-            subtitleLines[j + 2]
-          ) {
-            const timeLine = subtitleLines[j + 1];
-            const textLine = subtitleLines[j + 2];
+        // Find the Events section in ASS file
+        let inEventsSection = false;
+        for (const line of subtitleLines) {
+          if (line.trim() === '[Events]') {
+            inEventsSection = true;
+            continue;
+          }
 
-            const timeMatch = timeLine.match(
-              /(\d{2}:\d{2}:\d{2}),(\d{3}) --> (\d{2}:\d{2}:\d{2}),(\d{3})/,
+          if (inEventsSection && line.startsWith('Dialogue:')) {
+            // Parse ASS dialogue line
+            const dialogueMatch = line.match(
+              /Dialogue: (\d+),(\d+:\d+:\d+\.\d+),(\d+:\d+:\d+\.\d+),([^,]*),([^,]*),(\d+),(\d+),(\d+),([^,]*),(.*)/,
             );
-            if (timeMatch) {
-              const startTime = timeMatch[1] + ',' + timeMatch[2];
-              const endTime = timeMatch[3] + ',' + timeMatch[4];
+            if (dialogueMatch) {
+              const startTime = dialogueMatch[2];
+              const endTime = dialogueMatch[3];
+              const text = dialogueMatch[10];
 
-              // Convert SRT time format to seconds, add current time, then convert back
-              const startSeconds = parseTimeToSeconds(startTime) + currentTime;
-              const endSeconds = parseTimeToSeconds(endTime) + currentTime;
+              // Convert ASS time format to seconds, add current time, then convert back
+              const startSeconds = parseASSTime(startTime) + currentTime;
+              const endSeconds = parseASSTime(endTime) + currentTime;
 
-              const adjustedStart = formatSecondsToTime(startSeconds);
-              const adjustedEnd = formatSecondsToTime(endSeconds);
+              const adjustedStart = formatASSTime(startSeconds);
+              const adjustedEnd = formatASSTime(endSeconds);
 
-              concatenatedSubtitleContent += `${subtitleIndex}\n`;
-              concatenatedSubtitleContent += `${adjustedStart} --> ${adjustedEnd}\n`;
-              concatenatedSubtitleContent += `${textLine}\n\n`;
-
-              subtitleIndex++;
+              concatenatedSubtitleContent += `Dialogue: 0,${adjustedStart},${adjustedEnd},Default,,0,0,0,,${text}\n`;
             }
           }
         }
@@ -313,7 +310,16 @@ export async function combineVideoAndAudio(
       }
 
       fs.writeFileSync(concatenatedSubtitlePath, concatenatedSubtitleContent);
-      console.log('✅ Subtitle concatenation completed');
+      console.log('✅ ASS subtitle concatenation completed');
+
+      // Debug: Log the ASS file content for verification
+      console.log('🔍 ASS file content preview:');
+      console.log(concatenatedSubtitleContent.substring(0, 1000));
+      console.log(
+        '🔍 ASS file size:',
+        fs.statSync(concatenatedSubtitlePath).size,
+        'bytes',
+      );
       console.log(
         '🔍 DEBUG: File written successfully to:',
         concatenatedSubtitlePath,
@@ -323,7 +329,7 @@ export async function combineVideoAndAudio(
         fs.existsSync(concatenatedSubtitlePath),
       );
       console.log(
-        '📄 Concatenated subtitle content preview:',
+        '📄 Concatenated ASS subtitle content preview:',
         concatenatedSubtitleContent.substring(0, 500),
       );
       console.log(
@@ -339,13 +345,17 @@ export async function combineVideoAndAudio(
       // Debug: Check if the file is readable and has valid content
       try {
         const fileContent = fs.readFileSync(concatenatedSubtitlePath, 'utf-8');
-        console.log('🔍 Full SRT file content:', fileContent);
+        console.log('🔍 Full ASS file content:', fileContent);
         console.log(
           '🔍 File contains subtitle entries:',
-          fileContent.includes('-->'),
+          fileContent.includes('Dialogue:'),
+        );
+        console.log(
+          '🔍 Number of Dialogue entries:',
+          (fileContent.match(/Dialogue:/g) || []).length,
         );
       } catch (error) {
-        console.error('❌ Error reading SRT file:', error);
+        console.error('❌ Error reading ASS file:', error);
       }
     }
 
@@ -379,14 +389,14 @@ export async function combineVideoAndAudio(
     }
 
     if (subtitlePaths.length > 0 && fs.existsSync(concatenatedSubtitlePath)) {
-      console.log('📝 Using .srt subtitle file directly');
+      console.log('📝 Using .ass subtitle file directly');
 
       console.log(
-        '📄 SRT subtitle content preview:',
+        '📄 ASS subtitle content preview:',
         fs.readFileSync(concatenatedSubtitlePath, 'utf-8').substring(0, 500),
       );
 
-      console.log('📝 Will use subtitle file as input to FFmpeg');
+      console.log('📝 Will use ASS subtitle file as input to FFmpeg');
     }
 
     const ffmpegCommand = ffmpeg()
@@ -394,25 +404,38 @@ export async function combineVideoAndAudio(
       .inputOptions(['-f', 'concat', '-safe', '0'])
       .input(concatenatedAudioPath);
 
-    // Add subtitle file as input if available
+    // Note: For ASS subtitles, we don't add them as input files
+    // They are handled through the subtitle filter only
     if (subtitlePaths.length > 0 && fs.existsSync(concatenatedSubtitlePath)) {
-      ffmpegCommand.input(concatenatedSubtitlePath);
-      console.log('📝 Added subtitle file as input to FFmpeg');
+      console.log('📝 ASS subtitle file available for overlay filter');
     }
 
     // Prepare output options
     const outputOptions = [
       '-c:v',
       'libx264', // Video codec
+      '-pix_fmt',
+      'yuv420p', // Pixel format for compatibility
       '-c:a',
       'aac', // Audio codec
+      '-b:a',
+      '128k', // Audio bitrate
       '-shortest', // End when shortest input ends
     ];
 
     // Add subtitle overlay if subtitle file is available
     if (subtitlePaths.length > 0 && fs.existsSync(concatenatedSubtitlePath)) {
-      outputOptions.push('-vf', 'subtitles=' + concatenatedSubtitlePath);
-      console.log('📝 Added SRT subtitle overlay filter');
+      // For testing: Use a simple test ASS file
+      const testAssPath = path.join(__dirname, 'test.ass');
+      console.log('🧪 Using test ASS file for debugging:', testAssPath);
+
+      // Scale to target resolution and embed ASS subtitles into video
+      const subtitleFilter = `scale=1080:1920,ass=${testAssPath}`;
+      outputOptions.push('-vf', subtitleFilter);
+      console.log(
+        '📝 Added scale and ASS subtitle embedding filter:',
+        subtitleFilter,
+      );
     } else if (videoFilter) {
       outputOptions.push('-vf', videoFilter);
     }
@@ -429,9 +452,6 @@ export async function combineVideoAndAudio(
     // Log the complete FFmpeg command for debugging
     console.log('🔧 Complete FFmpeg command structure:');
     const inputFiles = [fileListPath, concatenatedAudioPath];
-    if (subtitlePaths.length > 0 && fs.existsSync(concatenatedSubtitlePath)) {
-      inputFiles.push(concatenatedSubtitlePath);
-    }
     console.log('  Input files:', inputFiles);
     console.log('  Output file:', outputPath);
     console.log(
@@ -454,11 +474,14 @@ export async function combineVideoAndAudio(
           reject(err);
         })
         .on('stderr', (stderrLine: string) => {
-          // Only log error messages, not verbose info
+          // Log all FFmpeg output for debugging subtitle issues
           if (
             stderrLine.includes('error') ||
             stderrLine.includes('Error') ||
-            stderrLine.includes('failed')
+            stderrLine.includes('failed') ||
+            stderrLine.includes('ass') ||
+            stderrLine.includes('subtitle') ||
+            stderrLine.includes('font')
           ) {
             console.log('📝 FFmpeg stderr:', stderrLine);
           }
@@ -540,6 +563,31 @@ function formatASSTime(seconds: number): string {
     .padStart(2, '0')}:${secs.toString().padStart(2, '0')}.${milliseconds
     .toString()
     .padStart(3, '0')}`;
+}
+
+function createASSStyleHeader(): string {
+  let header = '[Script Info]\n';
+  header += 'Title: Test\n';
+  header += 'ScriptType: v4.00+\n';
+  header += 'WrapStyle: 1\n';
+  header += 'ScaledBorderAndShadow: yes\n';
+  header += 'YCbCr Matrix: None\n';
+  header += 'PlayResX: 1080\n';
+  header += 'PlayResY: 1920\n\n';
+
+  header += '[V4+ Styles]\n';
+  header +=
+    'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
+
+  // Style with Arial font, white text on black background, positioned at bottom center
+  header +=
+    'Style: Default,Arial,72,&H00FFFFFF,&H000000FF,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,2,2,10,10,10,1\n\n';
+
+  header += '[Events]\n';
+  header +=
+    'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
+
+  return header;
 }
 
 async function getVideoDuration(videoPath: string): Promise<number> {

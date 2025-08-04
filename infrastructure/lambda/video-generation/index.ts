@@ -160,6 +160,7 @@ export const handler = async (
 
     // TODO: Uncomment this once we have a dynamic story breakdown
     // Step 3: Generate narration audio with word-level timestamps
+
     console.log('🎤 Generating narration audio with word-level timestamps...');
     const narrationResult = await generateNarration(
       scenes,

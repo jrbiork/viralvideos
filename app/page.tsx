@@ -1,163 +1,122 @@
 'use client';
 
 import { useState } from 'react';
-import { Video, Sparkles, Download, Play } from 'lucide-react';
-import VideoGenerator from '@/components/VideoGenerator';
-import VideoPreview from '@/components/VideoPreview';
-import VideoGallery from '@/components/VideoGallery';
+import { useRouter } from 'next/navigation';
+import LoginButton from '../components/LoginButton';
 
 export default function Home() {
-  const [generatedVideo, setGeneratedVideo] = useState<string | null>(null);
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  const handleVideoGenerated = (videoUrl: string) => {
-    setGeneratedVideo(videoUrl);
-    setIsGenerating(false);
-  };
-
-  const handleGenerationStart = () => {
-    setIsGenerating(true);
-    setGeneratedVideo(null);
-  };
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   return (
-    <main className="container mx-auto px-4 py-8 min-h-screen">
-      <div className="text-center mb-12 animate-fade-in-up">
-        <div className="flex items-center justify-center mb-6">
-          <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-green-500 rounded-full blur-xl opacity-20"></div>
-            <Video className="w-10 h-10 text-blue-400 relative z-10" />
-          </div>
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 to-green-400 bg-clip-text text-transparent ml-4">
-            Viral Videos MVP
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
+      {/* Navigation */}
+      <nav className="flex items-center justify-between p-6">
+        <div className="text-white text-2xl font-bold">ViralVideos</div>
+        <LoginButton />
+      </nav>
+
+      {/* Hero Section */}
+      <div className="container mx-auto px-6 py-20">
+        <div className="text-center">
+          <h1 className="text-6xl font-bold text-white mb-6">
+            Create Viral Videos
+            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-yellow-400">
+              in Minutes
+            </span>
           </h1>
-        </div>
-        <p className="text-xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-          Generate stunning vertical videos for TikTok and Instagram Reels using
-          <span className="text-blue-400 font-semibold">
-            {' '}
-            AI-powered video generation
-          </span>
-          , narration, and subtitles.
-        </p>
-      </div>
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            Transform your ideas into engaging viral content with AI-powered
+            video generation. No editing skills required.
+          </p>
 
-      <div className="max-w-5xl mx-auto">
-        <div className="glass-effect rounded-2xl p-8 mb-8 animate-fade-in-up">
-          <div className="flex items-center mb-8">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-green-500 rounded-xl flex items-center justify-center mr-4">
-              <Sparkles className="w-6 h-6 text-white" />
-            </div>
-            <h2 className="text-3xl font-bold text-white">Create Your Video</h2>
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <button
+              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
+              onClick={() => router.push('/generate')}
+            >
+              Start Creating
+            </button>
+            <LoginButton variant="outline" />
           </div>
-
-          <VideoGenerator
-            onGenerationStart={handleGenerationStart}
-            onVideoGenerated={handleVideoGenerated}
-            isGenerating={isGenerating}
-          />
         </div>
 
-        {isGenerating && (
-          <div className="glass-effect rounded-2xl p-8 mb-8 animate-fade-in-up">
-            <div className="text-center">
-              <div className="relative mb-6">
-                <div className="w-16 h-16 border-4 border-slate-600 rounded-full animate-pulse-slow"></div>
-                <div className="absolute inset-0 w-16 h-16 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
-              </div>
-              <h3 className="text-2xl font-bold text-white mb-3">
-                Generating Your Video
-              </h3>
-              <p className="text-slate-300 text-lg">
-                Our AI is creating your masterpiece with narration and
-                subtitles...
-              </p>
-              <div className="mt-4 flex justify-center space-x-2">
-                <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
-                <div
-                  className="w-2 h-2 bg-green-500 rounded-full animate-pulse"
-                  style={{ animationDelay: '0.2s' }}
-                ></div>
-                <div
-                  className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"
-                  style={{ animationDelay: '0.4s' }}
-                ></div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {generatedVideo && (
-          <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
-            <div className="flex items-center mb-8">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center mr-4">
-                <Play className="w-6 h-6 text-white" />
-              </div>
-              <h2 className="text-3xl font-bold text-white">
-                Your Generated Video
-              </h2>
-            </div>
-
-            <VideoPreview videoUrl={generatedVideo} />
-
-            <div className="mt-8 flex justify-center">
-              <a
-                href={generatedVideo}
-                download="generated-video.mp4"
-                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
+        {/* Features Section */}
+        <div className="mt-20 grid md:grid-cols-3 gap-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
               >
-                <Download className="w-5 h-5 mr-3" />
-                Download Video
-              </a>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M13 10V3L4 14h7v7l9-11h-7z"
+                />
+              </svg>
             </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              Lightning Fast
+            </h3>
+            <p className="text-gray-300">
+              Generate videos in seconds with our optimized AI pipeline
+            </p>
           </div>
-        )}
 
-        {/* Video Gallery Section */}
-        <div className="mt-8">
-          <VideoGallery />
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              AI Powered
+            </h3>
+            <p className="text-gray-300">
+              Advanced AI algorithms create engaging content automatically
+            </p>
+          </div>
+
+          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
+            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg
+                className="w-8 h-8 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                />
+              </svg>
+            </div>
+            <h3 className="text-xl font-semibold text-white mb-2">
+              Secure & Private
+            </h3>
+            <p className="text-gray-300">
+              Your content is protected with enterprise-grade security
+            </p>
+          </div>
         </div>
       </div>
-
-      <div className="mt-20 text-center animate-fade-in-up">
-        <h3 className="text-3xl font-bold text-white mb-12">How It Works</h3>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <div className="glass-effect rounded-xl p-8 hover:transform hover:scale-105 transition-all duration-300">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-blue-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-white font-bold text-xl">1</span>
-            </div>
-            <h4 className="font-bold text-white text-xl mb-4">
-              Write Your Story
-            </h4>
-            <p className="text-slate-300 leading-relaxed">
-              Enter a descriptive prompt about your video content and set the
-              duration
-            </p>
-          </div>
-          <div className="glass-effect rounded-xl p-8 hover:transform hover:scale-105 transition-all duration-300">
-            <div className="w-16 h-16 bg-gradient-to-r from-purple-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-white font-bold text-xl">2</span>
-            </div>
-            <h4 className="font-bold text-white text-xl mb-4">AI Processing</h4>
-            <p className="text-slate-300 leading-relaxed">
-              Our advanced AI generates video scenes, narration, and subtitles
-              automatically
-            </p>
-          </div>
-          <div className="glass-effect rounded-xl p-8 hover:transform hover:scale-105 transition-all duration-300">
-            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-green-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-white font-bold text-xl">3</span>
-            </div>
-            <h4 className="font-bold text-white text-xl mb-4">
-              Download & Share
-            </h4>
-            <p className="text-slate-300 leading-relaxed">
-              Get your professional vertical video ready for social media
-              platforms
-            </p>
-          </div>
-        </div>
-      </div>
-    </main>
+    </div>
   );
 }
