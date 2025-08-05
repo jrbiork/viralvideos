@@ -38,9 +38,9 @@ export function createASSStyleHeader(): string {
   header +=
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
 
-  // Style with LibreBaskerville font, bold white text with outline and shadow, positioned at bottom center
+  // Style with LibreBaskerville font, extra bold white text with enhanced outline and shadow, positioned between center and bottom
   header +=
-    'Style: Default,LibreBaskerville,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,3,3,2,10,10,90,1\n\n';
+    'Style: Default,LibreBaskerville-Bold,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,8,10,10,30,1\n\n';
 
   header += '[Events]\n';
   header +=
