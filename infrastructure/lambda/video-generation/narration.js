@@ -45,7 +45,9 @@ async function generateNarration(scenes, userId, timestamp) {
                 model: 'whisper-1',
                 response_format: 'verbose_json',
                 timestamp_granularities: ['word'],
+                language: 'en',
             });
+            console.log('transcription123:', transcription);
             fs.unlinkSync(tempAudioPath);
             const subtitleData = {
                 sceneIndex: i,

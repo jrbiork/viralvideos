@@ -5,13 +5,13 @@ export function parseASSTime(assTime: string): number {
   const minutes = parseInt(match[2]);
   const seconds = parseInt(match[3]);
   let fraction = match[4];
-  let ms = 0;
+  let centiseconds = 0;
   if (fraction.length === 2) {
-    ms = parseInt(fraction) * 10; // centiseconds to ms
+    centiseconds = parseInt(fraction); // already centiseconds
   } else {
-    ms = parseInt(fraction); // already milliseconds
+    centiseconds = Math.floor(parseInt(fraction) / 10); // milliseconds to centiseconds
   }
-  return hours * 3600 + minutes * 60 + seconds + ms / 1000;
+  return hours * 3600 + minutes * 60 + seconds + centiseconds / 100;
 }
 
 export function formatASSTime(seconds: number): string {
@@ -38,13 +38,58 @@ export function createASSStyleHeader(): string {
   header +=
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
 
-  // Style with LiberationSans font, simple white text, positioned at bottom center
+  // Style with LiberationSans font, bold white text with outline and shadow, positioned at bottom center
   header +=
-    'Style: Default,LiberationSans,72,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,0,0,0,0,100,100,0,0,1,0,0,2,10,10,10,1\n\n';
+    'Style: Default,LiberationSans,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,2,2,2,10,10,40,1\n\n';
 
   header += '[Events]\n';
   header +=
     'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
 
   return header;
+}
+
+export interface SubtitleWord {
+  word: string;
+  start: number;
+  end: number;
+}
+
+/**
+ * Creates a word-timed karaoke style ASS subtitle with word pairs highlighting
+ * @param words - Array of words with their start and end timestamps
+ * @param sceneStartTime - The start time of the scene in the overall video
+ * @returns ASS subtitle content with karaoke effects
+ */
+export function createWordTimedKaraokeASSSubtitle(
+  words: SubtitleWord[],
+  sceneStartTime: number,
+): string {
+  const assContent = createASSStyleHeader();
+  let dialogueLines = '';
+
+  // Create dialogue lines for word pairs to achieve karaoke effect
+  for (let i = 0; i < words.length; i += 2) {
+    const currentWord = words[i];
+    const nextWord = words[i + 1];
+
+    // Calculate timing for the word pair
+    const pairStart = sceneStartTime + currentWord.start;
+    const pairEnd = nextWord
+      ? sceneStartTime + nextWord.end
+      : sceneStartTime + currentWord.end;
+
+    const startTimeFormatted = formatASSTime(pairStart);
+    const endTimeFormatted = formatASSTime(pairEnd);
+
+    // Create text for the word pair
+    const pairText = nextWord
+      ? `${currentWord.word.toUpperCase()} ${nextWord.word.toUpperCase()}`
+      : currentWord.word.toUpperCase();
+
+    // Create a dialogue line for this word pair
+    dialogueLines += `Dialogue: 0,${startTimeFormatted},${endTimeFormatted},Default,,0,0,0,,${pairText}\n`;
+  }
+
+  return assContent + dialogueLines;
 }

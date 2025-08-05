@@ -1,6 +1,11 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { Scene, SubtitleData } from './narration';
-import { formatASSTime, createASSStyleHeader } from './util/assUtils';
+import {
+  formatASSTime,
+  createASSStyleHeader,
+  createWordTimedKaraokeASSSubtitle,
+  SubtitleWord,
+} from './util/assUtils';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 
@@ -10,21 +15,41 @@ export async function generateSubtitles(
   timestamp: string,
   subtitleData?: SubtitleData[],
 ): Promise<string[]> {
-  console.log('📝 Generating simple ASS subtitles (no karaoke)...');
+  console.log('📝 Generating ASS subtitles with word-timed karaoke...');
   try {
     const subtitleKeys: string[] = [];
     let currentTime = 0;
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
+      let assContent: string;
 
-      // For testing: Always use simple ASS subtitle (skip karaoke)
-      const assContent = createSimpleASSSubtitle(
-        i + 1,
-        currentTime,
-        scene.duration,
-        scene.narration,
+      // Check if we have word-level subtitle data for this scene
+      const sceneSubtitleData = subtitleData?.find(
+        (data) => data.sceneIndex === i,
       );
+
+      if (sceneSubtitleData && sceneSubtitleData.words.length > 0) {
+        // Use word-timed karaoke subtitle
+        console.log(
+          `🎤 Creating word-timed karaoke subtitle for scene ${i} with ${sceneSubtitleData.words.length} words`,
+        );
+        assContent = createWordTimedKaraokeASSSubtitle(
+          sceneSubtitleData.words,
+          currentTime,
+        );
+      } else {
+        // Fallback to simple subtitle
+        console.log(
+          `📝 Creating simple subtitle for scene ${i} (no word data available)`,
+        );
+        assContent = createSimpleASSSubtitle(
+          i + 1,
+          currentTime,
+          scene.duration,
+          scene.narration,
+        );
+      }
 
       // Use ASS format directly
       const assSubtitleBuffer = Buffer.from(assContent, 'utf-8');

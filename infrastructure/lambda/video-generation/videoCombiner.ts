@@ -38,59 +38,42 @@ export async function combineVideoAndAudio(
 
   try {
     // List all files for the user with timestamp prefix
-    const videoListResponse = await s3.send(
+    const listResponse = await s3.send(
       new ListObjectsV2Command({
         Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
         Prefix: `${userId}/${timestamp}.scene-`,
-        MaxKeys: 10,
+        MaxKeys: 30, // Increased to accommodate all file types
       }),
     );
 
-    const audioListResponse = await s3.send(
-      new ListObjectsV2Command({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Prefix: `${userId}/${timestamp}.scene-`,
-        MaxKeys: 10,
-      }),
-    );
-
-    const subtitleListResponse = await s3.send(
-      new ListObjectsV2Command({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Prefix: `${userId}/${timestamp}.scene-`,
-        MaxKeys: 10,
-      }),
-    );
+    const objs = listResponse.Contents || [];
 
     // Filter and sort video files
-    const videoFiles =
-      videoListResponse.Contents?.filter((obj) =>
-        obj.Key?.endsWith('.mp4'),
-      )?.sort((a, b) => {
+    const videoFiles = objs
+      .filter((obj) => obj.Key?.endsWith('.mp4'))
+      .sort((a, b) => {
         const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
         const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
         return aIndex - bIndex;
-      }) || [];
+      });
 
     // Filter and sort audio files
-    const audioFiles =
-      audioListResponse.Contents?.filter((obj) =>
-        obj.Key?.endsWith('.mp3'),
-      )?.sort((a, b) => {
+    const audioFiles = objs
+      .filter((obj) => obj.Key?.endsWith('.mp3'))
+      .sort((a, b) => {
         const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
         const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
         return aIndex - bIndex;
-      }) || [];
+      });
 
     // Filter and sort subtitle files
-    const subtitleFiles =
-      subtitleListResponse.Contents?.filter((obj) =>
-        obj.Key?.endsWith('.ass'),
-      )?.sort((a, b) => {
+    const subtitleFiles = objs
+      .filter((obj) => obj.Key?.endsWith('.ass'))
+      .sort((a, b) => {
         const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
         const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
         return aIndex - bIndex;
-      }) || [];
+      });
 
     console.log(
       `📹 Found ${videoFiles.length} video files, ${audioFiles.length} audio files, ${subtitleFiles.length} subtitle files`,
@@ -220,14 +203,13 @@ export async function combineVideoAndAudio(
           }
 
           if (inEventsSection && line.startsWith('Dialogue:')) {
-            // Parse ASS dialogue line
-            const dialogueMatch = line.match(
-              /Dialogue: (\d+),(\d+:\d+:\d+\.\d+),(\d+:\d+:\d+\.\d+),([^,]*),([^,]*),(\d+),(\d+),(\d+),([^,]*),(.*)/,
-            );
-            if (dialogueMatch) {
-              const startTime = dialogueMatch[2];
-              const endTime = dialogueMatch[3];
-              const text = dialogueMatch[10];
+            const parts = line.split(',');
+            // parts[0] = "Dialogue: 0"
+            // parts[1]=start, [2]=end, …, parts[8]=Effect, parts.slice(9).join(',') = Text
+            if (parts.length >= 10) {
+              const startTime = parts[1];
+              const endTime = parts[2];
+              const text = parts.slice(9).join(',');
 
               // The subtitle timing in each ASS file is already absolute (not relative to the scene)
               // So we don't need to add currentTime to it

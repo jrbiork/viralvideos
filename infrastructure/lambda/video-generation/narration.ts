@@ -103,7 +103,10 @@ export async function generateNarration(
         model: 'whisper-1',
         response_format: 'verbose_json',
         timestamp_granularities: ['word'],
+        language: 'en',
       });
+
+      console.log('transcription123:', transcription);
 
       // Clean up temporary file
       fs.unlinkSync(tempAudioPath);
