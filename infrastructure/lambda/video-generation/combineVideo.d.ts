@@ -1,7 +1,2 @@
-export interface Scene {
-    description: string;
-    duration: number;
-    narration: string;
-}
-export declare function combineVideoAndAudio(userId: string, timestamp: string, scenes?: Scene[]): Promise<string>;
-export declare function uploadToS3(filePath: string, userId: string, timestamp: string): Promise<string>;
+export { combineVideoAndAudio, Scene } from './videoCombiner';
+export { uploadToS3 } from './util/s3Uploader';
