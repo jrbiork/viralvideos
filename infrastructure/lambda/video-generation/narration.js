@@ -117,13 +117,6 @@ async function adjustAudioDuration(audioBuffer, targetDuration) {
         }
     }
 }
-function adjustWordTimestamps(words, speedFactor) {
-    return words.map((word) => ({
-        word: word.word,
-        start: word.start / speedFactor,
-        end: word.end / speedFactor,
-    }));
-}
 function estimateTextDuration(text) {
     const words = text.split(' ').filter((word) => word.length > 0);
     const estimatedSeconds = words.length / 2.5;

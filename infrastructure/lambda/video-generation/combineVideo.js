@@ -40,40 +40,15 @@ const fs = __importStar(require("fs"));
 const path = __importStar(require("path"));
 const os = __importStar(require("os"));
 const ffmpeg = require('fluent-ffmpeg');
-const child_process_1 = require("child_process");
-const util_1 = require("util");
-const execAsync = (0, util_1.promisify)(child_process_1.exec);
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
 const ffmpegPath = '/opt/bin/ffmpeg';
 const ffprobePath = '/opt/bin/ffprobe';
 ffmpeg.setFfmpegPath(ffmpegPath);
 ffmpeg.setFfprobePath(ffprobePath);
-async function logFfmpegCapabilities() {
-    try {
-        const { stdout: verOut } = await execAsync('/opt/bin/ffmpeg -version');
-        console.log('FFmpeg version/build info:\n', verOut);
-        const hasLibAss = verOut.includes('--enable-libass');
-        const hasFreeType = verOut.includes('--enable-libfreetype');
-        const hasFontconfig = verOut.includes('--enable-fontconfig');
-        console.log('libass enabled:', hasLibAss);
-        console.log('libfreetype enabled:', hasFreeType);
-        console.log('fontconfig enabled:', hasFontconfig);
-        const { stdout: filtersOut } = await execAsync('/opt/bin/ffmpeg -hide_banner -filters');
-        const relevant = filtersOut
-            .split('\n')
-            .filter((l) => /drawtext|ass/.test(l))
-            .join('\n');
-        console.log('Relevant filters present:\n', relevant);
-    }
-    catch (err) {
-        console.error('Failed to inspect ffmpeg capabilities:', err);
-    }
-}
-async function combineVideoAndAudio(userId, timestamp) {
+async function combineVideoAndAudio(userId, timestamp, scenes) {
     console.log('🎬 Combining video, audio, and subtitles for user:', userId);
     console.log('🕐 Using timestamp prefix:', timestamp);
     try {
-        await logFfmpegCapabilities();
         console.log('📋 Listing video files from S3...');
         const videoListResponse = await s3.send(new client_s3_1.ListObjectsV2Command({
             Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -209,29 +184,17 @@ async function combineVideoAndAudio(userId, timestamp) {
                             const startTime = dialogueMatch[2];
                             const endTime = dialogueMatch[3];
                             const text = dialogueMatch[10];
-                            const startSeconds = parseASSTime(startTime) + currentTime;
-                            const endSeconds = parseASSTime(endTime) + currentTime;
+                            const startSeconds = parseASSTime(startTime);
+                            const endSeconds = parseASSTime(endTime);
                             const adjustedStart = formatASSTime(startSeconds);
                             const adjustedEnd = formatASSTime(endSeconds);
                             concatenatedSubtitleContent += `Dialogue: 0,${adjustedStart},${adjustedEnd},Default,,0,0,0,,${text}\n`;
                         }
                     }
                 }
-                let subtitleDuration = 0;
-                for (const line of subtitleLines) {
-                    if (line.startsWith('Dialogue:')) {
-                        const dialogueMatch = line.match(/Dialogue: (\d+),(\d+:\d+:\d+\.\d+),(\d+:\d+:\d+\.\d+),([^,]*),([^,]*),(\d+),(\d+),(\d+),([^,]*),(.*)/);
-                        if (dialogueMatch) {
-                            const startTime = dialogueMatch[2];
-                            const endTime = dialogueMatch[3];
-                            const startSeconds = parseASSTime(startTime);
-                            const endSeconds = parseASSTime(endTime);
-                            subtitleDuration = Math.max(subtitleDuration, endSeconds);
-                        }
-                    }
-                }
-                currentTime += subtitleDuration;
-                console.log(`📝 Scene ${i} subtitle duration: ${subtitleDuration}s, current time: ${currentTime}s`);
+                const sceneDuration = scenes && scenes[i] ? scenes[i].duration : 5;
+                currentTime += sceneDuration;
+                console.log(`📝 Scene ${i} scene duration: ${sceneDuration}s, current time: ${currentTime}s`);
             }
             fs.writeFileSync(concatenatedSubtitlePath, concatenatedSubtitleContent);
             console.log('✅ ASS subtitle concatenation completed');
@@ -338,16 +301,6 @@ async function combineVideoAndAudio(userId, timestamp) {
                 console.error('❌ Video processing error:', err);
                 reject(err);
             })
-                .on('stderr', (stderrLine) => {
-                if (stderrLine.includes('error') ||
-                    stderrLine.includes('Error') ||
-                    stderrLine.includes('failed') ||
-                    stderrLine.includes('ass') ||
-                    stderrLine.includes('subtitle') ||
-                    stderrLine.includes('font')) {
-                    console.log('📝 FFmpeg stderr:', stderrLine);
-                }
-            })
                 .run();
         });
         console.log('🧹 Cleaning up temporary files...');
@@ -376,28 +329,6 @@ async function combineVideoAndAudio(userId, timestamp) {
         console.error('❌ Error in combineVideoAndAudio:', error);
         throw error;
     }
-}
-function parseTimeToSeconds(timeString) {
-    const match = timeString.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
-    if (match) {
-        const hours = parseInt(match[1]);
-        const minutes = parseInt(match[2]);
-        const seconds = parseInt(match[3]);
-        const milliseconds = parseInt(match[4]);
-        return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
-    }
-    return 0;
-}
-function formatSecondsToTime(seconds) {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = Math.floor(seconds % 60);
-    const milliseconds = Math.floor((seconds % 1) * 1000);
-    return `${hours.toString().padStart(2, '0')}:${minutes
-        .toString()
-        .padStart(2, '0')}:${secs.toString().padStart(2, '0')},${milliseconds
-        .toString()
-        .padStart(3, '0')}`;
 }
 function parseASSTime(assTime) {
     const match = assTime.match(/^(\d+):(\d{2}):(\d{2})\.(\d{2,3})$/);
@@ -443,19 +374,6 @@ function createASSStyleHeader() {
     header +=
         'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
     return header;
-}
-async function getVideoDuration(videoPath) {
-    return new Promise((resolve, reject) => {
-        ffmpeg.ffprobe(videoPath, (err, metadata) => {
-            if (err) {
-                console.warn('⚠️ Could not get video duration, using default:', err);
-                resolve(5);
-            }
-            else {
-                resolve(metadata.format.duration || 5);
-            }
-        });
-    });
 }
 async function uploadToS3(filePath, userId, timestamp) {
     try {

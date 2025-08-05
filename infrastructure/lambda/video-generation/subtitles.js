@@ -35,19 +35,6 @@ async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
         throw error;
     }
 }
-function createKaraokeASSSubtitle(index, sceneStartTime, subtitleData) {
-    const assContent = createASSStyleHeader();
-    const words = subtitleData.words;
-    const firstWordStart = sceneStartTime + words[0].start;
-    const lastWordEnd = sceneStartTime + words[words.length - 1].end;
-    const startTimeFormatted = formatASSTime(firstWordStart);
-    const endTimeFormatted = formatASSTime(lastWordEnd);
-    const karaokeText = words
-        .map((w) => `{\\k${Math.round((w.end - w.start) * 100)}}${w.word}`)
-        .join(' ');
-    return (assContent +
-        `Dialogue: 0,${startTimeFormatted},${endTimeFormatted},Default,,0,0,0,,${karaokeText}\n`);
-}
 function createSimpleASSSubtitle(index, startTime, duration, text) {
     const assContent = createASSStyleHeader();
     const startTimeFormatted = formatASSTime(startTime);

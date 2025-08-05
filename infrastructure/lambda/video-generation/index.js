@@ -65,7 +65,7 @@ const handler = async (event) => {
         const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);
         console.log('✅ Generated subtitle keys:', subtitleKeys);
         console.log('🎬 Combining video, audio, and subtitles...');
-        const finalVideo = await (0, combineVideo_1.combineVideoAndAudio)(request.userId, timestamp);
+        const finalVideo = await (0, combineVideo_1.combineVideoAndAudio)(request.userId, timestamp, scenes);
         console.log('✅ Final video generated:', finalVideo);
         if (!finalVideo) {
             console.log('❌ Error: Failed to combine video, audio, and subtitles');

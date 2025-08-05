@@ -184,23 +184,6 @@ async function adjustAudioDuration(
 }
 
 /**
- * Adjusts word timestamps based on speed factor
- * @param words - Original word timestamps
- * @param speedFactor - Speed factor used for audio adjustment
- * @returns Adjusted word timestamps
- */
-function adjustWordTimestamps(
-  words: SubtitleWord[],
-  speedFactor: number,
-): SubtitleWord[] {
-  return words.map((word) => ({
-    word: word.word,
-    start: word.start / speedFactor,
-    end: word.end / speedFactor,
-  }));
-}
-
-/**
  * Estimates the duration of text when spoken at natural pace
  * @param text - The text to estimate duration for
  * @returns Estimated duration in seconds

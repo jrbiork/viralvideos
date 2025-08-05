@@ -182,7 +182,11 @@ export const handler = async (
 
     // Step 5: Combine video clips, audio, and subtitles
     console.log('🎬 Combining video, audio, and subtitles...');
-    const finalVideo = await combineVideoAndAudio(request.userId, timestamp);
+    const finalVideo = await combineVideoAndAudio(
+      request.userId,
+      timestamp,
+      scenes,
+    );
     console.log('✅ Final video generated:', finalVideo);
 
     if (!finalVideo) {

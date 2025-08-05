@@ -8,9 +8,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 const ffmpeg = require('fluent-ffmpeg');
-import { exec } from 'child_process';
-import { promisify } from 'util';
-const execAsync = promisify(exec);
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 
@@ -28,42 +25,15 @@ export interface Scene {
   narration: string;
 }
 
-async function logFfmpegCapabilities() {
-  try {
-    // 1. Version / build config (shows enabled flags like --enable-libass, --enable-libfreetype, --enable-fontconfig)
-    const { stdout: verOut } = await execAsync('/opt/bin/ffmpeg -version');
-    console.log('FFmpeg version/build info:\n', verOut);
-
-    const hasLibAss = verOut.includes('--enable-libass');
-    const hasFreeType = verOut.includes('--enable-libfreetype');
-    const hasFontconfig = verOut.includes('--enable-fontconfig');
-    console.log('libass enabled:', hasLibAss);
-    console.log('libfreetype enabled:', hasFreeType);
-    console.log('fontconfig enabled:', hasFontconfig);
-
-    // 2. Available filters (should include drawtext and ass)
-    const { stdout: filtersOut } = await execAsync(
-      '/opt/bin/ffmpeg -hide_banner -filters',
-    );
-    const relevant = filtersOut
-      .split('\n')
-      .filter((l) => /drawtext|ass/.test(l))
-      .join('\n');
-    console.log('Relevant filters present:\n', relevant);
-  } catch (err) {
-    console.error('Failed to inspect ffmpeg capabilities:', err);
-  }
-}
-
 export async function combineVideoAndAudio(
   userId: string,
   timestamp: string,
+  scenes?: Scene[],
 ): Promise<string> {
   console.log('🎬 Combining video, audio, and subtitles for user:', userId);
   console.log('🕐 Using timestamp prefix:', timestamp);
 
   try {
-    await logFfmpegCapabilities();
     // List all video files for the user with timestamp prefix
     console.log('📋 Listing video files from S3...');
     const videoListResponse = await s3.send(
@@ -289,9 +259,10 @@ export async function combineVideoAndAudio(
               const endTime = dialogueMatch[3];
               const text = dialogueMatch[10];
 
-              // Convert ASS time format to seconds, add current time, then convert back
-              const startSeconds = parseASSTime(startTime) + currentTime;
-              const endSeconds = parseASSTime(endTime) + currentTime;
+              // The subtitle timing in each ASS file is already absolute (not relative to the scene)
+              // So we don't need to add currentTime to it
+              const startSeconds = parseASSTime(startTime);
+              const endSeconds = parseASSTime(endTime);
 
               const adjustedStart = formatASSTime(startSeconds);
               const adjustedEnd = formatASSTime(endSeconds);
@@ -301,27 +272,11 @@ export async function combineVideoAndAudio(
           }
         }
 
-        // Calculate the duration of this subtitle and add to current time for next scene
-        let subtitleDuration = 0;
-        for (const line of subtitleLines) {
-          if (line.startsWith('Dialogue:')) {
-            const dialogueMatch = line.match(
-              /Dialogue: (\d+),(\d+:\d+:\d+\.\d+),(\d+:\d+:\d+\.\d+),([^,]*),([^,]*),(\d+),(\d+),(\d+),([^,]*),(.*)/,
-            );
-            if (dialogueMatch) {
-              const startTime = dialogueMatch[2];
-              const endTime = dialogueMatch[3];
-              const startSeconds = parseASSTime(startTime);
-              const endSeconds = parseASSTime(endTime);
-              subtitleDuration = Math.max(subtitleDuration, endSeconds);
-            }
-          }
-        }
-
-        // Add subtitle duration to current time for next scene
-        currentTime += subtitleDuration;
+        // Use scene duration instead of subtitle duration for timing
+        const sceneDuration = scenes && scenes[i] ? scenes[i].duration : 5;
+        currentTime += sceneDuration;
         console.log(
-          `📝 Scene ${i} subtitle duration: ${subtitleDuration}s, current time: ${currentTime}s`,
+          `📝 Scene ${i} scene duration: ${sceneDuration}s, current time: ${currentTime}s`,
         );
       }
 
@@ -529,19 +484,7 @@ export async function combineVideoAndAudio(
           console.error('❌ Video processing error:', err);
           reject(err);
         })
-        .on('stderr', (stderrLine: string) => {
-          // Log all FFmpeg output for debugging subtitle issues
-          if (
-            stderrLine.includes('error') ||
-            stderrLine.includes('Error') ||
-            stderrLine.includes('failed') ||
-            stderrLine.includes('ass') ||
-            stderrLine.includes('subtitle') ||
-            stderrLine.includes('font')
-          ) {
-            console.log('📝 FFmpeg stderr:', stderrLine);
-          }
-        })
+
         .run();
     });
 
@@ -568,31 +511,6 @@ export async function combineVideoAndAudio(
     console.error('❌ Error in combineVideoAndAudio:', error);
     throw error;
   }
-}
-
-function parseTimeToSeconds(timeString: string): number {
-  const match = timeString.match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
-  if (match) {
-    const hours = parseInt(match[1]);
-    const minutes = parseInt(match[2]);
-    const seconds = parseInt(match[3]);
-    const milliseconds = parseInt(match[4]);
-    return hours * 3600 + minutes * 60 + seconds + milliseconds / 1000;
-  }
-  return 0;
-}
-
-function formatSecondsToTime(seconds: number): string {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const secs = Math.floor(seconds % 60);
-  const milliseconds = Math.floor((seconds % 1) * 1000);
-
-  return `${hours.toString().padStart(2, '0')}:${minutes
-    .toString()
-    .padStart(2, '0')}:${secs.toString().padStart(2, '0')},${milliseconds
-    .toString()
-    .padStart(3, '0')}`;
 }
 
 function parseASSTime(assTime: string): number {
@@ -644,19 +562,6 @@ function createASSStyleHeader(): string {
     'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
 
   return header;
-}
-
-async function getVideoDuration(videoPath: string): Promise<number> {
-  return new Promise((resolve, reject) => {
-    ffmpeg.ffprobe(videoPath, (err: any, metadata: any) => {
-      if (err) {
-        console.warn('⚠️ Could not get video duration, using default:', err);
-        resolve(5); // Default duration
-      } else {
-        resolve(metadata.format.duration || 5);
-      }
-    });
-  });
 }
 
 export async function uploadToS3(
