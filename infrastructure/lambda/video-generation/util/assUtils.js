@@ -43,7 +43,7 @@ function createASSStyleHeader() {
     header +=
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
     header +=
-        'Style: Default,LiberationSans,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,2,2,2,10,10,40,1\n\n';
+        'Style: Default,LibreBaskerville,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,3,3,2,10,10,90,1\n\n';
     header += '[Events]\n';
     header +=
         'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
@@ -55,16 +55,22 @@ function createWordTimedKaraokeASSSubtitle(words, sceneStartTime) {
     for (let i = 0; i < words.length; i += 2) {
         const currentWord = words[i];
         const nextWord = words[i + 1];
-        const pairStart = sceneStartTime + currentWord.start;
-        const pairEnd = nextWord
-            ? sceneStartTime + nextWord.end
-            : sceneStartTime + currentWord.end;
-        const startTimeFormatted = formatASSTime(pairStart);
-        const endTimeFormatted = formatASSTime(pairEnd);
-        const pairText = nextWord
-            ? `${currentWord.word.toUpperCase()} ${nextWord.word.toUpperCase()}`
-            : currentWord.word.toUpperCase();
-        dialogueLines += `Dialogue: 0,${startTimeFormatted},${endTimeFormatted},Default,,0,0,0,,${pairText}\n`;
+        if (nextWord) {
+            const firstStart = sceneStartTime + currentWord.start;
+            const firstEnd = sceneStartTime + currentWord.end;
+            const firstText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}{\\c&H00FFFFFF&} ${nextWord.word.toUpperCase()}`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(firstStart)},${formatASSTime(firstEnd)},Default,,0,0,0,,${firstText}\n`;
+            const secondStart = sceneStartTime + currentWord.end;
+            const secondEnd = sceneStartTime + nextWord.end;
+            const secondText = `{\\c&H00FFFFFF&}${currentWord.word.toUpperCase()} {\\c&H00FFFF&}${nextWord.word.toUpperCase()}`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(secondStart)},${formatASSTime(secondEnd)},Default,,0,0,0,,${secondText}\n`;
+        }
+        else {
+            const wordStart = sceneStartTime + currentWord.start;
+            const wordEnd = sceneStartTime + currentWord.end;
+            const singleText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(wordEnd)},Default,,0,0,0,,${singleText}\n`;
+        }
     }
     return assContent + dialogueLines;
 }

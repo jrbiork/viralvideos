@@ -7,7 +7,7 @@ export interface SubtitleWord {
     end: number;
 }
 /**
- * Creates a word-timed karaoke style ASS subtitle with word pairs highlighting
+ * Creates a word-timed karaoke style ASS subtitle with progressive word highlighting
  * @param words - Array of words with their start and end timestamps
  * @param sceneStartTime - The start time of the scene in the overall video
  * @returns ASS subtitle content with karaoke effects

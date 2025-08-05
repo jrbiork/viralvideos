@@ -38,9 +38,9 @@ export function createASSStyleHeader(): string {
   header +=
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
 
-  // Style with LiberationSans font, bold white text with outline and shadow, positioned at bottom center
+  // Style with LibreBaskerville font, bold white text with outline and shadow, positioned at bottom center
   header +=
-    'Style: Default,LiberationSans,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,2,2,2,10,10,40,1\n\n';
+    'Style: Default,LibreBaskerville,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,3,3,2,10,10,90,1\n\n';
 
   header += '[Events]\n';
   header +=
@@ -56,7 +56,7 @@ export interface SubtitleWord {
 }
 
 /**
- * Creates a word-timed karaoke style ASS subtitle with word pairs highlighting
+ * Creates a word-timed karaoke style ASS subtitle with progressive word highlighting
  * @param words - Array of words with their start and end timestamps
  * @param sceneStartTime - The start time of the scene in the overall video
  * @returns ASS subtitle content with karaoke effects
@@ -68,27 +68,36 @@ export function createWordTimedKaraokeASSSubtitle(
   const assContent = createASSStyleHeader();
   let dialogueLines = '';
 
-  // Create dialogue lines for word pairs to achieve karaoke effect
+  // Create dialogue lines for word pairs with progressive highlighting
   for (let i = 0; i < words.length; i += 2) {
     const currentWord = words[i];
     const nextWord = words[i + 1];
 
-    // Calculate timing for the word pair
-    const pairStart = sceneStartTime + currentWord.start;
-    const pairEnd = nextWord
-      ? sceneStartTime + nextWord.end
-      : sceneStartTime + currentWord.end;
+    if (nextWord) {
+      // First dialogue line: first word yellow, second word white
+      const firstStart = sceneStartTime + currentWord.start;
+      const firstEnd = sceneStartTime + currentWord.end;
+      const firstText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}{\\c&H00FFFFFF&} ${nextWord.word.toUpperCase()}`;
+      dialogueLines += `Dialogue: 0,${formatASSTime(
+        firstStart,
+      )},${formatASSTime(firstEnd)},Default,,0,0,0,,${firstText}\n`;
 
-    const startTimeFormatted = formatASSTime(pairStart);
-    const endTimeFormatted = formatASSTime(pairEnd);
-
-    // Create text for the word pair
-    const pairText = nextWord
-      ? `${currentWord.word.toUpperCase()} ${nextWord.word.toUpperCase()}`
-      : currentWord.word.toUpperCase();
-
-    // Create a dialogue line for this word pair
-    dialogueLines += `Dialogue: 0,${startTimeFormatted},${endTimeFormatted},Default,,0,0,0,,${pairText}\n`;
+      // Second dialogue line: first word white, second word yellow
+      const secondStart = sceneStartTime + currentWord.end;
+      const secondEnd = sceneStartTime + nextWord.end;
+      const secondText = `{\\c&H00FFFFFF&}${currentWord.word.toUpperCase()} {\\c&H00FFFF&}${nextWord.word.toUpperCase()}`;
+      dialogueLines += `Dialogue: 0,${formatASSTime(
+        secondStart,
+      )},${formatASSTime(secondEnd)},Default,,0,0,0,,${secondText}\n`;
+    } else {
+      // Single word in yellow
+      const wordStart = sceneStartTime + currentWord.start;
+      const wordEnd = sceneStartTime + currentWord.end;
+      const singleText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}`;
+      dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(
+        wordEnd,
+      )},Default,,0,0,0,,${singleText}\n`;
+    }
   }
 
   return assContent + dialogueLines;
