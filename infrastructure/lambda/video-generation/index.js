@@ -44,7 +44,7 @@ const handler = async (event) => {
             {
                 description: 'A wide shot of the ocean, the camera slowly zooms in on the sun setting in the horizon. The sunlight is reflected on the water.',
                 duration: sceneDuration,
-                narration: 'As we begin, take a moment to gaze upon the vast open ocean. Let the warm hues of the setting sun wash over you.',
+                narration: 'Take a moment to gaze upon the vast open ocean. Let the warm hues of the setting sun wash over you.',
             },
             {
                 description: 'The camera pulls back to reveal a silhouette of a person meditating on the beach. The sun is now just a glimmer on the horizon.',
