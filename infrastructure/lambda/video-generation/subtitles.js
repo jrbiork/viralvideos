@@ -22,7 +22,7 @@ async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
                 assContent = createSimpleASSSubtitle(i + 1, currentTime, scene.duration, scene.narration);
             }
             const assSubtitleBuffer = Buffer.from(assContent, 'utf-8');
-            const assSubtitleKey = `${userId}/${timestamp}.scene-${i}.ass`;
+            const assSubtitleKey = `${userId}/${timestamp}.scene-${scene.id}.ass`;
             await s3.send(new client_s3_1.PutObjectCommand({
                 Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
                 Key: assSubtitleKey,

@@ -54,8 +54,8 @@ export async function generateSubtitles(
       // Use ASS format directly
       const assSubtitleBuffer = Buffer.from(assContent, 'utf-8');
 
-      // Save ASS to S3 with timestamp prefix
-      const assSubtitleKey = `${userId}/${timestamp}.scene-${i}.ass`;
+      // Save ASS to S3 with timestamp prefix using scene.id
+      const assSubtitleKey = `${userId}/${timestamp}.scene-${scene.id}.ass`;
 
       await s3.send(
         new PutObjectCommand({

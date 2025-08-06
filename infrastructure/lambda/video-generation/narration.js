@@ -26,7 +26,7 @@ async function generateNarration(scenes, userId, timestamp) {
             });
             const originalAudioBuffer = Buffer.from(await response.arrayBuffer());
             const adjustedAudioBuffer = await (0, narrationHelper_1.adjustAudioDuration)(originalAudioBuffer, scene.duration);
-            const audioKey = `${userId}/${timestamp}.scene-${i}.mp3`;
+            const audioKey = `${userId}/${timestamp}.scene-${scene.id}.mp3`;
             await s3.send(new client_s3_1.PutObjectCommand({
                 Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
                 Key: audioKey,
@@ -47,7 +47,6 @@ async function generateNarration(scenes, userId, timestamp) {
                 timestamp_granularities: ['word'],
                 language: 'en',
             });
-            console.log('transcription123:', transcription);
             fs.unlinkSync(tempAudioPath);
             const subtitleData = {
                 sceneIndex: i,

@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       prompt,
       duration: videoDuration,
       sceneCount: numScenes,
-      userId: 'demo-user', // In production, get from auth
+      userId: 'demo-user2', // In production, get from auth
       timestamp: new Date().toISOString(),
     };
     console.log('📦 Lambda payload prepared:', lambdaPayload);

@@ -17,7 +17,6 @@ export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
   console.log('🚀 Lambda function started');
-  console.log('📄   ', JSON.stringify(event, null, 2));
 
   try {
     console.log('AWS_REGION:', process.env.AWS_REGION);
@@ -51,7 +50,7 @@ export const handler = async (
     }
 
     // Create timestamp in format mm.dd.yy.hh.mm.ss using date-fns
-    const timestamp = '12.25.23-14:30:45'; //format(new Date(), 'MM.dd.yy-HH:mm:ss');
+    const timestamp = '08.06.25-14:30:45'; //format(new Date(), 'MM.dd.yy-HH:mm:ss');
     console.log('🕐 Generated timestamp:', timestamp);
 
     console.log('🎬 Starting video generation for prompt:', request.prompt);
@@ -75,47 +74,29 @@ export const handler = async (
     // TODO: Remove this once we have a dynamic story breakdown
     scenes = [
       {
+        id: 0,
         description:
-          'A wide shot of the ocean, the camera slowly zooms in on the sun setting in the horizon. The sunlight is reflected on the water.',
+          'INT. SPREEGOLD CAFÉ – DUSK\nWarm light floods the café. Vanessa, 34, locks eyes with a mysterious Brazilian stranger across the bar; time seems to stand still.',
         duration: sceneDuration,
         narration:
-          'Take a moment to gaze upon the vast open ocean. Let the warm hues of the setting sun wash over you.',
+          'Vanessa fell madly in love at first sight at Spreegold, entranced by his promise of a new life.',
       },
-      // {
-      //   description:
-      //     'Close up shot of the waves gently lapping against the shore. The sun is now halfway below the horizon, casting long shadows.',
-      //   duration: sceneDuration,
-      //   narration:
-      //     'Focus on the rhythmic ebb and flow of the waves, mirroring the rhythm of your own breath.',
-      // },
       {
+        id: 1,
         description:
-          'The camera pulls back to reveal a silhouette of a person meditating on the beach. The sun is now just a glimmer on the horizon.',
+          'INT. VANESSA’S BATHROOM – NIGHT\nA single bulb casts harsh shadows. Vanessa’s hand trembles as she holds a positive pregnancy test, heartbreak in her eyes.',
         duration: sceneDuration,
         narration:
-          'Imagine yourself sitting at the edge of the ocean, grounding yourself in this peaceful moment.',
+          'But those promises were lies, and she found herself carrying his child with no future in sight.',
       },
-      // {
-      //   description:
-      //     'Aerial view of the meditating person with the twilight colors of the sky and ocean spread out around them.',
-      //   duration: 10,
-      //   narration:
-      //     'From above, see yourself as part of this vast universe, connected with the nature around you.',
-      // },
-      // {
-      //   description:
-      //     "Close up shot of the meditating person's face, serene and calm. The last sunlight is reflected in their eyes.",
-      //   duration: 10,
-      //   narration:
-      //     'Feel a sense of peace and calm wash over you. Embrace the tranquility within.',
-      // },
-      // {
-      //   description:
-      //     'Fade out to a black screen with the sound of waves continuing in the background.',
-      //   duration: 10,
-      //   narration:
-      //     'As we conclude, keep this serene image in mind. Carry this peace with you throughout your day.',
-      // },
+      {
+        id: 2,
+        description:
+          'INT. NURSERY – MORNING\nSoft sunlight filters through curtains. Vanessa gently rocks baby Maxime, her face alight with purpose and unconditional love.',
+        duration: sceneDuration,
+        narration:
+          'Through all the drama, she discovered her true purpose in raising little Maxime, the light of her world.',
+      },
     ];
 
     if (!scenes || scenes.length === 0) {
@@ -125,12 +106,13 @@ export const handler = async (
 
     // TODO: Uncomment this once we have a dynamic story breakdown
     // Step 2: Generate video clips for each scene
-    console.log('🎥 Generating video clips...');
+    // console.log('🎥 Generating video clips...');
     // const videoClips: string[] = [];
+    // const seed = Math.floor(Math.random() * 1000000);
+
     // for (let i = 0; i < scenes.length; i++) {
     //   const scene = scenes[i];
     //   console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
-
     //   try {
     //     const videoClip = await generateVideoClip(
     //       scene.description,
@@ -138,6 +120,8 @@ export const handler = async (
     //       i,
     //       request.userId,
     //       timestamp,
+    //       seed,
+    //       scene.id, // Pass scene.id to the function
     //     );
     //     videoClips.push(videoClip);
     //     console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
@@ -156,9 +140,6 @@ export const handler = async (
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 
-    // TODO: Remove this once we have a dynamic story breakdown
-
-    // TODO: Uncomment this once we have a dynamic story breakdown
     // Step 3: Generate narration audio with word-level timestamps
 
     console.log('🎤 Generating narration audio with word-level timestamps...');

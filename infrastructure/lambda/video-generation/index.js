@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = void 0;
+const video_1 = require("./video");
 const narration_1 = require("./narration");
 const subtitles_1 = require("./subtitles");
 const combineVideo_1 = require("./combineVideo");
@@ -31,25 +32,19 @@ const handler = async (event) => {
                 body: JSON.stringify({ error: 'Prompt is required' }),
             };
         }
-        const timestamp = '12.25.23-14:30:45';
+        const timestamp = '08.06.25-14:30:45';
         console.log('🕐 Generated timestamp:', timestamp);
         console.log('🎬 Starting video generation for prompt:', request.prompt);
         console.log('⏱️  Video duration:', request.duration, 'seconds');
         console.log('🎬 Number of scenes:', request.sceneCount);
         console.log('📖 Generating story breakdown...');
-        let scenes = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, request.duration);
-        console.log('✅ Generated scenes:', scenes);
         const sceneDuration = 5;
-        scenes = [
+        const scenes = [
             {
-                description: 'A wide shot of the ocean, the camera slowly zooms in on the sun setting in the horizon. The sunlight is reflected on the water.',
+                id: 2,
+                description: 'INT. NURSERY – MORNING\nSoft sunlight filters through curtains. Vanessa gently rocks baby Maxime, her face alight with purpose and unconditional love.',
                 duration: sceneDuration,
-                narration: 'Take a moment to gaze upon the vast open ocean. Let the warm hues of the setting sun wash over you.',
-            },
-            {
-                description: 'The camera pulls back to reveal a silhouette of a person meditating on the beach. The sun is now just a glimmer on the horizon.',
-                duration: sceneDuration,
-                narration: 'Imagine yourself sitting at the edge of the ocean, grounding yourself in this peaceful moment.',
+                narration: 'Through all the drama, she discovered her true purpose in raising little Maxime, the light of her world.',
             },
         ];
         if (!scenes || scenes.length === 0) {
@@ -57,6 +52,26 @@ const handler = async (event) => {
             throw new Error('Failed to generate story breakdown');
         }
         console.log('🎥 Generating video clips...');
+        const videoClips = [];
+        const seed = Math.floor(Math.random() * 1000000);
+        for (let i = 0; i < scenes.length; i++) {
+            const scene = scenes[i];
+            console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
+            try {
+                const videoClip = await (0, video_1.generateVideoClip)(scene.description, scene.duration, i, request.userId, timestamp, seed, scene.id);
+                videoClips.push(videoClip);
+                console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
+            }
+            catch (error) {
+                console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
+                throw new Error(`Failed to generate video for scene ${i + 1}: ${error}`);
+            }
+        }
+        if (videoClips.length === 0) {
+            console.log('❌ Error: No video clips were generated');
+            throw new Error('No video clips were generated');
+        }
+        console.log(`✅ Generated ${videoClips.length} video clips`);
         console.log('🎤 Generating narration audio with word-level timestamps...');
         const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp);
         console.log('✅ narrationResult:', narrationResult);

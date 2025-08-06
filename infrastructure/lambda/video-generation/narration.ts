@@ -14,6 +14,7 @@ export interface Scene {
   description: string;
   duration: number;
   narration: string;
+  id: number; // Add id property
 }
 
 export interface SubtitleWord {
@@ -71,8 +72,8 @@ export async function generateNarration(
         scene.duration,
       );
 
-      // Save to S3 with timestamp prefix
-      const audioKey = `${userId}/${timestamp}.scene-${i}.mp3`;
+      // Save to S3 with timestamp prefix using scene.id
+      const audioKey = `${userId}/${timestamp}.scene-${scene.id}.mp3`;
 
       await s3.send(
         new PutObjectCommand({
@@ -105,8 +106,6 @@ export async function generateNarration(
         timestamp_granularities: ['word'],
         language: 'en',
       });
-
-      console.log('transcription123:', transcription);
 
       // Clean up temporary file
       fs.unlinkSync(tempAudioPath);
@@ -174,13 +173,9 @@ export async function generateStoryBreakdown(
           Each scene should have a clear visual description and narration text. Return as JSON array with objects containing:
           - description: visual scene description for video generation
           - duration: ${sceneDuration} (seconds)
-          - narration: text to be spoken in this scene (aim for ${Math.floor(
-            sceneDuration * 2.5 * 0.9,
-          )} words to fit ${sceneDuration} seconds naturally)
+          - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
           
-          Important: Keep narration concise and natural. Each scene's narration should be approximately ${Math.floor(
-            sceneDuration * 2.5 * 0.9,
-          )} words to ensure it fits the ${sceneDuration}-second duration when spoken.
+          Important: Keep narration concise and natural, ensuring it fits comfortably within the scene's duration.
           
           If only 1 scene is requested, create a single comprehensive scene that covers the entire duration.`,
         },
@@ -203,7 +198,7 @@ export async function generateStoryBreakdown(
     const scenes = JSON.parse(content);
 
     // Post-process scenes to ensure text fits duration
-    const adjustedScenes = scenes.map((scene: Scene) => {
+    const adjustedScenes = scenes.map((scene: Scene, idx: number) => {
       const adjustedNarration = adjustTextForDuration(
         scene.narration,
         scene.duration,
@@ -223,6 +218,7 @@ export async function generateStoryBreakdown(
       return {
         ...scene,
         narration: adjustedNarration,
+        id: idx,
       };
     });
 

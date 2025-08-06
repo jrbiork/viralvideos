@@ -57,23 +57,23 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
         const videoFiles = objs
             .filter((obj) => obj.Key?.endsWith('.mp4'))
             .sort((a, b) => {
-            const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
-            const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
-            return aIndex - bIndex;
+            const aId = parseInt(a.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
+            const bId = parseInt(b.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
+            return aId - bId;
         });
         const audioFiles = objs
             .filter((obj) => obj.Key?.endsWith('.mp3'))
             .sort((a, b) => {
-            const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
-            const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
-            return aIndex - bIndex;
+            const aId = parseInt(a.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
+            const bId = parseInt(b.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
+            return aId - bId;
         });
         const subtitleFiles = objs
             .filter((obj) => obj.Key?.endsWith('.ass'))
             .sort((a, b) => {
-            const aIndex = parseInt(a.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
-            const bIndex = parseInt(b.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
-            return aIndex - bIndex;
+            const aId = parseInt(a.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
+            const bId = parseInt(b.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
+            return aId - bId;
         });
         console.log(`📹 Found ${videoFiles.length} video files, ${audioFiles.length} audio files, ${subtitleFiles.length} subtitle files`);
         if (videoFiles.length === 0) {

@@ -43,7 +43,7 @@ function createASSStyleHeader() {
     header +=
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
     header +=
-        'Style: Default,DMSerifText,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,5,10,10,50,1\n\n';
+        'Style: Default,DMSerifText,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,80,1\n\n';
     header += '[Events]\n';
     header +=
         'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';

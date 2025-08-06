@@ -8,6 +8,7 @@ export interface Scene {
   description: string;
   duration: number;
   narration: string;
+  id: number; // Add id property
 }
 
 export async function generateVideoClip(
@@ -16,17 +17,16 @@ export async function generateVideoClip(
   sceneIndex: number,
   userId: string,
   timestamp: string,
+  seed: number,
+  sceneId?: number, // Add optional sceneId parameter
 ): Promise<string> {
   try {
-    console.log(`🎬 Calling Runway SDK for scene ${sceneIndex}...`);
-    console.log(`📝 Scene description: ${description}`);
-    console.log(`⏱️  Scene duration: ${duration} seconds`);
-
     // Initialize Runway SDK
     const runway = new RunwayML({
       apiKey: process.env.RUNWAY_API_KEY!,
     });
 
+    console.log(`🎬 Calling Runway SDK for scene ${sceneIndex}...`);
     console.log('📤 Runway SDK request parameters:');
     console.log('- Text-to-image model: gen4_image');
     console.log('- Image-to-video model: gen4_turbo');
@@ -36,47 +36,166 @@ export async function generateVideoClip(
 
     // Step 1: Generate an image from text using text-to-image API
     console.log('🎨 Generating image from text...');
-    const imageResult = await runway.textToImage
-      .create({
-        model: 'gen4_image',
-        promptText: description,
-        ratio: '1080:1920', // Vertical format (9:16)
-        seed: Math.floor(Math.random() * 1000000),
-      })
-      .waitForTaskOutput();
 
-    console.log('📡 Text-to-image generation completed');
-    console.log('🆔 Image Generation ID:', imageResult.id);
+    // Retry logic for image generation
+    let imageResult;
+    let imageRetryCount = 0;
+    const maxImageRetries = 3;
 
-    console.log('✅ Image generation completed');
-    console.log('📄 Image result:', imageResult);
+    while (imageRetryCount < maxImageRetries) {
+      try {
+        console.log(
+          `🎨 Image generation attempt ${
+            imageRetryCount + 1
+          }/${maxImageRetries} with seed: ${seed}`,
+        );
+
+        imageResult = await runway.textToImage
+          .create({
+            model: 'gen4_image',
+            promptText: `${description} - cinematic scene, no text overlays, no graphics, no logos, no watermarks, clean visual content only`,
+            ratio: '720:1280', // Vertical format (9:16)
+            seed: seed,
+          })
+          .waitForTaskOutput();
+
+        console.log('📡 Text-to-image generation completed');
+        console.log('🆔 Image Generation ID:', imageResult.id);
+        console.log('✅ Image generation completed');
+        console.log('📄 Image result:', imageResult);
+
+        // If we get here, the generation was successful
+        break;
+      } catch (error) {
+        imageRetryCount++;
+        console.error(
+          `❌ Image generation attempt ${imageRetryCount} failed:`,
+          error,
+        );
+
+        // Check if it's the specific error we're seeing
+        if (error && typeof error === 'object' && 'taskDetails' in error) {
+          const taskDetails = (error as any).taskDetails;
+          console.error('Task details:', taskDetails);
+
+          if (taskDetails?.failureCode === 'INTERNAL.BAD_OUTPUT.CODE01') {
+            console.log(
+              `🔄 Retrying image generation due to INTERNAL.BAD_OUTPUT.CODE01 error (attempt ${imageRetryCount}/${maxImageRetries})`,
+            );
+            if (imageRetryCount < maxImageRetries) {
+              // Wait before retrying (exponential backoff)
+              const waitTime = Math.min(
+                1000 * Math.pow(2, imageRetryCount - 1),
+                5000,
+              );
+              console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+              continue;
+            }
+          }
+        }
+
+        // If we've exhausted retries or it's not the specific error, throw
+        if (imageRetryCount >= maxImageRetries) {
+          console.error(
+            `❌ All ${maxImageRetries} image generation attempts failed for scene ${sceneIndex}`,
+          );
+          throw error;
+        }
+      }
+    }
+
+    if (
+      !imageResult ||
+      !imageResult.output ||
+      imageResult.output.length === 0
+    ) {
+      console.log('❌ Error: Runway SDK did not return an image URL');
+      console.log('Full image result:', imageResult);
+      throw new Error('Runway SDK did not return an image URL');
+    }
 
     // Access the output property which should contain the images
-    const imageUrl = imageResult.output![0];
+    const imageUrl = imageResult.output[0];
     console.log('imageResult.output:', imageResult.output);
-
     console.log('🖼️ Generated image URL:', imageUrl);
 
     // Step 2: Generate video from the image using image-to-video API
     console.log('🎬 Generating video from image...');
-    const videoResult = await runway.imageToVideo
-      .create({
-        model: 'gen4_turbo',
-        promptImage: imageUrl,
-        ratio: '720:1280', // Vertical format (9:16)
-        duration: Math.min(duration, 10) as 5 | 10, // Runway supports max 10 seconds
-        promptText: description,
-        seed: Math.floor(Math.random() * 1000000),
-      })
-      .waitForTaskOutput();
 
-    console.log('📡 Image-to-video generation started');
-    console.log('🆔 Video Generation ID:', videoResult.id);
+    // Retry logic for video generation
+    let videoResult;
+    let retryCount = 0;
+    const maxRetries = 3;
 
-    console.log('✅ Video generation completed');
-    console.log('📄 Video result:', videoResult);
+    while (retryCount < maxRetries) {
+      try {
+        console.log(
+          `🎬 Attempt ${retryCount + 1}/${maxRetries} with seed: ${seed}`,
+        );
 
-    if (!videoResult.output || videoResult.output.length === 0) {
+        videoResult = await runway.imageToVideo
+          .create({
+            model: 'gen4_turbo',
+            promptImage: imageUrl,
+            ratio: '720:1280', // Vertical format (9:16)
+            duration: Math.min(duration, 10) as 5 | 10, // Runway supports max 10 seconds
+            promptText: `${description} - cinematic video, no text overlays, no graphics, no logos, no watermarks, clean visual content only`,
+            seed,
+          })
+          .waitForTaskOutput();
+
+        console.log('📡 Image-to-video generation completed');
+        console.log('🆔 Video Generation ID:', videoResult.id);
+        console.log('✅ Video generation completed');
+        console.log('📄 Video result:', videoResult);
+
+        // If we get here, the generation was successful
+        break;
+      } catch (error) {
+        retryCount++;
+        console.error(
+          `❌ Video generation attempt ${retryCount} failed:`,
+          error,
+        );
+
+        // Check if it's the specific error we're seeing
+        if (error && typeof error === 'object' && 'taskDetails' in error) {
+          const taskDetails = (error as any).taskDetails;
+          console.error('Task details:', taskDetails);
+
+          if (taskDetails?.failureCode === 'INTERNAL.BAD_OUTPUT.CODE01') {
+            console.log(
+              `🔄 Retrying due to INTERNAL.BAD_OUTPUT.CODE01 error (attempt ${retryCount}/${maxRetries})`,
+            );
+            if (retryCount < maxRetries) {
+              // Wait before retrying (exponential backoff)
+              const waitTime = Math.min(
+                1000 * Math.pow(2, retryCount - 1),
+                5000,
+              );
+              console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
+              continue;
+            }
+          }
+        }
+
+        // If we've exhausted retries or it's not the specific error, throw
+        if (retryCount >= maxRetries) {
+          console.error(
+            `❌ All ${maxRetries} attempts failed for scene ${sceneIndex}`,
+          );
+          throw error;
+        }
+      }
+    }
+
+    if (
+      !videoResult ||
+      !videoResult.output ||
+      videoResult.output.length === 0
+    ) {
       console.log('❌ Error: Runway SDK did not return a video URL');
       console.log('Full video result:', videoResult);
       throw new Error('Runway SDK did not return a video URL');
@@ -88,7 +207,9 @@ export async function generateVideoClip(
     console.log(`✅ Downloaded video, size: ${videoBuffer.length} bytes`);
 
     // Save video to video-parts bucket with timestamp prefix
-    const videoKey = `${userId}/${timestamp}.scene-${sceneIndex}.mp4`;
+    const videoKey = `${userId}/${timestamp}.scene-${
+      sceneId !== undefined ? sceneId : sceneIndex
+    }.mp4`;
     console.log(
       `☁️ Uploading video part to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${videoKey}`,
     );

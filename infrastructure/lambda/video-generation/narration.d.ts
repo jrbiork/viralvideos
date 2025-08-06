@@ -2,6 +2,7 @@ export interface Scene {
     description: string;
     duration: number;
     narration: string;
+    id: number;
 }
 export interface SubtitleWord {
     word: string;
