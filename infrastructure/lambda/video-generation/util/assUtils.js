@@ -43,7 +43,7 @@ function createASSStyleHeader() {
     header +=
         'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
     header +=
-        'Style: Default,DMSerifText,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,910,1\n\n';
+        'Style: Default,DMSerifText,100,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,480,1\n\n';
     header += '[Events]\n';
     header +=
         'Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n';
@@ -59,17 +59,17 @@ function createWordTimedKaraokeASSSubtitle(words, sceneStartTime) {
             const firstStart = sceneStartTime + currentWord.start;
             const firstEnd = sceneStartTime + currentWord.end;
             const firstText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}{\\c&H00FFFFFF&} ${nextWord.word.toUpperCase()}`;
-            dialogueLines += `Dialogue: 0,${formatASSTime(firstStart)},${formatASSTime(firstEnd)},Default,,0,0,0,,${firstText}\n`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(firstStart)},${formatASSTime(firstEnd)},Default,,,,,,${firstText}\n`;
             const secondStart = sceneStartTime + currentWord.end;
             const secondEnd = sceneStartTime + nextWord.end;
             const secondText = `{\\c&H00FFFFFF&}${currentWord.word.toUpperCase()} {\\c&H00FFFF&}${nextWord.word.toUpperCase()}`;
-            dialogueLines += `Dialogue: 0,${formatASSTime(secondStart)},${formatASSTime(secondEnd)},Default,,0,0,0,,${secondText}\n`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(secondStart)},${formatASSTime(secondEnd)},Default,,,,,,${secondText}\n`;
         }
         else {
             const wordStart = sceneStartTime + currentWord.start;
             const wordEnd = sceneStartTime + currentWord.end;
             const singleText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}`;
-            dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(wordEnd)},Default,,0,0,0,,${singleText}\n`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(wordEnd)},Default,,,,,,${singleText}\n`;
         }
     }
     return assContent + dialogueLines;

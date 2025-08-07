@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = void 0;
+const narration_1 = require("./narration");
+const subtitles_1 = require("./subtitles");
 const videoCombiner_1 = require("./videoCombiner");
 const s3Uploader_1 = require("./util/s3Uploader");
 const handler = async (event) => {
@@ -31,40 +33,25 @@ const handler = async (event) => {
         }
         const timestamp = '08.07.25-14:30:45';
         console.log('🕐 Generated timestamp:', timestamp);
-        request.totalDuration = 15;
+        request.totalDuration = 30;
         request.sceneCount = 3;
         const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
         console.log('🎬 Starting video generation for prompt:', request.prompt);
         console.log('⏱️  Video duration:', request.totalDuration, 'seconds');
         console.log('🎬 Number of scenes:', request.sceneCount);
         console.log('📖 Generating story breakdown...');
-        let scenes = [
-            {
-                id: 0,
-                description: 'INT. GYM – DAY\nA lanky guy in workout gear approaches a woman lifting weights. He wipes sweat from his brow and flashes a nervous grin.',
-                duration: sceneDuration,
-                narration: 'Guy (awkwardly): “So… what machine should I master to really impress you?”',
-            },
-            {
-                id: 1,
-                description: 'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
-                duration: sceneDuration,
-                narration: 'Her (smiling, nodding at the ATM): “This one.”',
-            },
-            {
-                id: 2,
-                description: 'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
-                duration: sceneDuration,
-                narration: 'Her (smiling, nodding at the ATM): “This one.”',
-            },
-        ];
+        let scenes = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration);
         if (!scenes || scenes.length === 0) {
             console.log('❌ Error: Failed to generate story breakdown');
             throw new Error('Failed to generate story breakdown');
         }
         console.log('🎤 Generating narration audio with word-level timestamps...');
+        const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp);
+        console.log('✅ narrationResult:', narrationResult);
         console.log('✅ Generated subtitle data with word-level timestamps');
         console.log('📝 Generating subtitles with word-level timing...');
+        const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);
+        console.log('✅ Generated subtitle keys:', subtitleKeys);
         console.log('🎬 Combining video, audio, and subtitles...');
         const finalVideo = await (0, videoCombiner_1.combineVideoAndAudio)(request.userId, timestamp, scenes);
         console.log('✅ Final video generated:', finalVideo);

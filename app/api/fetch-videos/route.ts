@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = 'demo-user3';
+    const userId = 'demo-user4';
     console.log(`🔍 Fetching videos for user: ${userId}`);
 
     // List objects in the user's folder

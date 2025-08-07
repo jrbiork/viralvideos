@@ -40,7 +40,7 @@ export function createASSStyleHeader(): string {
 
   // Style with DMSerifText font, extra bold white text with enhanced outline and shadow, positioned 50px below center
   header +=
-    'Style: Default,DMSerifText,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,910,1\n\n';
+    'Style: Default,DMSerifText,100,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,480,1\n\n';
 
   header += '[Events]\n';
   header +=
@@ -80,7 +80,7 @@ export function createWordTimedKaraokeASSSubtitle(
       const firstText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}{\\c&H00FFFFFF&} ${nextWord.word.toUpperCase()}`;
       dialogueLines += `Dialogue: 0,${formatASSTime(
         firstStart,
-      )},${formatASSTime(firstEnd)},Default,,0,0,0,,${firstText}\n`;
+      )},${formatASSTime(firstEnd)},Default,,,,,,${firstText}\n`;
 
       // Second dialogue line: first word white, second word yellow
       const secondStart = sceneStartTime + currentWord.end;
@@ -88,7 +88,7 @@ export function createWordTimedKaraokeASSSubtitle(
       const secondText = `{\\c&H00FFFFFF&}${currentWord.word.toUpperCase()} {\\c&H00FFFF&}${nextWord.word.toUpperCase()}`;
       dialogueLines += `Dialogue: 0,${formatASSTime(
         secondStart,
-      )},${formatASSTime(secondEnd)},Default,,0,0,0,,${secondText}\n`;
+      )},${formatASSTime(secondEnd)},Default,,,,,,${secondText}\n`;
     } else {
       // Single word in yellow
       const wordStart = sceneStartTime + currentWord.start;
@@ -96,7 +96,7 @@ export function createWordTimedKaraokeASSSubtitle(
       const singleText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}`;
       dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(
         wordEnd,
-      )},Default,,0,0,0,,${singleText}\n`;
+      )},Default,,,,,,${singleText}\n`;
     }
   }
 

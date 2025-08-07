@@ -54,7 +54,7 @@ export const handler = async (
     const timestamp = '08.07.25-14:30:45'; //format(new Date(), 'MM.dd.yy-HH:mm:ss');
     console.log('🕐 Generated timestamp:', timestamp);
 
-    request.totalDuration = 15;
+    request.totalDuration = 30;
     request.sceneCount = 3;
 
     const sceneDuration = Math.floor(
@@ -68,12 +68,12 @@ export const handler = async (
     // Step 1: Generate story breakdown using GPT-4
     console.log('📖 Generating story breakdown...');
     // TODO: Uncomment this once we have a dynamic story breakdown
-    // let scenes = await generateStoryBreakdown(
-    //   request.prompt,
-    //   request.sceneCount,
-    //   sceneDuration,
-    //   request.totalDuration,
-    // );
+    let scenes = await generateStoryBreakdown(
+      request.prompt,
+      request.sceneCount,
+      sceneDuration,
+      request.totalDuration,
+    );
     // console.log('✅ Generated scenes:', scenes);
 
     // Generate dynamic scenes based on parameters
@@ -81,30 +81,32 @@ export const handler = async (
     // TODO: Remove this once we have a dynamic story breakdown
 
     // TODO: Remove this once we have a dynamic story breakdown
-    let scenes = [
-      {
-        id: 0,
-        description:
-          'INT. GYM – DAY\nA lanky guy in workout gear approaches a woman lifting weights. He wipes sweat from his brow and flashes a nervous grin.',
-        duration: sceneDuration,
-        narration:
-          'Guy (awkwardly): “So… what machine should I master to really impress you?”',
-      },
-      {
-        id: 1,
-        description:
-          'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
-        duration: sceneDuration,
-        narration: 'Her (smiling, nodding at the ATM): “This one.”',
-      },
-      {
-        id: 2,
-        description:
-          'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
-        duration: sceneDuration,
-        narration: 'Her (smiling, nodding at the ATM): “This one.”',
-      },
-    ];
+    // let scenes = [
+    //   {
+    //     id: 0,
+    //     description:
+    //       'EXT. TOKYO BACKALLEY – NIGHT\nA narrow street bathed in neon pinks and blues. Rain-slick pavement reflects towering LED signs and drifting holo-ads as pedestrians in tech-infused fashion weave past food stalls.',
+    //     duration: sceneDuration,
+    //     narration:
+    //       'Tokyo’s back alleys come alive under neon rain—where ancient izakayas meet holographic billboards in a pulse of cyberpunk energy.',
+    //   },
+    //   {
+    //     id: 1,
+    //     description:
+    //       'EXT. SHINJUKU SKYLINE – NIGHT\nA panoramic view of glittering skyscrapers. Magnetic lev monorails glide between towers, and giant animated screens project AI-generated art across building facades.',
+    //     duration: sceneDuration,
+    //     narration:
+    //       'Above Shinjuku, magnetic rails hum through sky bridges. Futuristic towers glow with dynamic murals—each pixel a heartbeat in the city’s neon core.',
+    //   },
+    //   {
+    //     id: 2,
+    //     description:
+    //       'EXT. SHIBUYA CROSSING – NIGHT\nAn ocean of umbrellas surges through the world’s busiest intersection. Neon reflections dance in puddles while floating VTuber avatars advertise robotic sushi bars on every corner.',
+    //     duration: sceneDuration,
+    //     narration:
+    //       'At Shibuya Crossing, human tides meet virtual icons. In this nocturnal sprawl, every step feels like stepping into tomorrow’s dream.',
+    //   },
+    // ];
 
     if (!scenes || scenes.length === 0) {
       console.log('❌ Error: Failed to generate story breakdown');
@@ -149,23 +151,23 @@ export const handler = async (
 
     // Step 3: Generate narration audio with word-level timestamps
     console.log('🎤 Generating narration audio with word-level timestamps...');
-    // const narrationResult = await generateNarration(
-    //   scenes,
-    //   request.userId,
-    //   timestamp,
-    // );
-    // console.log('✅ narrationResult:', narrationResult);
+    const narrationResult = await generateNarration(
+      scenes,
+      request.userId,
+      timestamp,
+    );
+    console.log('✅ narrationResult:', narrationResult);
     console.log('✅ Generated subtitle data with word-level timestamps');
 
     // Step 4: Generate subtitles based on word-level timestamps
     console.log('📝 Generating subtitles with word-level timing...');
-    // const subtitleKeys = await generateSubtitles(
-    //   scenes,
-    //   request.userId,
-    //   timestamp,
-    //   narrationResult.subtitles,
-    // );
-    // console.log('✅ Generated subtitle keys:', subtitleKeys);
+    const subtitleKeys = await generateSubtitles(
+      scenes,
+      request.userId,
+      timestamp,
+      narrationResult.subtitles,
+    );
+    console.log('✅ Generated subtitle keys:', subtitleKeys);
 
     // Step 5: Combine video clips, audio, and subtitles
     console.log('🎬 Combining video, audio, and subtitles...');

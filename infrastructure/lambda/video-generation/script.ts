@@ -32,7 +32,7 @@ export async function generateStoryBreakdown(
       messages: [
         {
           role: 'system',
-          content: `You are a video script writer. Break down the given prompt into ${sceneCount} scenes, each ${sceneDuration} seconds long, for a ${totalDuration}-second vertical video. 
+          content: `You are a script writer for social media. Break down the given prompt into ${sceneCount} scenes, each ${sceneDuration} seconds long, for a ${totalDuration}-second vertical video. 
           Each scene should have a clear visual description and narration text. Return as JSON array with objects containing:
           - description: short visual scene description
           - duration: ${sceneDuration} (seconds)
