@@ -38,9 +38,9 @@ export function createASSStyleHeader(): string {
   header +=
     'Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n';
 
-  // Style with DMSerifText font, extra bold white text with enhanced outline and shadow, positioned slightly below center
+  // Style with DMSerifText font, extra bold white text with enhanced outline and shadow, positioned 50px below center
   header +=
-    'Style: Default,DMSerifText,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,80,1\n\n';
+    'Style: Default,DMSerifText,80,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,910,1\n\n';
 
   header += '[Events]\n';
   header +=

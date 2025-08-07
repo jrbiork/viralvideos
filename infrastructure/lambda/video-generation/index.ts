@@ -3,7 +3,8 @@ import { format } from 'date-fns';
 import { generateVideoClip } from './video';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
 import { generateSubtitles } from './subtitles';
-import { combineVideoAndAudio, uploadToS3 } from './combineVideo';
+import { combineVideoAndAudio } from './videoCombiner';
+import { uploadToS3 } from './util/s3Uploader';
 
 interface VideoGenerationRequest {
   prompt: string;
@@ -67,45 +68,43 @@ export const handler = async (
     // Step 1: Generate story breakdown using GPT-4
     console.log('📖 Generating story breakdown...');
     // TODO: Uncomment this once we have a dynamic story breakdown
-    let scenes = await generateStoryBreakdown(
-      request.prompt,
-      request.sceneCount,
-      sceneDuration,
-      request.totalDuration,
-    );
-    console.log('✅ Generated scenes:', scenes);
+    // let scenes = await generateStoryBreakdown(
+    //   request.prompt,
+    //   request.sceneCount,
+    //   sceneDuration,
+    //   request.totalDuration,
+    // );
+    // console.log('✅ Generated scenes:', scenes);
 
     // Generate dynamic scenes based on parameters
     // const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
     // TODO: Remove this once we have a dynamic story breakdown
 
     // TODO: Remove this once we have a dynamic story breakdown
-    // let scenes = [
-    //   {
-    //     id: 0,
-    //     description:
-    //       'INT. ALEXANDRIA PALACE – DAY\nSunlight streams through marble columns as a regal young CLEOPATRA strides into the throne room, citizens bowing in awe.',
-    //     duration: sceneDuration,
-    //     narration:
-    //       'At just eighteen, Cleopatra ascended the throne of Egypt, proving her political acumen and winning the loyalty of her people.',
-    //   },
-    //   {
-    //     id: 1,
-    //     description:
-    //       'EXT. NILE RIVERBANK – SUNSET\nA grand barge glides on golden waters. Cleopatra stands at the prow beside JULIUS CAESAR, united in power and purpose.',
-    //     duration: sceneDuration,
-    //     narration:
-    //       'She forged a powerful alliance with Rome’s Julius Caesar, securing Egypt’s stability and giving birth to her son, Caesarion.',
-    //   },
-    //   {
-    //     id: 2,
-    //     description:
-    //       'INT. GRAND LIBRARY OF ALEXANDRIA – MORNING\nScrolls and scholars surround Cleopatra as she gestures toward a glowing map of newly built temples and fleets.',
-    //     duration: sceneDuration,
-    //     narration:
-    //       'A patron of science and the arts, Cleopatra expanded Alexandria’s library, modernized Egypt’s economy, and left an enduring legacy as the last Pharaonic ruler.',
-    //   },
-    // ];
+    let scenes = [
+      {
+        id: 0,
+        description:
+          'INT. GYM – DAY\nA lanky guy in workout gear approaches a woman lifting weights. He wipes sweat from his brow and flashes a nervous grin.',
+        duration: sceneDuration,
+        narration:
+          'Guy (awkwardly): “So… what machine should I master to really impress you?”',
+      },
+      {
+        id: 1,
+        description:
+          'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
+        duration: sceneDuration,
+        narration: 'Her (smiling, nodding at the ATM): “This one.”',
+      },
+      {
+        id: 2,
+        description:
+          'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
+        duration: sceneDuration,
+        narration: 'Her (smiling, nodding at the ATM): “This one.”',
+      },
+    ];
 
     if (!scenes || scenes.length === 0) {
       console.log('❌ Error: Failed to generate story breakdown');
@@ -114,59 +113,59 @@ export const handler = async (
 
     // TODO: Uncomment this once we have a dynamic story breakdown
     // Step 2: Generate video clips for each scene
-    console.log('🎥 Generating video clips...');
-    const videoClips: string[] = [];
-    const seed = Math.floor(Math.random() * 1000000);
+    // console.log('🎥 Generating video clips...');
+    // const videoClips: string[] = [];
+    // const seed = Math.floor(Math.random() * 1000000);
 
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
-      console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
-      try {
-        const videoClip = await generateVideoClip(
-          scene.description,
-          scene.duration,
-          i,
-          request.userId,
-          timestamp,
-          seed,
-          scene.id,
-        );
-        videoClips.push(videoClip);
-        console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
-      } catch (error) {
-        console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-        throw new Error(
-          `Failed to generate video for scene ${i + 1}: ${error}`,
-        );
-      }
-    }
+    // for (let i = 0; i < scenes.length; i++) {
+    //   const scene = scenes[i];
+    //   console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
+    //   try {
+    //     const videoClip = await generateVideoClip(
+    //       scene.description,
+    //       scene.duration,
+    //       i,
+    //       request.userId,
+    //       timestamp,
+    //       seed,
+    //       scene.id,
+    //     );
+    //     videoClips.push(videoClip);
+    //     console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
+    //   } catch (error) {
+    //     console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
+    //     throw new Error(
+    //       `Failed to generate video for scene ${i + 1}: ${error}`,
+    //     );
+    //   }
+    // }
 
-    if (videoClips.length === 0) {
-      console.log('❌ Error: No video clips were generated');
-      throw new Error('No video clips were generated');
-    }
+    // if (videoClips.length === 0) {
+    //   console.log('❌ Error: No video clips were generated');
+    //   throw new Error('No video clips were generated');
+    // }
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 
     // Step 3: Generate narration audio with word-level timestamps
     console.log('🎤 Generating narration audio with word-level timestamps...');
-    const narrationResult = await generateNarration(
-      scenes,
-      request.userId,
-      timestamp,
-    );
-    console.log('✅ narrationResult:', narrationResult);
+    // const narrationResult = await generateNarration(
+    //   scenes,
+    //   request.userId,
+    //   timestamp,
+    // );
+    // console.log('✅ narrationResult:', narrationResult);
     console.log('✅ Generated subtitle data with word-level timestamps');
 
     // Step 4: Generate subtitles based on word-level timestamps
     console.log('📝 Generating subtitles with word-level timing...');
-    const subtitleKeys = await generateSubtitles(
-      scenes,
-      request.userId,
-      timestamp,
-      narrationResult.subtitles,
-    );
-    console.log('✅ Generated subtitle keys:', subtitleKeys);
+    // const subtitleKeys = await generateSubtitles(
+    //   scenes,
+    //   request.userId,
+    //   timestamp,
+    //   narrationResult.subtitles,
+    // );
+    // console.log('✅ Generated subtitle keys:', subtitleKeys);
 
     // Step 5: Combine video clips, audio, and subtitles
     console.log('🎬 Combining video, audio, and subtitles...');

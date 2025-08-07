@@ -1,10 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = void 0;
-const video_1 = require("./video");
-const narration_1 = require("./narration");
-const subtitles_1 = require("./subtitles");
-const combineVideo_1 = require("./combineVideo");
+const videoCombiner_1 = require("./videoCombiner");
+const s3Uploader_1 = require("./util/s3Uploader");
 const handler = async (event) => {
     console.log('🚀 Lambda function started');
     try {
@@ -40,48 +38,42 @@ const handler = async (event) => {
         console.log('⏱️  Video duration:', request.totalDuration, 'seconds');
         console.log('🎬 Number of scenes:', request.sceneCount);
         console.log('📖 Generating story breakdown...');
-        let scenes = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration);
-        console.log('✅ Generated scenes:', scenes);
+        let scenes = [
+            {
+                id: 0,
+                description: 'INT. GYM – DAY\nA lanky guy in workout gear approaches a woman lifting weights. He wipes sweat from his brow and flashes a nervous grin.',
+                duration: sceneDuration,
+                narration: 'Guy (awkwardly): “So… what machine should I master to really impress you?”',
+            },
+            {
+                id: 1,
+                description: 'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
+                duration: sceneDuration,
+                narration: 'Her (smiling, nodding at the ATM): “This one.”',
+            },
+            {
+                id: 2,
+                description: 'EXT. GYM ENTRANCE – DAY\nThey step outside. A flashing ATM machine stands by the door, its screen glowing in the sunlight.',
+                duration: sceneDuration,
+                narration: 'Her (smiling, nodding at the ATM): “This one.”',
+            },
+        ];
         if (!scenes || scenes.length === 0) {
             console.log('❌ Error: Failed to generate story breakdown');
             throw new Error('Failed to generate story breakdown');
         }
-        console.log('🎥 Generating video clips...');
-        const videoClips = [];
-        const seed = Math.floor(Math.random() * 1000000);
-        for (let i = 0; i < scenes.length; i++) {
-            const scene = scenes[i];
-            console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
-            try {
-                const videoClip = await (0, video_1.generateVideoClip)(scene.description, scene.duration, i, request.userId, timestamp, seed, scene.id);
-                videoClips.push(videoClip);
-                console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
-            }
-            catch (error) {
-                console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-                throw new Error(`Failed to generate video for scene ${i + 1}: ${error}`);
-            }
-        }
-        if (videoClips.length === 0) {
-            console.log('❌ Error: No video clips were generated');
-            throw new Error('No video clips were generated');
-        }
         console.log('🎤 Generating narration audio with word-level timestamps...');
-        const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp);
-        console.log('✅ narrationResult:', narrationResult);
         console.log('✅ Generated subtitle data with word-level timestamps');
         console.log('📝 Generating subtitles with word-level timing...');
-        const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);
-        console.log('✅ Generated subtitle keys:', subtitleKeys);
         console.log('🎬 Combining video, audio, and subtitles...');
-        const finalVideo = await (0, combineVideo_1.combineVideoAndAudio)(request.userId, timestamp, scenes);
+        const finalVideo = await (0, videoCombiner_1.combineVideoAndAudio)(request.userId, timestamp, scenes);
         console.log('✅ Final video generated:', finalVideo);
         if (!finalVideo) {
             console.log('❌ Error: Failed to combine video, audio, and subtitles');
             throw new Error('Failed to combine video, audio, and subtitles');
         }
         console.log('☁️ Uploading to S3...');
-        const videoKey = await (0, combineVideo_1.uploadToS3)(finalVideo, request.userId, timestamp);
+        const videoKey = await (0, s3Uploader_1.uploadToS3)(finalVideo, request.userId, timestamp);
         console.log('✅ Uploaded to S3:', videoKey);
         console.log('🎉 Video generation completed successfully');
         return {

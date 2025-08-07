@@ -33,7 +33,7 @@
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.855.0",
     "@aws-sdk/client-s3": "^3.490.0",
-    "@runwayml/sdk": "^2.5.0",
+    "@runwayml/sdk": "^2.7.0",
     "aws-cdk-lib": "^2.124.0",
     "axios": "^1.6.7",
     "constructs": "^10.3.0",
