@@ -1,13 +1,11 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = void 0;
-const video_1 = require("./video");
 const narration_1 = require("./narration");
 const subtitles_1 = require("./subtitles");
 const combineVideo_1 = require("./combineVideo");
 const handler = async (event) => {
     console.log('🚀 Lambda function started');
-    console.log('📄   ', JSON.stringify(event, null, 2));
     try {
         console.log('AWS_REGION:', process.env.AWS_REGION);
         console.log('RUNWAY_API_KEY set:', !!process.env.RUNWAY_API_KEY);
@@ -39,7 +37,19 @@ const handler = async (event) => {
         console.log('🎬 Number of scenes:', request.sceneCount);
         console.log('📖 Generating story breakdown...');
         const sceneDuration = 5;
-        const scenes = [
+        let scenes = [
+            {
+                id: 0,
+                description: 'INT. SPREEGOLD CAFÉ – DUSK\nWarm light floods the café. Vanessa, 34, locks eyes with a mysterious Brazilian stranger across the bar; time seems to stand still.',
+                duration: sceneDuration,
+                narration: 'Vanessa fell madly in love at first sight at Spreegold, entranced by his promise of a new life.',
+            },
+            {
+                id: 1,
+                description: 'INT. VANESSA’S BATHROOM – NIGHT\nA single bulb casts harsh shadows. Vanessa’s hand trembles as she holds a positive pregnancy test, heartbreak in her eyes.',
+                duration: sceneDuration,
+                narration: 'But those promises were lies, and she found herself carrying his child with no future in sight.',
+            },
             {
                 id: 2,
                 description: 'INT. NURSERY – MORNING\nSoft sunlight filters through curtains. Vanessa gently rocks baby Maxime, her face alight with purpose and unconditional love.',
@@ -51,27 +61,6 @@ const handler = async (event) => {
             console.log('❌ Error: Failed to generate story breakdown');
             throw new Error('Failed to generate story breakdown');
         }
-        console.log('🎥 Generating video clips...');
-        const videoClips = [];
-        const seed = Math.floor(Math.random() * 1000000);
-        for (let i = 0; i < scenes.length; i++) {
-            const scene = scenes[i];
-            console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
-            try {
-                const videoClip = await (0, video_1.generateVideoClip)(scene.description, scene.duration, i, request.userId, timestamp, seed, scene.id);
-                videoClips.push(videoClip);
-                console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
-            }
-            catch (error) {
-                console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-                throw new Error(`Failed to generate video for scene ${i + 1}: ${error}`);
-            }
-        }
-        if (videoClips.length === 0) {
-            console.log('❌ Error: No video clips were generated');
-            throw new Error('No video clips were generated');
-        }
-        console.log(`✅ Generated ${videoClips.length} video clips`);
         console.log('🎤 Generating narration audio with word-level timestamps...');
         const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp);
         console.log('✅ narrationResult:', narrationResult);

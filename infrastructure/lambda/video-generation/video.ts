@@ -120,6 +120,31 @@ export async function generateVideoClip(
     console.log('imageResult.output:', imageResult.output);
     console.log('🖼️ Generated image URL:', imageUrl);
 
+    // Save image to S3 for debugging purposes
+    console.log('💾 Saving image to S3 for debugging...');
+    try {
+      const imageBuffer = await downloadImage(imageUrl);
+      const imageKey = `${userId}/${timestamp}.scene-${
+        sceneId !== undefined ? sceneId : sceneIndex
+      }.jpg`;
+      console.log(
+        `☁️ Uploading image to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${imageKey}`,
+      );
+
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: imageKey,
+          Body: imageBuffer,
+          ContentType: 'image/jpeg',
+        }),
+      );
+      console.log(`✅ Uploaded image to S3: ${imageKey}`);
+    } catch (error) {
+      console.error('❌ Error saving image to S3:', error);
+      // Don't throw here - we want to continue with video generation even if image saving fails
+    }
+
     // Step 2: Generate video from the image using image-to-video API
     console.log('🎬 Generating video from image...');
 
@@ -140,7 +165,7 @@ export async function generateVideoClip(
             promptImage: imageUrl,
             ratio: '720:1280', // Vertical format (9:16)
             duration: Math.min(duration, 10) as 5 | 10, // Runway supports max 10 seconds
-            promptText: `${description} - cinematic video, no text overlays, no graphics, no logos, no watermarks, clean visual content only`,
+            promptText: `${description}`,
             seed,
           })
           .waitForTaskOutput();
@@ -247,6 +272,18 @@ async function downloadVideo(url: string): Promise<Buffer> {
     return Buffer.from(response.data);
   } catch (error) {
     console.error('❌ Error downloading video:', error);
+    throw error;
+  }
+}
+
+async function downloadImage(url: string): Promise<Buffer> {
+  console.log(`📥 Downloading image from: ${url}`);
+  try {
+    const response = await axios.get(url, { responseType: 'arraybuffer' });
+    console.log(`✅ Downloaded image, status: ${response.status}`);
+    return Buffer.from(response.data);
+  } catch (error) {
+    console.error('❌ Error downloading image:', error);
     throw error;
   }
 }

@@ -20,7 +20,7 @@ async function generateNarration(scenes, userId, timestamp) {
             const scene = scenes[i];
             console.log(`🎤 Generating narration for scene ${i}:`, scene.narration);
             const response = await openai.audio.speech.create({
-                model: 'tts-1',
+                model: 'gpt-4o-mini-tts',
                 voice: 'alloy',
                 input: scene.narration,
             });
@@ -88,19 +88,16 @@ async function generateStoryBreakdown(prompt, sceneCount, totalDuration) {
     console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
     try {
         const response = await openai.chat.completions.create({
-            model: 'gpt-4',
+            model: 'gpt-4o-mini',
             messages: [
                 {
                     role: 'system',
                     content: `You are a video script writer. Break down the given prompt into ${sceneCount} scenes, each ${sceneDuration} seconds long, for a ${totalDuration}-second vertical video. 
           Each scene should have a clear visual description and narration text. Return as JSON array with objects containing:
-          - description: visual scene description for video generation
+          - description: short visual scene description
           - duration: ${sceneDuration} (seconds)
-          - narration: text to be spoken in this scene (aim for ${Math.floor(sceneDuration * 2.5 * 0.9)} words to fit ${sceneDuration} seconds naturally)
-          
-          Important: Keep narration concise and natural. Each scene's narration should be approximately ${Math.floor(sceneDuration * 2.5 * 0.9)} words to ensure it fits the ${sceneDuration}-second duration when spoken.
-          
-          If only 1 scene is requested, create a single comprehensive scene that covers the entire duration.`,
+          - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
+          `,
                 },
                 {
                     role: 'user',
@@ -116,7 +113,7 @@ async function generateStoryBreakdown(prompt, sceneCount, totalDuration) {
             throw new Error('Failed to generate story breakdown');
         }
         const scenes = JSON.parse(content);
-        const adjustedScenes = scenes.map((scene) => {
+        const adjustedScenes = scenes.map((scene, idx) => {
             const adjustedNarration = (0, narrationHelper_1.adjustTextForDuration)(scene.narration, scene.duration);
             const originalDuration = (0, narrationHelper_1.estimateTextDuration)(scene.narration);
             const adjustedDuration = (0, narrationHelper_1.estimateTextDuration)(adjustedNarration);
@@ -125,6 +122,7 @@ async function generateStoryBreakdown(prompt, sceneCount, totalDuration) {
             return {
                 ...scene,
                 narration: adjustedNarration,
+                id: idx,
             };
         });
         console.log('✅ Story breakdown parsed and adjusted successfully');

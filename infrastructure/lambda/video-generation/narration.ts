@@ -59,7 +59,7 @@ export async function generateNarration(
 
       // Generate speech with standard format
       const response = await openai.audio.speech.create({
-        model: 'tts-1',
+        model: 'gpt-4o-mini-tts',
         voice: 'alloy',
         input: scene.narration,
       });
@@ -165,19 +165,16 @@ export async function generateStoryBreakdown(
 
   try {
     const response = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
           content: `You are a video script writer. Break down the given prompt into ${sceneCount} scenes, each ${sceneDuration} seconds long, for a ${totalDuration}-second vertical video. 
           Each scene should have a clear visual description and narration text. Return as JSON array with objects containing:
-          - description: visual scene description for video generation
+          - description: short visual scene description
           - duration: ${sceneDuration} (seconds)
           - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
-          
-          Important: Keep narration concise and natural, ensuring it fits comfortably within the scene's duration.
-          
-          If only 1 scene is requested, create a single comprehensive scene that covers the entire duration.`,
+          `,
         },
         {
           role: 'user',

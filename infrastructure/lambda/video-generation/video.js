@@ -26,14 +26,13 @@ async function generateVideoClip(description, duration, sceneIndex, userId, time
         const maxImageRetries = 3;
         while (imageRetryCount < maxImageRetries) {
             try {
-                const currentImageSeed = imageRetryCount === 0 ? seed : Math.floor(Math.random() * 1000000);
-                console.log(`🎨 Image generation attempt ${imageRetryCount + 1}/${maxImageRetries} with seed: ${currentImageSeed}`);
+                console.log(`🎨 Image generation attempt ${imageRetryCount + 1}/${maxImageRetries} with seed: ${seed}`);
                 imageResult = await runway.textToImage
                     .create({
                     model: 'gen4_image',
                     promptText: `${description} - cinematic scene, no text overlays, no graphics, no logos, no watermarks, clean visual content only`,
                     ratio: '720:1280',
-                    seed: currentImageSeed,
+                    seed: seed,
                 })
                     .waitForTaskOutput();
                 console.log('📡 Text-to-image generation completed');
@@ -74,22 +73,37 @@ async function generateVideoClip(description, duration, sceneIndex, userId, time
         const imageUrl = imageResult.output[0];
         console.log('imageResult.output:', imageResult.output);
         console.log('🖼️ Generated image URL:', imageUrl);
+        console.log('💾 Saving image to S3 for debugging...');
+        try {
+            const imageBuffer = await downloadImage(imageUrl);
+            const imageKey = `${userId}/${timestamp}.scene-${sceneId !== undefined ? sceneId : sceneIndex}.jpg`;
+            console.log(`☁️ Uploading image to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${imageKey}`);
+            await s3.send(new client_s3_1.PutObjectCommand({
+                Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+                Key: imageKey,
+                Body: imageBuffer,
+                ContentType: 'image/jpeg',
+            }));
+            console.log(`✅ Uploaded image to S3: ${imageKey}`);
+        }
+        catch (error) {
+            console.error('❌ Error saving image to S3:', error);
+        }
         console.log('🎬 Generating video from image...');
         let videoResult;
         let retryCount = 0;
         const maxRetries = 3;
         while (retryCount < maxRetries) {
             try {
-                const currentSeed = retryCount === 0 ? seed : Math.floor(Math.random() * 1000000);
-                console.log(`🎬 Attempt ${retryCount + 1}/${maxRetries} with seed: ${currentSeed}`);
+                console.log(`🎬 Attempt ${retryCount + 1}/${maxRetries} with seed: ${seed}`);
                 videoResult = await runway.imageToVideo
                     .create({
                     model: 'gen4_turbo',
                     promptImage: imageUrl,
                     ratio: '720:1280',
                     duration: Math.min(duration, 10),
-                    promptText: `${description} - cinematic video, no text overlays, no graphics, no logos, no watermarks, clean visual content only`,
-                    seed: currentSeed,
+                    promptText: `${description}`,
+                    seed,
                 })
                     .waitForTaskOutput();
                 console.log('📡 Image-to-video generation completed');
@@ -161,6 +175,18 @@ async function downloadVideo(url) {
     }
     catch (error) {
         console.error('❌ Error downloading video:', error);
+        throw error;
+    }
+}
+async function downloadImage(url) {
+    console.log(`📥 Downloading image from: ${url}`);
+    try {
+        const response = await axios_1.default.get(url, { responseType: 'arraybuffer' });
+        console.log(`✅ Downloaded image, status: ${response.status}`);
+        return Buffer.from(response.data);
+    }
+    catch (error) {
+        console.error('❌ Error downloading image:', error);
         throw error;
     }
 }
