@@ -102,7 +102,7 @@ export async function generateNarration(
       const subtitleData: SubtitleData = {
         sceneIndex: i,
         words: [],
-        fullText: transcription.text,
+        fullText: scene.narration, // Use original narration text instead of transcribed text
       };
 
       // Extract word-level timestamps from the transcription response

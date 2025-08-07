@@ -74,37 +74,39 @@ export const handler = async (
       sceneDuration,
       request.totalDuration,
     );
-    // console.log('✅ Generated scenes:', scenes);
+    console.log('✅ Generated scenes:', scenes);
 
     // Generate dynamic scenes based on parameters
     // const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
     // TODO: Remove this once we have a dynamic story breakdown
 
     // TODO: Remove this once we have a dynamic story breakdown
+    // const sceneDuration = 10; // seconds
+
     // let scenes = [
     //   {
     //     id: 0,
     //     description:
-    //       'EXT. TOKYO BACKALLEY – NIGHT\nA narrow street bathed in neon pinks and blues. Rain-slick pavement reflects towering LED signs and drifting holo-ads as pedestrians in tech-infused fashion weave past food stalls.',
+    //       'EXT. JAPANESE ALLEYWAY – NIGHT\nA narrow alleyway in Japan, filled with colorful neon lights and signs. Small izakayas and ramen shops line the streets, with people chatting and laughing.',
     //     duration: sceneDuration,
     //     narration:
-    //       'Tokyo’s back alleys come alive under neon rain—where ancient izakayas meet holographic billboards in a pulse of cyberpunk energy.',
+    //       'Experience the vibrant nightlife of Japan, where narrow alleys burst with life, filled with cozy izakayas and the aroma of delicious ramen.',
     //   },
     //   {
     //     id: 1,
     //     description:
-    //       'EXT. SHINJUKU SKYLINE – NIGHT\nA panoramic view of glittering skyscrapers. Magnetic lev monorails glide between towers, and giant animated screens project AI-generated art across building facades.',
+    //       'EXT. FUTURISTIC CITYSCAPE – NIGHT\nA futuristic cityscape at night, showcasing towering skyscrapers illuminated with dynamic LED displays. Drones zip by, and people stroll through the lively streets below.',
     //     duration: sceneDuration,
     //     narration:
-    //       'Above Shinjuku, magnetic rails hum through sky bridges. Futuristic towers glow with dynamic murals—each pixel a heartbeat in the city’s neon core.',
+    //       'As night falls, Japan transforms into a futuristic wonderland, where skyscrapers glow with cutting-edge technology, captivating everyone in sight.',
     //   },
     //   {
     //     id: 2,
     //     description:
-    //       'EXT. SHIBUYA CROSSING – NIGHT\nAn ocean of umbrellas surges through the world’s busiest intersection. Neon reflections dance in puddles while floating VTuber avatars advertise robotic sushi bars on every corner.',
+    //       'EXT. BUSY SQUARE – NIGHT\nA busy square bustling with energy, featuring a large digital billboard and crowds of people enjoying the nightlife. Street performers entertain, and food stalls offer local delicacies.',
     //     duration: sceneDuration,
     //     narration:
-    //       'At Shibuya Crossing, human tides meet virtual icons. In this nocturnal sprawl, every step feels like stepping into tomorrow’s dream.',
+    //       'In the bustling squares, the energy is electric! Neon lights reflect off the crowds as street performers and food stalls create an unforgettable atmosphere.',
     //   },
     // ];
 

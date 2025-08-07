@@ -41,6 +41,7 @@ const handler = async (event) => {
         console.log('🎬 Number of scenes:', request.sceneCount);
         console.log('📖 Generating story breakdown...');
         let scenes = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration);
+        console.log('✅ Generated scenes:', scenes);
         if (!scenes || scenes.length === 0) {
             console.log('❌ Error: Failed to generate story breakdown');
             throw new Error('Failed to generate story breakdown');

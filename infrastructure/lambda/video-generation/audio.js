@@ -49,7 +49,7 @@ async function generateNarration(scenes, userId, timestamp) {
             const subtitleData = {
                 sceneIndex: i,
                 words: [],
-                fullText: transcription.text,
+                fullText: scene.narration,
             };
             if (transcription.words && Array.isArray(transcription.words)) {
                 subtitleData.words = transcription.words.map((word) => ({
