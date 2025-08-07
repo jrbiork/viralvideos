@@ -9,7 +9,7 @@ interface VideoGenerationRequest {
   prompt: string;
   userId: string;
   timestamp: string;
-  duration: number;
+  totalDuration: number;
   sceneCount: number;
 }
 
@@ -50,54 +50,62 @@ export const handler = async (
     }
 
     // Create timestamp in format mm.dd.yy.hh.mm.ss using date-fns
-    const timestamp = '08.06.25-14:30:45'; //format(new Date(), 'MM.dd.yy-HH:mm:ss');
+    const timestamp = '08.07.25-14:30:45'; //format(new Date(), 'MM.dd.yy-HH:mm:ss');
     console.log('🕐 Generated timestamp:', timestamp);
 
+    request.totalDuration = 15;
+    request.sceneCount = 3;
+
+    const sceneDuration = Math.floor(
+      request.totalDuration / request.sceneCount,
+    );
+
     console.log('🎬 Starting video generation for prompt:', request.prompt);
-    console.log('⏱️  Video duration:', request.duration, 'seconds');
+    console.log('⏱️  Video duration:', request.totalDuration, 'seconds');
     console.log('🎬 Number of scenes:', request.sceneCount);
 
     // Step 1: Generate story breakdown using GPT-4
     console.log('📖 Generating story breakdown...');
     // TODO: Uncomment this once we have a dynamic story breakdown
-    // let scenes = await generateStoryBreakdown(
-    //   request.prompt,
-    //   request.sceneCount,
-    //   request.duration,
-    // );
-    // console.log('✅ Generated scenes:', scenes);
+    let scenes = await generateStoryBreakdown(
+      request.prompt,
+      request.sceneCount,
+      sceneDuration,
+      request.totalDuration,
+    );
+    console.log('✅ Generated scenes:', scenes);
 
     // Generate dynamic scenes based on parameters
-    // const sceneDuration = Math.floor(request.duration / request.sceneCount);
+    // const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
     // TODO: Remove this once we have a dynamic story breakdown
-    const sceneDuration = 5;
+
     // TODO: Remove this once we have a dynamic story breakdown
-    let scenes = [
-      {
-        id: 0,
-        description:
-          'INT. SPREEGOLD CAFÉ – DUSK\nWarm light floods the café. Vanessa, 34, locks eyes with a mysterious Brazilian stranger across the bar; time seems to stand still.',
-        duration: sceneDuration,
-        narration:
-          'Vanessa fell madly in love at first sight at Spreegold, entranced by his promise of a new life.',
-      },
-      {
-        id: 1,
-        description:
-          'INT. VANESSA’S BATHROOM – NIGHT\nA single bulb casts harsh shadows. Vanessa’s hand trembles as she holds a positive pregnancy test, heartbreak in her eyes.',
-        duration: sceneDuration,
-        narration:
-          'But those promises were lies, and she found herself carrying his child with no future in sight.',
-      },
-      {
-        id: 2,
-        description:
-          'INT. NURSERY – MORNING\nSoft sunlight filters through curtains. Vanessa gently rocks baby Maxime, her face alight with purpose and unconditional love.',
-        duration: sceneDuration,
-        narration:
-          'Through all the drama, she discovered her true purpose in raising little Maxime, the light of her world.',
-      },
-    ];
+    // let scenes = [
+    //   {
+    //     id: 0,
+    //     description:
+    //       'INT. ALEXANDRIA PALACE – DAY\nSunlight streams through marble columns as a regal young CLEOPATRA strides into the throne room, citizens bowing in awe.',
+    //     duration: sceneDuration,
+    //     narration:
+    //       'At just eighteen, Cleopatra ascended the throne of Egypt, proving her political acumen and winning the loyalty of her people.',
+    //   },
+    //   {
+    //     id: 1,
+    //     description:
+    //       'EXT. NILE RIVERBANK – SUNSET\nA grand barge glides on golden waters. Cleopatra stands at the prow beside JULIUS CAESAR, united in power and purpose.',
+    //     duration: sceneDuration,
+    //     narration:
+    //       'She forged a powerful alliance with Rome’s Julius Caesar, securing Egypt’s stability and giving birth to her son, Caesarion.',
+    //   },
+    //   {
+    //     id: 2,
+    //     description:
+    //       'INT. GRAND LIBRARY OF ALEXANDRIA – MORNING\nScrolls and scholars surround Cleopatra as she gestures toward a glowing map of newly built temples and fleets.',
+    //     duration: sceneDuration,
+    //     narration:
+    //       'A patron of science and the arts, Cleopatra expanded Alexandria’s library, modernized Egypt’s economy, and left an enduring legacy as the last Pharaonic ruler.',
+    //   },
+    // ];
 
     if (!scenes || scenes.length === 0) {
       console.log('❌ Error: Failed to generate story breakdown');
@@ -106,37 +114,37 @@ export const handler = async (
 
     // TODO: Uncomment this once we have a dynamic story breakdown
     // Step 2: Generate video clips for each scene
-    // console.log('🎥 Generating video clips...');
-    // const videoClips: string[] = [];
-    // const seed = Math.floor(Math.random() * 1000000);
+    console.log('🎥 Generating video clips...');
+    const videoClips: string[] = [];
+    const seed = Math.floor(Math.random() * 1000000);
 
-    // for (let i = 0; i < scenes.length; i++) {
-    //   const scene = scenes[i];
-    //   console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
-    //   try {
-    //     const videoClip = await generateVideoClip(
-    //       scene.description,
-    //       scene.duration,
-    //       i,
-    //       request.userId,
-    //       timestamp,
-    //       seed,
-    //       scene.id, // Pass scene.id to the function
-    //     );
-    //     videoClips.push(videoClip);
-    //     console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
-    //   } catch (error) {
-    //     console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-    //     throw new Error(
-    //       `Failed to generate video for scene ${i + 1}: ${error}`,
-    //     );
-    //   }
-    // }
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
+      console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
+      try {
+        const videoClip = await generateVideoClip(
+          scene.description,
+          scene.duration,
+          i,
+          request.userId,
+          timestamp,
+          seed,
+          scene.id,
+        );
+        videoClips.push(videoClip);
+        console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
+      } catch (error) {
+        console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
+        throw new Error(
+          `Failed to generate video for scene ${i + 1}: ${error}`,
+        );
+      }
+    }
 
-    // if (videoClips.length === 0) {
-    //   console.log('❌ Error: No video clips were generated');
-    //   throw new Error('No video clips were generated');
-    // }
+    if (videoClips.length === 0) {
+      console.log('❌ Error: No video clips were generated');
+      throw new Error('No video clips were generated');
+    }
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 

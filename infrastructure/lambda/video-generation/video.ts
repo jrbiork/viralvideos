@@ -40,7 +40,7 @@ export async function generateVideoClip(
     // Retry logic for image generation
     let imageResult;
     let imageRetryCount = 0;
-    const maxImageRetries = 3;
+    const maxImageRetries = 5;
 
     while (imageRetryCount < maxImageRetries) {
       try {
@@ -151,7 +151,7 @@ export async function generateVideoClip(
     // Retry logic for video generation
     let videoResult;
     let retryCount = 0;
-    const maxRetries = 3;
+    const maxRetries = 5;
 
     while (retryCount < maxRetries) {
       try {

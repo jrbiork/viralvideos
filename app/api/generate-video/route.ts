@@ -13,8 +13,8 @@ export async function POST(request: NextRequest) {
 
   try {
     console.log('📝 Parsing request body...');
-    const { prompt, duration = 30, sceneCount = 1 } = await request.json();
-    console.log('✅ Request parsed:', { prompt, duration, sceneCount });
+    const { prompt, totalDuration = 30, sceneCount = 1 } = await request.json();
+    console.log('✅ Request parsed:', { prompt, totalDuration, sceneCount });
 
     if (!prompt) {
       console.log('❌ Error: Prompt is required');
@@ -24,9 +24,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate duration
-    const videoDuration = Math.max(10, Math.min(60, duration));
-    console.log('⏱️  Video duration set to:', videoDuration);
+    // Validate totalDuration
+    const videoTotalDuration = Math.max(10, Math.min(60, totalDuration));
+    console.log('⏱️  Video duration set to:', videoTotalDuration);
 
     // Validate scene count
     const numScenes = Math.max(1, Math.min(6, sceneCount));
@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
     // Prepare Lambda payload
     const lambdaPayload = {
       prompt,
-      duration: videoDuration,
+      totalDuration: videoTotalDuration,
       sceneCount: numScenes,
-      userId: 'demo-user2', // In production, get from auth
+      userId: 'demo-user3', // In production, get from auth
       timestamp: new Date().toISOString(),
     };
     console.log('📦 Lambda payload prepared:', lambdaPayload);

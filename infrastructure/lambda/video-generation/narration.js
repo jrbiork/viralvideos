@@ -81,10 +81,9 @@ async function generateNarration(scenes, userId, timestamp) {
         throw error;
     }
 }
-async function generateStoryBreakdown(prompt, sceneCount, totalDuration) {
+async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDuration) {
     console.log('🤖 Calling OpenAI for story breakdown...');
     console.log(`📊 Parameters: ${sceneCount} scenes, ${totalDuration} seconds total`);
-    const sceneDuration = Math.floor(totalDuration / sceneCount);
     console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
     try {
         const response = await openai.chat.completions.create({
@@ -105,14 +104,38 @@ async function generateStoryBreakdown(prompt, sceneCount, totalDuration) {
                 },
             ],
             temperature: 0.7,
+            response_format: {
+                type: 'json_schema',
+                json_schema: {
+                    name: 'VideoScenes',
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            videoScenes: {
+                                type: 'array',
+                                items: {
+                                    type: 'object',
+                                    properties: {
+                                        description: { type: 'string' },
+                                        duration: { type: 'number' },
+                                        narration: { type: 'string' },
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
+            },
         });
+        console.log('🤖 OpenAI response:', response);
         const content = response.choices[0]?.message?.content;
         console.log('📄 OpenAI response content:', content);
         if (!content) {
             console.log('❌ Error: OpenAI did not return content');
             throw new Error('Failed to generate story breakdown');
         }
-        const scenes = JSON.parse(content);
+        const parsedResponse = JSON.parse(content);
+        const scenes = parsedResponse.videoScenes || parsedResponse;
         const adjustedScenes = scenes.map((scene, idx) => {
             const adjustedNarration = (0, narrationHelper_1.adjustTextForDuration)(scene.narration, scene.duration);
             const originalDuration = (0, narrationHelper_1.estimateTextDuration)(scene.narration);

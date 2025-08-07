@@ -153,6 +153,7 @@ export async function generateNarration(
 export async function generateStoryBreakdown(
   prompt: string,
   sceneCount: number,
+  sceneDuration: number,
   totalDuration: number,
 ): Promise<Scene[]> {
   console.log('🤖 Calling OpenAI for story breakdown...');
@@ -160,7 +161,6 @@ export async function generateStoryBreakdown(
     `📊 Parameters: ${sceneCount} scenes, ${totalDuration} seconds total`,
   );
 
-  const sceneDuration = Math.floor(totalDuration / sceneCount);
   console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
 
   try {
@@ -182,7 +182,31 @@ export async function generateStoryBreakdown(
         },
       ],
       temperature: 0.7,
+      response_format: {
+        type: 'json_schema',
+        json_schema: {
+          name: 'VideoScenes',
+          schema: {
+            type: 'object',
+            properties: {
+              videoScenes: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    description: { type: 'string' },
+                    duration: { type: 'number' },
+                    narration: { type: 'string' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
     });
+
+    console.log('🤖 OpenAI response:', response);
 
     const content = response.choices[0]?.message?.content;
     console.log('📄 OpenAI response content:', content);
@@ -192,7 +216,8 @@ export async function generateStoryBreakdown(
       throw new Error('Failed to generate story breakdown');
     }
 
-    const scenes = JSON.parse(content);
+    const parsedResponse = JSON.parse(content);
+    const scenes = parsedResponse.videoScenes || parsedResponse;
 
     // Post-process scenes to ensure text fits duration
     const adjustedScenes = scenes.map((scene: Scene, idx: number) => {
