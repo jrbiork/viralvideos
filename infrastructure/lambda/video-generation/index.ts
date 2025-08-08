@@ -68,13 +68,15 @@ export const handler = async (
     // Step 1: Generate story breakdown using GPT-4
     console.log('📖 Generating story breakdown...');
     // TODO: Uncomment this once we have a dynamic story breakdown
-    let scenes = await generateStoryBreakdown(
+    const storyBreakdown = await generateStoryBreakdown(
       request.prompt,
       request.sceneCount,
       sceneDuration,
       request.totalDuration,
     );
+    const { scenes, voiceToneInstruction } = storyBreakdown;
     console.log('✅ Generated scenes:', scenes);
+    console.log('🎤 Voice tone instruction:', voiceToneInstruction);
 
     // Generate dynamic scenes based on parameters
     // const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
@@ -157,6 +159,7 @@ export const handler = async (
       scenes,
       request.userId,
       timestamp,
+      voiceToneInstruction,
     );
     console.log('✅ narrationResult:', narrationResult);
     console.log('✅ Generated subtitle data with word-level timestamps');

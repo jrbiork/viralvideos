@@ -9,7 +9,7 @@ const openai_1 = __importDefault(require("openai"));
 const narrationHelper_1 = require("./util/narrationHelper");
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
 const openai = new openai_1.default({ apiKey: process.env.OPENAI_API_KEY });
-async function generateNarration(scenes, userId, timestamp) {
+async function generateNarration(scenes, userId, timestamp, instructions = 'Speak in a cheerful and positive tone') {
     console.log('🎤 Generating narration from scenes with word-level timestamps...');
     try {
         const audioKeys = [];
@@ -19,7 +19,8 @@ async function generateNarration(scenes, userId, timestamp) {
             console.log(`🎤 Generating narration for scene ${i}:`, scene.narration);
             const response = await openai.audio.speech.create({
                 model: 'gpt-4o-mini-tts',
-                voice: 'alloy',
+                voice: 'coral',
+                instructions: instructions,
                 input: scene.narration,
             });
             const originalAudioBuffer = Buffer.from(await response.arrayBuffer());

@@ -40,14 +40,16 @@ const handler = async (event) => {
         console.log('⏱️  Video duration:', request.totalDuration, 'seconds');
         console.log('🎬 Number of scenes:', request.sceneCount);
         console.log('📖 Generating story breakdown...');
-        let scenes = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration);
+        const storyBreakdown = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration);
+        const { scenes, voiceToneInstruction } = storyBreakdown;
         console.log('✅ Generated scenes:', scenes);
+        console.log('🎤 Voice tone instruction:', voiceToneInstruction);
         if (!scenes || scenes.length === 0) {
             console.log('❌ Error: Failed to generate story breakdown');
             throw new Error('Failed to generate story breakdown');
         }
         console.log('🎤 Generating narration audio with word-level timestamps...');
-        const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp);
+        const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
         console.log('✅ narrationResult:', narrationResult);
         console.log('✅ Generated subtitle data with word-level timestamps');
         console.log('📝 Generating subtitles with word-level timing...');

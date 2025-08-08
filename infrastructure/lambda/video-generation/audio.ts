@@ -34,6 +34,7 @@ export async function generateNarration(
   scenes: Scene[],
   userId: string,
   timestamp: string,
+  instructions: string = 'Speak in a cheerful and positive tone',
 ): Promise<NarrationResult> {
   console.log(
     '🎤 Generating narration from scenes with word-level timestamps...',
@@ -49,7 +50,8 @@ export async function generateNarration(
       // Generate speech with standard format
       const response = await openai.audio.speech.create({
         model: 'gpt-4o-mini-tts',
-        voice: 'alloy',
+        voice: 'sage',
+        instructions: instructions,
         input: scene.narration,
       });
 

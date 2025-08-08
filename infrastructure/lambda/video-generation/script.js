@@ -18,10 +18,13 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
                 {
                     role: 'system',
                     content: `You are a script writer for social media. Break down the given prompt into ${sceneCount} scenes, each ${sceneDuration} seconds long, for a ${totalDuration}-second vertical video. 
-          Each scene should have a clear visual description and narration text. Return as JSON array with objects containing:
-          - description: short visual scene description
-          - duration: ${sceneDuration} (seconds)
-          - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
+          Each scene should have a clear visual description and narration text. Also provide a voice tone instruction for the narration.
+          Return as JSON with:
+          - videoScenes: array of scene objects containing:
+            - description: short visual scene description
+            - duration: ${sceneDuration} (seconds)
+            - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
+          - voiceToneInstruction: a brief instruction for the voice tone (e.g., "Speak in a cheerful and positive tone", "Speak in a dramatic and suspenseful tone")
           `,
                 },
                 {
@@ -48,6 +51,7 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
                                     },
                                 },
                             },
+                            voiceToneInstruction: { type: 'string' },
                         },
                     },
                 },
@@ -62,6 +66,8 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
         }
         const parsedResponse = JSON.parse(content);
         const scenes = parsedResponse.videoScenes || parsedResponse;
+        const voiceToneInstruction = parsedResponse.voiceToneInstruction ||
+            'Speak in a cheerful and positive tone';
         const adjustedScenes = scenes.map((scene, idx) => {
             const adjustedNarration = (0, narrationHelper_1.adjustTextForDuration)(scene.narration, scene.duration);
             const originalDuration = (0, narrationHelper_1.estimateTextDuration)(scene.narration);
@@ -75,7 +81,8 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
             };
         });
         console.log('✅ Story breakdown parsed and adjusted successfully');
-        return adjustedScenes;
+        console.log('🎤 Voice tone instruction:', voiceToneInstruction);
+        return { scenes: adjustedScenes, voiceToneInstruction };
     }
     catch (error) {
         console.error('❌ Error in generateStoryBreakdown:', error);

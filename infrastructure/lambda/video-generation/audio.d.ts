@@ -19,4 +19,4 @@ export interface NarrationResult {
  * @param targetDuration - The target duration in seconds
  * @returns Promise<Buffer> - The adjusted audio buffer
  */
-export declare function generateNarration(scenes: Scene[], userId: string, timestamp: string): Promise<NarrationResult>;
+export declare function generateNarration(scenes: Scene[], userId: string, timestamp: string, instructions?: string): Promise<NarrationResult>;

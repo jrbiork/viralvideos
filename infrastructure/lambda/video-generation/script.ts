@@ -18,7 +18,7 @@ export async function generateStoryBreakdown(
   sceneCount: number,
   sceneDuration: number,
   totalDuration: number,
-): Promise<Scene[]> {
+): Promise<{ scenes: Scene[]; voiceToneInstruction: string }> {
   console.log('🤖 Calling OpenAI for story breakdown...');
   console.log(
     `📊 Parameters: ${sceneCount} scenes, ${totalDuration} seconds total`,
@@ -33,10 +33,13 @@ export async function generateStoryBreakdown(
         {
           role: 'system',
           content: `You are a script writer for social media. Break down the given prompt into ${sceneCount} scenes, each ${sceneDuration} seconds long, for a ${totalDuration}-second vertical video. 
-          Each scene should have a clear visual description and narration text. Return as JSON array with objects containing:
-          - description: short visual scene description
-          - duration: ${sceneDuration} (seconds)
-          - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
+          Each scene should have a clear visual description and narration text. Also provide a voice tone instruction for the narration.
+          Return as JSON with:
+          - videoScenes: array of scene objects containing:
+            - description: short visual scene description
+            - duration: ${sceneDuration} (seconds)
+            - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
+          - voiceToneInstruction: a brief instruction for the voice tone (e.g., "Speak in a cheerful and positive tone", "Speak in a dramatic and suspenseful tone")
           `,
         },
         {
@@ -63,6 +66,7 @@ export async function generateStoryBreakdown(
                   },
                 },
               },
+              voiceToneInstruction: { type: 'string' },
             },
           },
         },
@@ -81,6 +85,9 @@ export async function generateStoryBreakdown(
 
     const parsedResponse = JSON.parse(content);
     const scenes = parsedResponse.videoScenes || parsedResponse;
+    const voiceToneInstruction =
+      parsedResponse.voiceToneInstruction ||
+      'Speak in a cheerful and positive tone';
 
     // Post-process scenes to ensure text fits duration
     const adjustedScenes = scenes.map((scene: Scene, idx: number) => {
@@ -108,7 +115,8 @@ export async function generateStoryBreakdown(
     });
 
     console.log('✅ Story breakdown parsed and adjusted successfully');
-    return adjustedScenes;
+    console.log('🎤 Voice tone instruction:', voiceToneInstruction);
+    return { scenes: adjustedScenes, voiceToneInstruction };
   } catch (error) {
     console.error('❌ Error in generateStoryBreakdown:', error);
     throw error;
