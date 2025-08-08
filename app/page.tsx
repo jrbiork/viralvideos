@@ -34,7 +34,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <button
               className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-              onClick={() => router.push('/generate')}
+              onClick={() => router.push('/create')}
             >
               Start Creating
             </button>

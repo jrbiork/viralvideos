@@ -1,77 +1,45 @@
 #!/bin/bash
 
-# Deploy script for Viral Videos infrastructure
-# This script copies environment variables from the root .env.local to infrastructure/.env
+# Deploy the updated infrastructure with SQS queue and new lambda functions
 
-set -e
+echo "🚀 Starting deployment of Viral Videos infrastructure..."
 
-echo "🚀 Starting deployment..."
-
-# Check if we're in the infrastructure directory
-if [ ! -f "package.json" ] || [ ! -f "lib/viral-videos-stack.ts" ]; then
-    echo "❌ Error: Please run this script from the infrastructure directory"
+# Check if AWS credentials are configured
+if ! aws sts get-caller-identity &> /dev/null; then
+    echo "❌ AWS credentials not configured. Please run 'aws configure' first."
     exit 1
 fi
 
-# Copy environment variables from root .env.local to infrastructure/.env
-if [ -f "../.env.local" ]; then
-    echo "📋 Copying environment variables from ../.env.local to .env..."
-    
-    # Create .env file with only the API keys needed for Lambda
-    cat > .env << EOF
-# API Keys for Lambda environment variables
-# Copied from ../.env.local on $(date)
+# Navigate to infrastructure directory
+cd infrastructure
 
-EOF
-    
-    # Extract API keys from .env.local
-    if grep -q "RUNWAY_API_KEY" ../.env.local; then
-        grep "RUNWAY_API_KEY" ../.env.local >> .env
-    else
-        echo "RUNWAY_API_KEY=your_runway_api_key_here" >> .env
-    fi
-    
-    if grep -q "OPENAI_API_KEY" ../.env.local; then
-        grep "OPENAI_API_KEY" ../.env.local >> .env
-    else
-        echo "OPENAI_API_KEY=your_openai_api_key_here" >> .env
-    fi
-    
-    echo "✅ Environment variables copied successfully"
-else
-    echo "⚠️  Warning: ../.env.local not found. Creating template .env file..."
-    cat > .env << EOF
-# API Keys for Lambda environment variables
-# Please add your actual API keys here
+# Install dependencies
+echo "📦 Installing dependencies..."
+npm install
 
-RUNWAY_API_KEY=your_runway_api_key_here
-OPENAI_API_KEY=your_openai_api_key_here
-EOF
-fi
-
-# Build the project
+# Build the TypeScript code
 echo "🔨 Building TypeScript..."
 npm run build
 
-# Install and build Lambda dependencies
-echo "📦 Installing Lambda dependencies..."
-cd lambda/video-generation
-npm install
-../../node_modules/.bin/tsc
-cd ../..
-echo "✅ Lambda dependencies installed and built"
+# Package Lambda functions
+echo "📦 Packaging Lambda functions..."
+./package-lambda.sh
 
 # Deploy the stack
-echo "🚀 Deploying CDK stack..."
-npm run deploy
+echo "☁️ Deploying to AWS..."
+npx cdk deploy --require-approval never
 
-# Clean up temporary files (if any)
-echo "🧹 Cleaning up temporary files..."
-# Remove any temporary files if needed
-echo "✅ Cleanup complete"
+# Get the outputs
+echo "📋 Getting stack outputs..."
+aws cloudformation describe-stacks --stack-name ViralVideosStack --query 'Stacks[0].Outputs' --output table
 
-echo "✅ Deployment complete!"
+echo "✅ Deployment completed!"
 echo ""
-echo "📋 Next steps:"
-echo "1. Update your Next.js app to use the new Lambda ARN"
-echo "2. Test the video generation functionality" 
+echo "📝 Next steps:"
+echo "1. Update your .env file with the new QUEUE_MANAGER_LAMBDA_ARN"
+echo "2. The video generation is now asynchronous - videos will be queued and processed in the background"
+echo "3. Check the CloudWatch logs for the lambda functions to monitor processing"
+echo ""
+echo "🔗 Useful commands:"
+echo "- View logs: aws logs tail /aws/lambda/ViralVideosStack-VideoGenerationLambda --follow"
+echo "- View queue: aws sqs get-queue-attributes --queue-url https://sqs.us-east-1.amazonaws.com/YOUR_ACCOUNT/video-generation-queue" 

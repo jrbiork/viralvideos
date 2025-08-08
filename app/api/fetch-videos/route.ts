@@ -9,10 +9,12 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export async function GET(request: NextRequest) {
-  console.log('📋 Starting video fetch request...');
+  console.log('🚀 Starting video fetch request...');
 
   try {
-    // Check environment variables
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId') || 'demo-user4';
+
     console.log('🔍 Checking environment variables...');
     console.log('AWS_REGION:', process.env.AWS_REGION);
     console.log('VIDEO_BUCKET_NAME:', process.env.VIDEO_BUCKET_NAME);
@@ -25,80 +27,60 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const userId = 'demo-user4';
-    console.log(`🔍 Fetching videos for user: ${userId}`);
-
-    // List objects in the user's folder
+    // List objects in the S3 bucket for this user
+    console.log('📋 Listing videos for user:', userId);
     const listCommand = new ListObjectsV2Command({
       Bucket: process.env.VIDEO_BUCKET_NAME,
       Prefix: `${userId}/`,
-      MaxKeys: 50, // Limit to 50 videos
     });
 
-    console.log('📋 Listing objects from S3...');
     const listResponse = await s3.send(listCommand);
+    console.log('✅ Listed objects:', listResponse.Contents?.length || 0);
 
     if (!listResponse.Contents || listResponse.Contents.length === 0) {
-      console.log('📭 No videos found for user');
+      console.log('📭 No videos found for user:', userId);
       return NextResponse.json({
         videos: [],
-        message: 'No videos found for user',
+        message: 'No videos found',
       });
     }
 
-    console.log(`📹 Found ${listResponse.Contents.length} objects in S3`);
-
     // Filter for video files and generate pre-signed URLs
-    const videos = [];
+    const videos = await Promise.all(
+      listResponse.Contents.filter((object) =>
+        object.Key?.endsWith('.mp4'),
+      ).map(async (object) => {
+        if (!object.Key) return null;
 
-    for (const object of listResponse.Contents) {
-      if (!object.Key) continue;
+        console.log('🔗 Generating pre-signed URL for:', object.Key);
+        const getObjectCommand = new GetObjectCommand({
+          Bucket: process.env.VIDEO_BUCKET_NAME,
+          Key: object.Key,
+        });
 
-      // Only include final video files (not scene parts)
-      if (object.Key.includes('final-video') && object.Key.endsWith('.mp4')) {
-        console.log(`🎬 Processing video: ${object.Key}`);
+        const videoUrl = await getSignedUrl(s3, getObjectCommand, {
+          expiresIn: 3600, // 1 hour
+        });
 
-        try {
-          // Generate pre-signed URL for the video
-          const getObjectCommand = new GetObjectCommand({
-            Bucket: process.env.VIDEO_BUCKET_NAME,
-            Key: object.Key,
-          });
+        return {
+          key: object.Key,
+          url: videoUrl,
+          size: object.Size,
+          lastModified: object.LastModified,
+          timestamp: object.Key.split('/').pop()?.split('.')[0] || '',
+        };
+      }),
+    );
 
-          const videoUrl = await getSignedUrl(s3, getObjectCommand, {
-            expiresIn: 3600, // 1 hour
-          });
-
-          // Extract timestamp from filename
-          const timestampMatch = object.Key.match(/final-video-(\d+)\.mp4/);
-          const timestamp = timestampMatch
-            ? parseInt(timestampMatch[1])
-            : Date.now();
-
-          videos.push({
-            key: object.Key,
-            url: videoUrl,
-            timestamp: timestamp,
-            createdAt: new Date(timestamp).toISOString(),
-            size: object.Size || 0,
-          });
-        } catch (error) {
-          console.error(`❌ Error generating URL for ${object.Key}:`, error);
-        }
-      }
-    }
-
-    // Sort videos by timestamp (newest first)
-    videos.sort((a, b) => b.timestamp - a.timestamp);
-
-    console.log(`✅ Successfully processed ${videos.length} videos`);
+    const validVideos = videos.filter((video) => video !== null);
+    console.log('✅ Generated URLs for', validVideos.length, 'videos');
 
     return NextResponse.json({
-      videos,
-      message: `Found ${videos.length} videos for user`,
+      videos: validVideos,
+      message: `Found ${validVideos.length} videos`,
     });
   } catch (error) {
-    console.error('💥 Error fetching videos:', error);
+    console.error('💥 Error in video fetch:', error);
     console.error(
       'Error stack:',
       error instanceof Error ? error.stack : 'No stack trace',

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const lambda = new LambdaClient({
   region: process.env.AWS_REGION || 'us-east-1',
 });
-const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export async function POST(request: NextRequest) {
   console.log('🚀 Starting video generation request...');
@@ -36,23 +33,14 @@ export async function POST(request: NextRequest) {
     console.log('🔍 Checking environment variables...');
     console.log('AWS_REGION:', process.env.AWS_REGION);
     console.log(
-      'VIDEO_GENERATION_LAMBDA_ARN:',
-      process.env.VIDEO_GENERATION_LAMBDA_ARN,
+      'QUEUE_MANAGER_LAMBDA_ARN:',
+      process.env.QUEUE_MANAGER_LAMBDA_ARN,
     );
-    console.log('VIDEO_BUCKET_NAME:', process.env.VIDEO_BUCKET_NAME);
 
-    if (!process.env.VIDEO_GENERATION_LAMBDA_ARN) {
-      console.log('❌ Error: VIDEO_GENERATION_LAMBDA_ARN is not set');
+    if (!process.env.QUEUE_MANAGER_LAMBDA_ARN) {
+      console.log('❌ Error: QUEUE_MANAGER_LAMBDA_ARN is not set');
       return NextResponse.json(
-        { error: 'Lambda ARN not configured' },
-        { status: 500 },
-      );
-    }
-
-    if (!process.env.VIDEO_BUCKET_NAME) {
-      console.log('❌ Error: VIDEO_BUCKET_NAME is not set');
-      return NextResponse.json(
-        { error: 'S3 bucket name not configured' },
+        { error: 'Queue Manager Lambda ARN not configured' },
         { status: 500 },
       );
     }
@@ -67,10 +55,10 @@ export async function POST(request: NextRequest) {
     };
     console.log('📦 Lambda payload prepared:', lambdaPayload);
 
-    // Invoke the Lambda function
-    console.log('🔧 Invoking Lambda function...');
+    // Invoke the Queue Manager Lambda function
+    console.log('🔧 Invoking Queue Manager Lambda function...');
     const invokeCommand = new InvokeCommand({
-      FunctionName: process.env.VIDEO_GENERATION_LAMBDA_ARN,
+      FunctionName: process.env.QUEUE_MANAGER_LAMBDA_ARN,
       Payload: JSON.stringify(lambdaPayload),
     });
 
@@ -104,34 +92,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate a pre-signed URL for the video
-    const videoKey = responsePayload.videoKey;
-    console.log('🎬 Video key from Lambda:', videoKey);
-
-    if (!videoKey) {
-      console.log('❌ Error: No video key returned from Lambda');
-      return NextResponse.json(
-        { error: 'Video generation failed - no video key returned' },
-        { status: 500 },
-      );
-    }
-
-    console.log('🔗 Generating pre-signed URL for video...');
-    const getObjectCommand = new GetObjectCommand({
-      Bucket: process.env.VIDEO_BUCKET_NAME,
-      Key: videoKey,
-    });
-
-    const videoUrl = await getSignedUrl(s3, getObjectCommand, {
-      expiresIn: 3600,
-    }); // 1 hour
-    console.log('✅ Pre-signed URL generated:', videoUrl);
-
-    console.log('🎉 Video generation completed successfully');
+    console.log('🎉 Video generation request queued successfully');
     return NextResponse.json({
-      videoUrl,
-      videoKey,
-      message: 'Video generated successfully',
+      messageId: responsePayload.messageId,
+      status: responsePayload.status,
+      message: responsePayload.message,
     });
   } catch (error) {
     console.error('💥 Error in video generation:', error);
@@ -146,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: 'Failed to generate video',
+        error: 'Failed to queue video generation request',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 },

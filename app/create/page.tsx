@@ -5,6 +5,7 @@ import VideoGenerator from '../../components/VideoGenerator';
 import VideoPreview from '../../components/VideoPreview';
 import VideoGallery from '../../components/VideoGallery';
 import LoginButton from '../../components/LoginButton';
+import Breadcrumb from '../../components/Breadcrumb';
 
 export default function GeneratePage() {
   const [isGenerating, setIsGenerating] = useState(false);
@@ -12,10 +13,16 @@ export default function GeneratePage() {
     null,
   );
   const [selectedGalleryVideo, setSelectedGalleryVideo] = useState<any>(null);
-  const [script, setScript] = useState('Create a short video about a cat playing in a garden. The video should be engaging and show the cat exploring different areas of the garden, chasing butterflies, and relaxing in the sunshine.');
-  const [generationStatus, setGenerationStatus] = useState<'idle' | 'queued' | 'processing' | 'completed' | 'error'>('idle');
+  const [script, setScript] = useState(
+    'Create a short video about a cat playing in a garden. The video should be engaging and show the cat exploring different areas of the garden, chasing butterflies, and relaxing in the sunshine.',
+  );
+  const [generationStatus, setGenerationStatus] = useState<
+    'idle' | 'queued' | 'processing' | 'completed' | 'error'
+  >('idle');
   const [statusMessage, setStatusMessage] = useState('');
-  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(
+    null,
+  );
 
   const handleGenerateVideo = async () => {
     if (!script.trim()) return;
@@ -42,9 +49,11 @@ export default function GeneratePage() {
 
       const data = await response.json();
       console.log('Video generation queued:', data);
-      
+
       setGenerationStatus('processing');
-      setStatusMessage('Video is being generated... This may take a few minutes.');
+      setStatusMessage(
+        'Video is being generated... This may take a few minutes.',
+      );
 
       // Start polling for video completion
       startPollingForVideo();
@@ -70,7 +79,7 @@ export default function GeneratePage() {
         const response = await fetch('/api/fetch-videos?userId=demo-user4');
         if (response.ok) {
           const data = await response.json();
-          
+
           // Check if we have any videos (indicating completion)
           if (data.videos && data.videos.length > 0) {
             // Get the most recent video
@@ -78,7 +87,7 @@ export default function GeneratePage() {
             setGeneratedVideoUrl(latestVideo.url);
             setGenerationStatus('completed');
             setStatusMessage('Video generated successfully!');
-            
+
             // Stop polling
             clearInterval(interval);
             setPollingInterval(null);
@@ -135,10 +144,19 @@ export default function GeneratePage() {
           <div className="text-yellow-400 text-2xl">⚡</div>
           <div className="text-white text-xl font-bold">Viral Shorts</div>
         </div>
-        
-        <div className="flex items-center space-x-4">
-          <div className="text-gray-300 text-sm">Dashboard > Create</div>
+
+        <div className="flex-1 flex justify-center">
+          <div className="max-w-4xl w-full">
+            <Breadcrumb
+              items={[
+                { label: 'Dashboard', href: '/create' },
+                { label: 'Create' },
+              ]}
+            />
+          </div>
         </div>
+
+        <div className="w-32">{/* Spacer to balance the layout */}</div>
       </div>
 
       <div className="flex h-screen">
@@ -148,11 +166,14 @@ export default function GeneratePage() {
           <div className="flex-1 space-y-6">
             {/* Navigation Links */}
             <div className="space-y-2">
-              <div className="flex items-center space-x-3 text-white hover:bg-slate-800 p-2 rounded-lg cursor-pointer">
+              <div className="flex items-center space-x-3 text-white bg-slate-800 p-2 rounded-lg cursor-pointer">
                 <span>🏠</span>
                 <span>Dashboard</span>
               </div>
-              <a href="/videos" className="flex items-center space-x-3 text-white hover:bg-slate-800 p-2 rounded-lg cursor-pointer">
+              <a
+                href="/videos"
+                className="flex items-center space-x-3 text-white hover:bg-slate-800 p-2 rounded-lg cursor-pointer"
+              >
                 <span>📹</span>
                 <span>Videos</span>
               </a>
@@ -161,7 +182,9 @@ export default function GeneratePage() {
             {/* Credits Section */}
             <div className="border-t border-slate-800 pt-4">
               <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-                <div className="text-white text-sm font-medium">10 Free Credits available</div>
+                <div className="text-white text-sm font-medium">
+                  10 Free Credits available
+                </div>
                 <div className="text-gray-400 text-xs">Free</div>
                 <button className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 rounded-lg transition-colors">
                   Upgrade now
@@ -189,11 +212,15 @@ export default function GeneratePage() {
 
         {/* Center Content */}
         <div className="flex-1 p-8 bg-black">
-          <div className="max-w-4xl mx-auto h-full flex flex-col justify-center">
+          <div className="max-w-4xl mx-auto h-full flex flex-col justify-start pt-8">
             {/* Header */}
             <div className="mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Create a new video</h1>
-              <p className="text-gray-300">Select a tool and pick your options to create your video.</p>
+              <h1 className="text-3xl font-bold text-white mb-2">
+                Create a new video
+              </h1>
+              <p className="text-gray-300">
+                Select a tool and pick your options to create your video.
+              </p>
             </div>
 
             {/* Video Type Selection */}
@@ -202,21 +229,18 @@ export default function GeneratePage() {
                 <button className="bg-blue-600 text-white px-4 py-2 rounded-full text-sm whitespace-nowrap">
                   Faceless Video
                 </button>
-                <button className="bg-slate-800 text-gray-300 px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-slate-700">
-                  UGC Video
-                </button>
-                <button className="bg-slate-800 text-gray-300 px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-slate-700">
-                  Gameplay Video
-                </button>
-                <button className="bg-slate-800 text-gray-300 px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-slate-700">
-                  UGC Ads
-                </button>
-                <button className="bg-slate-800 text-gray-300 px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-slate-700">
-                  Italian Brainrot
-                </button>
-                <button className="bg-slate-800 text-gray-300 px-4 py-2 rounded-full text-sm whitespace-nowrap hover:bg-slate-700">
-                  POV Video
-                </button>
+                <div className="relative group">
+                  <button
+                    className="bg-slate-800 text-gray-500 px-4 py-2 rounded-full text-sm whitespace-nowrap cursor-not-allowed opacity-50"
+                    disabled
+                  >
+                    AI Influencer
+                  </button>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-black text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none whitespace-nowrap z-10">
+                    Available soon
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -225,15 +249,25 @@ export default function GeneratePage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <h2 className="text-xl font-semibold text-white">Script</h2>
-                  <span className="text-gray-400">❓</span>
+                  <div className="relative group">
+                    <span className="text-gray-400 cursor-help">❓</span>
+                    <div className="absolute bottom-full left-full ml-2 mt-5 px-3 py-3 bg-slate-800 border border-slate-600 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-10 w-[275px]">
+                      Write or generate a script for your video.
+                      <br />
+                      The AI will use this text to create matching visuals.
+                      <div className="absolute top-2 -left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+                    </div>
+                  </div>
                 </div>
                 <button className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm flex items-center space-x-2">
                   <span>✨</span>
                   <span>AI script writer</span>
                 </button>
               </div>
-              <p className="text-gray-300 text-sm mb-4">Enter your video script or use AI to generate one.</p>
-              <textarea 
+              <p className="text-gray-300 text-sm mb-4">
+                Enter your video script or use AI to generate one.
+              </p>
+              <textarea
                 className="w-full h-32 bg-slate-800 border border-slate-700 rounded-lg p-4 text-white placeholder-gray-400 resize-none"
                 placeholder="Enter your video script here..."
                 value={script}
@@ -262,7 +296,7 @@ export default function GeneratePage() {
 
             {/* Generate Button */}
             <div className="text-center">
-              <button 
+              <button
                 onClick={handleGenerateVideo}
                 disabled={isGenerating || !script.trim()}
                 className={`px-8 py-4 rounded-lg text-lg font-semibold flex items-center justify-center space-x-2 mx-auto transition-colors ${
@@ -290,8 +324,10 @@ export default function GeneratePage() {
 
         {/* Right Sidebar - Video Preview */}
         <div className="w-[489px] bg-black border-l border-slate-800 p-6">
-          <h2 className="text-xl font-semibold text-white mb-4">Output Example</h2>
-          
+          <h2 className="text-xl font-semibold text-white mb-4">
+            Output Example
+          </h2>
+
           {/* Video Preview */}
           {generatedVideoUrl && (
             <div className="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-700 mb-4">

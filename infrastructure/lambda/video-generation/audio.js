@@ -19,7 +19,7 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
             console.log(`🎤 Generating narration for scene ${i}:`, scene.narration);
             const response = await openai.audio.speech.create({
                 model: 'gpt-4o-mini-tts',
-                voice: 'coral',
+                voice: 'sage',
                 instructions: instructions,
                 input: scene.narration,
             });

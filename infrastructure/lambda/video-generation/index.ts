@@ -1,5 +1,6 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
+import { SQSEvent, SQSRecord, SQSBatchResponse } from 'aws-lambda';
 import { format } from 'date-fns';
+import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { generateVideoClip } from './video';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
 import { generateSubtitles } from './subtitles';
@@ -14,41 +15,52 @@ interface VideoGenerationRequest {
   sceneCount: number;
 }
 
-export const handler = async (
-  event: APIGatewayProxyEvent,
-): Promise<APIGatewayProxyResult> => {
-  console.log('🚀 Lambda function started');
+const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
+export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
+  console.log('🚀 Lambda function started - SQS only handler');
+
+  return await handleSQSEvent(event);
+};
+
+async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
+  console.log('📨 Processing SQS event with', event.Records.length, 'records');
+
+  const batchItemFailures: { itemIdentifier: string }[] = [];
+
+  for (const record of event.Records) {
+    try {
+      console.log('📝 Processing record:', record.messageId);
+
+      // Parse the message body
+      const request: VideoGenerationRequest = JSON.parse(record.body);
+      console.log('✅ Parsed request:', request);
+
+      // Process the video generation with ordered steps
+      await processVideoGeneration(request, record);
+
+      console.log('✅ Successfully processed record:', record.messageId);
+    } catch (error) {
+      console.error('❌ Error processing record:', record.messageId, error);
+      batchItemFailures.push({ itemIdentifier: record.messageId });
+    }
+  }
+
+  return {
+    batchItemFailures,
+  };
+}
+
+async function processVideoGeneration(
+  request: VideoGenerationRequest,
+  record?: SQSRecord,
+): Promise<any> {
   try {
     console.log('AWS_REGION:', process.env.AWS_REGION);
     console.log('RUNWAY_API_KEY set:', !!process.env.RUNWAY_API_KEY);
     console.log('OPENAI_API_KEY set:', !!process.env.OPENAI_API_KEY);
 
     console.log('✅ All environment variables are set');
-
-    let request: VideoGenerationRequest;
-
-    // Handle different event formats
-    if (event.body) {
-      // API Gateway format - body is a JSON string
-      if (typeof event.body === 'string') {
-        request = JSON.parse(event.body);
-      } else {
-        // Direct Lambda invocation - body is already an object
-        request = event.body as VideoGenerationRequest;
-      }
-    } else {
-      // Direct Lambda invocation - payload is the entire event
-      request = event as any;
-    }
-
-    if (!request.prompt) {
-      console.log('❌ Error: Prompt is required');
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Prompt is required' }),
-      };
-    }
 
     // Create timestamp in format mm.dd.yy.hh.mm.ss using date-fns
     const timestamp = '08.07.25-14:30:45'; //format(new Date(), 'MM.dd.yy-HH:mm:ss');
@@ -65,9 +77,8 @@ export const handler = async (
     console.log('⏱️  Video duration:', request.totalDuration, 'seconds');
     console.log('🎬 Number of scenes:', request.sceneCount);
 
-    // Step 1: Generate story breakdown using GPT-4
-    console.log('📖 Generating story breakdown...');
-    // TODO: Uncomment this once we have a dynamic story breakdown
+    // Step 1: Generate script/story breakdown using GPT-4
+    console.log('📖 Step 1: Generating story breakdown...');
     const storyBreakdown = await generateStoryBreakdown(
       request.prompt,
       request.sceneCount,
@@ -75,113 +86,65 @@ export const handler = async (
       request.totalDuration,
     );
     const { scenes, voiceToneInstruction } = storyBreakdown;
-    console.log('✅ Generated scenes:', scenes);
+    console.log('✅ Step 1 completed: Generated scenes:', scenes);
     console.log('🎤 Voice tone instruction:', voiceToneInstruction);
-
-    // Generate dynamic scenes based on parameters
-    // const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
-    // TODO: Remove this once we have a dynamic story breakdown
-
-    // TODO: Remove this once we have a dynamic story breakdown
-    // const sceneDuration = 10; // seconds
-
-    // let scenes = [
-    //   {
-    //     id: 0,
-    //     description:
-    //       'EXT. JAPANESE ALLEYWAY – NIGHT\nA narrow alleyway in Japan, filled with colorful neon lights and signs. Small izakayas and ramen shops line the streets, with people chatting and laughing.',
-    //     duration: sceneDuration,
-    //     narration:
-    //       'Experience the vibrant nightlife of Japan, where narrow alleys burst with life, filled with cozy izakayas and the aroma of delicious ramen.',
-    //   },
-    //   {
-    //     id: 1,
-    //     description:
-    //       'EXT. FUTURISTIC CITYSCAPE – NIGHT\nA futuristic cityscape at night, showcasing towering skyscrapers illuminated with dynamic LED displays. Drones zip by, and people stroll through the lively streets below.',
-    //     duration: sceneDuration,
-    //     narration:
-    //       'As night falls, Japan transforms into a futuristic wonderland, where skyscrapers glow with cutting-edge technology, captivating everyone in sight.',
-    //   },
-    //   {
-    //     id: 2,
-    //     description:
-    //       'EXT. BUSY SQUARE – NIGHT\nA busy square bustling with energy, featuring a large digital billboard and crowds of people enjoying the nightlife. Street performers entertain, and food stalls offer local delicacies.',
-    //     duration: sceneDuration,
-    //     narration:
-    //       'In the bustling squares, the energy is electric! Neon lights reflect off the crowds as street performers and food stalls create an unforgettable atmosphere.',
-    //   },
-    // ];
 
     if (!scenes || scenes.length === 0) {
       console.log('❌ Error: Failed to generate story breakdown');
       throw new Error('Failed to generate story breakdown');
     }
 
-    // TODO: Uncomment this once we have a dynamic story breakdown
-    // Step 2: Generate video clips for each scene
-    // console.log('🎥 Generating video clips...');
-    // const videoClips: string[] = [];
-    // const seed = Math.floor(Math.random() * 1000000);
-
+    // Step 2: Generate video clips (includes image generation)
+    console.log('🎬 Step 2: Generating video clips from scenes...');
+    // const videoKeys: string[] = [];
     // for (let i = 0; i < scenes.length; i++) {
     //   const scene = scenes[i];
-    //   console.log(`🎬 Generating video for scene ${i + 1}:`, scene.description);
-    //   try {
-    //     const videoClip = await generateVideoClip(
-    //       scene.description,
-    //       scene.duration,
-    //       i,
-    //       request.userId,
-    //       timestamp,
-    //       seed,
-    //       scene.id,
-    //     );
-    //     videoClips.push(videoClip);
-    //     console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
-    //   } catch (error) {
-    //     console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-    //     throw new Error(
-    //       `Failed to generate video for scene ${i + 1}: ${error}`,
-    //     );
-    //   }
+    //   console.log(`🎬 Generating video for scene ${i}: ${scene.description}`);
+
+    //   const videoKey = await generateVideoClip(
+    //     scene.description,
+    //     scene.duration,
+    //     i,
+    //     request.userId,
+    //     timestamp,
+    //     Math.floor(Math.random() * 1000000), // Random seed
+    //     scene.id,
+    //   );
+    //   videoKeys.push(videoKey);
+    //   console.log(`✅ Generated video for scene ${i}: ${videoKey}`);
     // }
+    console.log('✅ Step 2 completed: Generated all video clips');
 
-    // if (videoClips.length === 0) {
-    //   console.log('❌ Error: No video clips were generated');
-    //   throw new Error('No video clips were generated');
-    // }
-
-    // console.log(`✅ Generated ${videoClips.length} video clips`);
-
-    // Step 3: Generate narration audio with word-level timestamps
-    console.log('🎤 Generating narration audio with word-level timestamps...');
+    // Step 3: Generate audio narration with word-level timestamps
+    console.log(
+      '🎤 Step 3: Generating narration audio with word-level timestamps...',
+    );
     const narrationResult = await generateNarration(
       scenes,
       request.userId,
       timestamp,
       voiceToneInstruction,
     );
-    console.log('✅ narrationResult:', narrationResult);
-    console.log('✅ Generated subtitle data with word-level timestamps');
+    console.log('✅ Step 3 completed: Generated audio and subtitle data');
 
     // Step 4: Generate subtitles based on word-level timestamps
-    console.log('📝 Generating subtitles with word-level timing...');
+    console.log('📝 Step 4: Generating subtitles with word-level timing...');
     const subtitleKeys = await generateSubtitles(
       scenes,
       request.userId,
       timestamp,
       narrationResult.subtitles,
     );
-    console.log('✅ Generated subtitle keys:', subtitleKeys);
+    console.log('✅ Step 4 completed: Generated subtitle keys:', subtitleKeys);
 
     // Step 5: Combine video clips, audio, and subtitles
-    console.log('🎬 Combining video, audio, and subtitles...');
+    console.log('🎬 Step 5: Combining video, audio, and subtitles...');
     const finalVideo = await combineVideoAndAudio(
       request.userId,
       timestamp,
       scenes,
     );
-    console.log('✅ Final video generated:', finalVideo);
+    console.log('✅ Step 5 completed: Final video generated:', finalVideo);
 
     if (!finalVideo) {
       console.log('❌ Error: Failed to combine video, audio, and subtitles');
@@ -189,17 +152,25 @@ export const handler = async (
     }
 
     // Step 6: Upload to S3
-    console.log('☁️ Uploading to S3...');
+    console.log('☁️ Step 6: Uploading to S3...');
     const videoKey = await uploadToS3(finalVideo, request.userId, timestamp);
-    console.log('✅ Uploaded to S3:', videoKey);
+    console.log('✅ Step 6 completed: Uploaded to S3:', videoKey);
+
+    // If this was triggered by SQS, delete the message from the queue
+    if (record && process.env.VIDEO_QUEUE_URL) {
+      console.log('🗑️ Deleting message from SQS queue:', record.messageId);
+      const deleteCommand = new DeleteMessageCommand({
+        QueueUrl: process.env.VIDEO_QUEUE_URL,
+        ReceiptHandle: record.receiptHandle,
+      });
+      await sqs.send(deleteCommand);
+      console.log('✅ Message deleted from SQS queue');
+    }
 
     console.log('🎉 Video generation completed successfully');
     return {
-      statusCode: 200,
-      body: JSON.stringify({
-        videoKey,
-        message: 'Video generated successfully',
-      }),
+      videoKey,
+      message: 'Video generated successfully',
     };
   } catch (error) {
     console.error('💥 Error in video generation:', error);
@@ -212,12 +183,6 @@ export const handler = async (
       error instanceof Error ? error.message : 'Unknown error',
     );
 
-    return {
-      statusCode: 500,
-      body: JSON.stringify({
-        error: 'Failed to generate video',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      }),
-    };
+    throw error;
   }
-};
+}

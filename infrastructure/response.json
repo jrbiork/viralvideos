@@ -1,0 +1,1 @@
+{"errorType":"TypeError","errorMessage":"Cannot read properties of undefined (reading 'length')","trace":["TypeError: Cannot read properties of undefined (reading 'length')","    at handleSQSEvent (/var/task/index.js:16:63)","    at Runtime.handler (/var/task/index.js:12:18)","    at Runtime.handleOnceNonStreaming (file:///var/runtime/index.mjs:1205:29)"]}
