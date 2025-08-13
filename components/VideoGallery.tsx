@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Play, Download, Calendar, FileVideo } from 'lucide-react';
 import VideoPreview from './VideoPreview';
+import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 
 interface Video {
   key: string;
@@ -22,10 +23,13 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
+  const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
   useEffect(() => {
-    fetchVideos();
-  }, []);
+    if (isAuthenticated) {
+      fetchVideos();
+    }
+  }, [isAuthenticated]);
 
   // Auto-select the latest video when videos are loaded
   useEffect(() => {
@@ -45,14 +49,8 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
       setLoading(true);
       setError(null);
 
-      const response = await fetch('/api/fetch-videos');
-      const data = await response.json();
-
-      if (response.ok) {
-        setVideos(data.videos);
-      } else {
-        setError(data.error || 'Failed to fetch videos');
-      }
+      const data = await authenticatedFetch('/api/fetch-videos');
+      setVideos(data.videos);
     } catch (error) {
       console.error('Error fetching videos:', error);
       setError('Failed to fetch videos');
@@ -126,6 +124,25 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
           </h3>
           <p className="text-slate-300 text-lg">
             Fetching videos from your library...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+            <FileVideo className="w-8 h-8 text-yellow-400" />
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-3">
+            Authentication Required
+          </h3>
+          <p className="text-slate-300 text-lg mb-4">
+            Please sign in to view your video library. Your authentication token
+            will be automatically included in all requests.
           </p>
         </div>
       </div>

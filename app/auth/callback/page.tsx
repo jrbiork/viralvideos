@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../components/AuthContext';
 
@@ -9,31 +9,61 @@ export default function AuthCallback() {
   const searchParams = useSearchParams();
   const { handleAuthCallback } = useAuth();
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
     const handleCallback = async () => {
+      // Prevent multiple executions
+      if (error || isLoading || hasProcessed.current) {
+        return;
+      }
+
+      hasProcessed.current = true;
+
       try {
         const code = searchParams.get('code');
         const state = searchParams.get('state');
-        const error = searchParams.get('error');
+        const errorParam = searchParams.get('error');
+
+        console.log('Auth callback debug:', {
+          code: code ? '***' : 'undefined',
+          state: state ? '***' : 'undefined',
+          error: errorParam,
+          savedState: localStorage.getItem('oauth_state'),
+        });
 
         // Check for OAuth errors
-        if (error) {
-          setError(`Authentication failed: ${error}`);
+        if (errorParam) {
+          console.error('OAuth error received:', errorParam);
+          setError(`Authentication failed: ${errorParam}`);
           return;
         }
 
         // Validate state parameter
         const savedState = localStorage.getItem('oauth_state');
         if (state !== savedState) {
+          console.error('State mismatch:', {
+            received: state,
+            saved: savedState,
+          });
           setError('Invalid state parameter. Please try again.');
           return;
         }
 
         if (!code) {
+          console.error('No authorization code received');
           setError('No authorization code received.');
           return;
         }
+
+        console.log('Proceeding with token exchange...');
+
+        // Set loading state
+        setIsLoading(true);
+
+        // Clear the state immediately to prevent reuse
+        localStorage.removeItem('oauth_state');
 
         // Handle the authentication callback
         await handleAuthCallback(code);
@@ -47,7 +77,7 @@ export default function AuthCallback() {
     };
 
     handleCallback();
-  }, [searchParams, handleAuthCallback, router]);
+  }, [searchParams, handleAuthCallback, router, error]);
 
   if (error) {
     return (
@@ -73,12 +103,26 @@ export default function AuthCallback() {
               Authentication Failed
             </h2>
             <p className="text-gray-300 mb-6">{error}</p>
-            <button
-              onClick={() => router.push('/')}
-              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-full font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-300"
-            >
-              Back to Home
-            </button>
+            <div className="space-y-3">
+              <button
+                onClick={() => router.push('/')}
+                className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-6 py-3 rounded-full font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-300"
+              >
+                Back to Home
+              </button>
+
+              {error?.includes('invalid_grant') && (
+                <button
+                  onClick={() => {
+                    localStorage.clear();
+                    router.push('/');
+                  }}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-blue-700 transition-all duration-300"
+                >
+                  Try Again
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

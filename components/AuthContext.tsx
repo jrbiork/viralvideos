@@ -56,8 +56,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
     const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
 
+    console.log('Login debug:', {
+      cognitoDomain,
+      clientId: clientId ? '***' : 'undefined',
+      redirectUri,
+      provider,
+    });
+
     if (!cognitoDomain || !clientId || !redirectUri) {
-      console.error('Missing Cognito configuration');
+      console.error('Missing Cognito configuration:', {
+        cognitoDomain: !!cognitoDomain,
+        clientId: !!clientId,
+        redirectUri: !!redirectUri,
+      });
       return;
     }
 
@@ -65,8 +76,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const state = Math.random().toString(36).substring(2, 15);
     localStorage.setItem('oauth_state', state);
 
+    // Ensure the domain doesn't already include the protocol
+    const cleanDomain = cognitoDomain.replace(/^https?:\/\//, '');
     const authUrl =
-      `https://${cognitoDomain}/oauth2/authorize?` +
+      `https://${cleanDomain}/oauth2/authorize?` +
       `response_type=code&` +
       `client_id=${clientId}&` +
       `redirect_uri=${encodeURIComponent(redirectUri)}&` +
@@ -74,6 +87,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       `scope=openid+email+profile&` +
       `state=${state}`;
 
+    console.log('Constructed auth URL:', authUrl);
+
+    console.log('Redirecting to auth URL:', authUrl);
     window.location.href = authUrl;
   };
 
@@ -95,6 +111,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.removeItem('oauth_state');
     } catch (error) {
       console.error('Auth callback failed:', error);
+
+      // If it's an invalid_grant error, clear the state and suggest retry
+      if (error instanceof Error && error.message.includes('invalid_grant')) {
+        localStorage.removeItem('oauth_state');
+        console.log(
+          'Authorization code expired or already used. Please try signing in again.',
+        );
+      }
+
       throw error;
     } finally {
       setIsLoading(false);
@@ -111,11 +136,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
     const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
 
-    if (cognitoDomain && clientId && redirectUri) {
+    if (cognitoDomain && clientId) {
+      // Ensure the domain doesn't already include the protocol
+      const cleanDomain = cognitoDomain.replace(/^https?:\/\//, '');
+      const logoutUri =
+        process.env.NEXT_PUBLIC_LOGOUT_URI || 'http://localhost:3000';
       const logoutUrl =
-        `https://${cognitoDomain}/logout?` +
+        `https://${cleanDomain}/logout?` +
         `client_id=${clientId}&` +
-        `logout_uri=${encodeURIComponent(redirectUri)}`;
+        `logout_uri=${encodeURIComponent(logoutUri)}`;
       window.location.href = logoutUrl;
     }
   };
@@ -144,32 +173,80 @@ export function useAuth() {
 async function exchangeCodeForTokens(code: string) {
   const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
   const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+  const clientSecret = process.env.NEXT_PUBLIC_COGNITO_CLIENT_SECRET;
   const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
 
-  const response = await fetch(`https://${cognitoDomain}/oauth2/token`, {
+  console.log('Token exchange debug:', {
+    cognitoDomain,
+    clientId: clientId ? clientId : 'undefined',
+    clientSecret: clientSecret ? clientSecret : 'undefined',
+    redirectUri,
+    code: code ? code : 'undefined',
+  });
+
+  if (!cognitoDomain || !clientId || !redirectUri) {
+    throw new Error(
+      `Missing Cognito configuration: domain=${!!cognitoDomain}, clientId=${!!clientId}, redirectUri=${!!redirectUri}`,
+    );
+  }
+
+  // Ensure the domain doesn't already include the protocol
+  const cleanDomain = cognitoDomain.replace(/^https?:\/\//, '');
+  const tokenUrl = `https://${cleanDomain}/oauth2/token`;
+
+  // Prepare the request body
+  const bodyParams = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    code: code,
+    redirect_uri: redirectUri,
+  });
+
+  // Add client secret if available (for confidential clients)
+  if (clientSecret) {
+    bodyParams.append('client_secret', clientSecret);
+  }
+
+  console.log('Making token request to:', tokenUrl);
+  console.log('Request body params:', Object.fromEntries(bodyParams.entries()));
+
+  const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
     },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: clientId!,
-      code: code,
-      redirect_uri: redirectUri!,
-    }),
+    body: bodyParams,
   });
 
+  console.log('Token response status:', response);
+  console.log(
+    'Token response headers:',
+    Object.fromEntries(response.headers.entries()),
+  );
+
   if (!response.ok) {
-    throw new Error('Failed to exchange code for tokens');
+    const errorText = await response.text();
+    console.error('Token exchange error response:', errorText);
+    throw new Error(
+      `Failed to exchange code for tokens: ${response.status} ${response.statusText} - ${errorText}`,
+    );
   }
 
-  return await response.json();
+  const tokens = await response.json();
+  console.log(
+    'Token exchange successful, received tokens:',
+    Object.keys(tokens),
+  );
+  return tokens;
 }
 
 async function getUserInfo(accessToken: string) {
   const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
 
-  const response = await fetch(`https://${cognitoDomain}/oauth2/userInfo`, {
+  // Ensure the domain doesn't already include the protocol
+  const cleanDomain = cognitoDomain?.replace(/^https?:\/\//, '') || '';
+
+  const response = await fetch(`https://${cleanDomain}/oauth2/userInfo`, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },

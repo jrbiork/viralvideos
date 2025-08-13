@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Send, Sparkles, Clock, Film } from 'lucide-react';
+import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 
 interface VideoGeneratorProps {
   onGenerationStart: () => void;
@@ -20,32 +21,25 @@ export default function VideoGenerator({
   const [duration, setDuration] = useState(10); // Default 10 seconds
   const [sceneCount, setSceneCount] = useState(1); // Default 1 scene
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prompt.trim() || isGenerating) return;
+    if (!prompt.trim() || isGenerating || !isAuthenticated) return;
 
     setIsSubmitting(true);
     onGenerationStart();
 
     try {
-      const response = await fetch('/api/generate-video', {
+      const data = await authenticatedFetch('/api/generate-video', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
+        body: {
           prompt: prompt.trim(),
           duration: duration,
           sceneCount: sceneCount,
-        }),
+        },
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to generate video');
-      }
-
-      const data = await response.json();
       onVideoGenerated(data.videoUrl);
     } catch (error) {
       console.error('Error generating video:', error);
@@ -57,6 +51,15 @@ export default function VideoGenerator({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
+      {!isAuthenticated && (
+        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+          <p className="text-yellow-400 text-sm">
+            Please sign in to generate videos. Your authentication token will be
+            automatically included in all requests.
+          </p>
+        </div>
+      )}
+
       <div>
         <label
           htmlFor="prompt"
@@ -71,7 +74,7 @@ export default function VideoGenerator({
           placeholder="e.g., A beautiful sunset over the ocean with gentle waves, perfect for a relaxing meditation video..."
           className="w-full px-6 py-4 bg-slate-800 border border-slate-600 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-white placeholder-slate-400 transition-all duration-200"
           rows={4}
-          disabled={isGenerating}
+          disabled={isGenerating || !isAuthenticated}
         />
         <p className="mt-3 text-sm text-slate-400">
           Be descriptive! Include details about scenes, mood, and style for
@@ -96,7 +99,7 @@ export default function VideoGenerator({
               value={duration}
               onChange={(e) => setDuration(parseInt(e.target.value))}
               className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
-              disabled={isGenerating}
+              disabled={isGenerating || !isAuthenticated}
             />
             <div className="flex justify-between text-sm text-slate-400 mt-2">
               <span>10s</span>
@@ -126,7 +129,7 @@ export default function VideoGenerator({
               value={sceneCount}
               onChange={(e) => setSceneCount(parseInt(e.target.value))}
               className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer slider"
-              disabled={isGenerating}
+              disabled={isGenerating || !isAuthenticated}
             />
             <div className="flex justify-between text-sm text-slate-400 mt-2">
               <span>1</span>
@@ -149,7 +152,9 @@ export default function VideoGenerator({
 
         <button
           type="submit"
-          disabled={!prompt.trim() || isGenerating || isSubmitting}
+          disabled={
+            !prompt.trim() || isGenerating || isSubmitting || !isAuthenticated
+          }
           className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
         >
           <Send className="w-5 h-5 mr-3" />

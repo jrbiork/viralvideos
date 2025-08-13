@@ -1,34 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { validateAuthToken } from '../../../lib/auth-utils';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Validate authentication
+    const authResult = await validateAuthToken(request);
+    if (!authResult) {
       return NextResponse.json(
         { error: 'Missing or invalid authorization header' },
         { status: 401 },
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
+    const { userInfo } = authResult;
 
-    // In a real implementation, you would validate the JWT token here
-    // For now, we'll just check if a token exists
-    if (!token) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    // TODO: Implement proper JWT validation with Cognito
-    // You would use a library like jsonwebtoken to verify the token
-    // and check the signature against Cognito's public keys
-
-    // Mock user data for demonstration
+    // Return actual user data from the JWT token
     const userData = {
-      id: 'user-123',
-      email: 'user@example.com',
-      name: 'John Doe',
-      picture: 'https://via.placeholder.com/150',
+      id: userInfo.id,
+      email: userInfo.email,
+      name: userInfo.name || userInfo.email,
+      picture: userInfo.picture,
       createdAt: new Date().toISOString(),
     };
 
@@ -47,23 +38,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Validate authentication
+    const authResult = await validateAuthToken(request);
+    if (!authResult) {
       return NextResponse.json(
         { error: 'Missing or invalid authorization header' },
         { status: 401 },
       );
     }
 
+    const { userInfo } = authResult;
     const body = await request.json();
 
     // Process user data update
     // In a real implementation, you would update the user in your database
+    // You can use userInfo.id to ensure the user can only update their own data
 
     return NextResponse.json({
       message: 'User data updated successfully',
       updatedData: body,
+      userId: userInfo.id,
     });
   } catch (error) {
     console.error('API error:', error);

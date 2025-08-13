@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
+import { validateAuthToken } from '../../../lib/auth-utils';
 
 const lambda = new LambdaClient({
   region: process.env.AWS_REGION || 'us-east-1',
@@ -9,6 +10,18 @@ export async function POST(request: NextRequest) {
   console.log('🚀 Starting video generation request...');
 
   try {
+    // Validate authentication
+    const authResult = await validateAuthToken(request);
+    if (!authResult) {
+      console.log('❌ Unauthorized: Missing or invalid auth token');
+      return NextResponse.json(
+        { error: 'Unauthorized: Missing or invalid authentication token' },
+        { status: 401 },
+      );
+    }
+
+    const { userInfo } = authResult;
+
     console.log('📝 Parsing request body...');
     const { prompt, totalDuration = 30, sceneCount = 1 } = await request.json();
     console.log('✅ Request parsed:', { prompt, totalDuration, sceneCount });
@@ -50,7 +63,7 @@ export async function POST(request: NextRequest) {
       prompt,
       totalDuration: videoTotalDuration,
       sceneCount: numScenes,
-      userId: 'demo-user4', // In production, get from auth
+      userId: userInfo.id, // Get from authenticated user
       timestamp: new Date().toISOString(),
     };
     console.log('📦 Lambda payload prepared:', lambdaPayload);
