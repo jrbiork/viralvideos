@@ -22,6 +22,10 @@
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true
   },
-  "include": ["video-generation/**/*.ts", "queue-manager/**/*.ts"],
+  "include": [
+    "video-generation/**/*.ts",
+    "queue-manager/**/*.ts",
+    "jwt-authorizer/**/*.ts"
+  ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

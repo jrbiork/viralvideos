@@ -7,7 +7,8 @@
     "build": "tsc",
     "build:video-generation": "cd video-generation && tsc",
     "build:queue-manager": "cd queue-manager && tsc",
-    "build:all": "npm run build:video-generation && npm run build:queue-manager",
+    "build:jwt-authorizer": "cd jwt-authorizer && tsc",
+    "build:all": "npm run build:video-generation && npm run build:queue-manager && npm run build:jwt-authorizer",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
@@ -16,6 +17,7 @@
     "@runwayml/sdk": "^2.7.0",
     "axios": "^1.6.7",
     "fluent-ffmpeg": "^2.1.2",
+    "jose": "^5.10.0",
     "openai": "^4.28.0"
   },
   "devDependencies": {

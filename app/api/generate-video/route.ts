@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
-import { validateAuthToken } from '../../../lib/auth-utils';
-
-const lambda = new LambdaClient({
-  region: process.env.AWS_REGION || 'us-east-1',
-});
 
 export async function POST(request: NextRequest) {
   console.log('🚀 Starting video generation request...');
 
   try {
-    // Validate authentication
-    const authResult = await validateAuthToken(request);
-    if (!authResult) {
-      console.log('❌ Unauthorized: Missing or invalid auth token');
+    // Extract authentication info from headers
+    const authHeader = request.headers.get('authorization');
+
+    if (!authHeader) {
+      console.log('❌ Missing authorization header');
       return NextResponse.json(
-        { error: 'Unauthorized: Missing or invalid authentication token' },
+        { error: 'Missing authorization header' },
         { status: 401 },
       );
     }
 
-    const { userInfo } = authResult;
+    // Create user info object (will be validated by API Gateway authorizer)
+    const userInfo = {
+      id: 'temp-user-id', // Will be replaced by API Gateway authorizer
+      email: 'temp@example.com', // Will be replaced by API Gateway authorizer
+    };
 
     console.log('📝 Parsing request body...');
     const { prompt, totalDuration = 30, sceneCount = 1 } = await request.json();
@@ -44,16 +43,12 @@ export async function POST(request: NextRequest) {
 
     // Check environment variables
     console.log('🔍 Checking environment variables...');
-    console.log('AWS_REGION:', process.env.AWS_REGION);
-    console.log(
-      'QUEUE_MANAGER_LAMBDA_ARN:',
-      process.env.QUEUE_MANAGER_LAMBDA_ARN,
-    );
+    console.log('API_GATEWAY_URL:', process.env.API_GATEWAY_URL);
 
-    if (!process.env.QUEUE_MANAGER_LAMBDA_ARN) {
-      console.log('❌ Error: QUEUE_MANAGER_LAMBDA_ARN is not set');
+    if (!process.env.API_GATEWAY_URL) {
+      console.log('❌ Error: API_GATEWAY_URL is not set');
       return NextResponse.json(
-        { error: 'Queue Manager Lambda ARN not configured' },
+        { error: 'API Gateway URL not configured' },
         { status: 500 },
       );
     }
@@ -68,34 +63,38 @@ export async function POST(request: NextRequest) {
     };
     console.log('📦 Lambda payload prepared:', lambdaPayload);
 
-    // Invoke the Queue Manager Lambda function
-    console.log('🔧 Invoking Queue Manager Lambda function...');
-    const invokeCommand = new InvokeCommand({
-      FunctionName: process.env.QUEUE_MANAGER_LAMBDA_ARN,
-      Payload: JSON.stringify(lambdaPayload),
+    // Call the API Gateway endpoint
+    console.log('🔧 Calling API Gateway endpoint...');
+    const apiGatewayUrl = `${process.env.API_GATEWAY_URL}generate-video`;
+    console.log('📡 Sending request to:', apiGatewayUrl);
+
+    const lambdaResponse = await fetch(apiGatewayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+      },
+      body: JSON.stringify(lambdaPayload),
     });
 
-    console.log('📡 Sending Lambda request...');
-    const lambdaResponse = await lambda.send(invokeCommand);
-    console.log('✅ Lambda response received:', {
-      statusCode: lambdaResponse.StatusCode,
-      functionError: lambdaResponse.FunctionError,
-      logResult: lambdaResponse.LogResult,
-    });
+    console.log('📡 API Gateway response status:', lambdaResponse.status);
 
-    if (lambdaResponse.FunctionError) {
-      console.log('❌ Lambda function error:', lambdaResponse.FunctionError);
+    if (!lambdaResponse.ok) {
+      console.log(
+        '❌ API Gateway error:',
+        lambdaResponse.status,
+        lambdaResponse.statusText,
+      );
       return NextResponse.json(
-        { error: `Lambda function error: ${lambdaResponse.FunctionError}` },
-        { status: 500 },
+        {
+          error: `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
+        },
+        { status: lambdaResponse.status },
       );
     }
 
-    console.log('📄 Parsing Lambda response payload...');
-    const responsePayload = JSON.parse(
-      new TextDecoder().decode(lambdaResponse.Payload),
-    );
-    console.log('✅ Lambda response payload:', responsePayload);
+    const responsePayload = await lambdaResponse.json();
+    console.log('✅ API Gateway response received:', responsePayload);
 
     if (responsePayload.error) {
       console.log('❌ Lambda returned error:', responsePayload.error);

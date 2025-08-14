@@ -1,0 +1,1 @@
+{"principalId":"unauthorized","policyDocument":{"Version":"2012-10-17","Statement":[{"Action":"execute-api:Invoke","Effect":"Deny","Resource":"arn:aws:execute-api:us-east-1:445241615553:1247hc455c/prod/POST/generate-video"}]}}

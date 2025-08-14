@@ -6,6 +6,7 @@ import * as iam from 'aws-cdk-lib/aws-iam';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
@@ -139,6 +140,29 @@ export class ViralVideosStack extends cdk.Stack {
       }),
     );
 
+    // Lambda function for JWT authorization
+    const jwtAuthorizerLambda = new lambda.Function(
+      this,
+      'JWTAuthorizerLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/jwt-authorizer'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        environment: {
+          COGNITO_USER_POOL_ID:
+            process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
+          COGNITO_CLIENT_ID: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '',
+          COGNITO_REGION: process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1',
+          DEPLOYMENT_TIMESTAMP: new Date().toISOString(), // Force redeployment
+        },
+      },
+    );
+
     // Lambda function for queue management (receives requests and puts them in SQS)
     const queueManagerLambda = new lambda.Function(this, 'QueueManagerLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -152,6 +176,47 @@ export class ViralVideosStack extends cdk.Stack {
       environment: {
         VIDEO_QUEUE_URL: videoQueue.queueUrl,
       },
+    });
+
+    // API Gateway REST API
+    const api = new apigateway.RestApi(this, 'VideoGenerationApi', {
+      restApiName: 'Video Generation API',
+      description: 'API for video generation requests',
+      defaultCorsPreflightOptions: {
+        allowOrigins: apigateway.Cors.ALL_ORIGINS,
+        allowMethods: apigateway.Cors.ALL_METHODS,
+        allowHeaders: ['Content-Type', 'Authorization'],
+      },
+    });
+
+    // Lambda authorizer for JWT validation
+    const jwtAuthorizer = new apigateway.TokenAuthorizer(
+      this,
+      'JWTAuthorizer',
+      {
+        handler: jwtAuthorizerLambda,
+        identitySource: 'method.request.header.Authorization',
+        authorizerName: 'JWTAuthorizer',
+      },
+    );
+
+    // Lambda integration for the queue manager
+    const queueManagerIntegration = new apigateway.LambdaIntegration(
+      queueManagerLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
+    // Create API resource and method
+    const videoResource = api.root.addResource('generate-video');
+    videoResource.addMethod('POST', queueManagerIntegration, {
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+      authorizer: jwtAuthorizer,
     });
 
     // CloudWatch Log Group for Lambda
@@ -193,9 +258,24 @@ export class ViralVideosStack extends cdk.Stack {
       description: 'Lambda function ARN for queue management',
     });
 
+    new cdk.CfnOutput(this, 'JWTAuthorizerLambdaArn', {
+      value: jwtAuthorizerLambda.functionArn,
+      description: 'Lambda function ARN for JWT authorization',
+    });
+
     new cdk.CfnOutput(this, 'VideoQueueUrl', {
       value: videoQueue.queueUrl,
       description: 'SQS Queue URL for video generation',
+    });
+
+    new cdk.CfnOutput(this, 'ApiGatewayUrl', {
+      value: api.url,
+      description: 'API Gateway URL for video generation',
+    });
+
+    new cdk.CfnOutput(this, 'ApiGatewayEndpoint', {
+      value: `${api.url}generate-video`,
+      description: 'API Gateway endpoint for video generation',
     });
   }
 }

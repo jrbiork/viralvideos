@@ -42,6 +42,21 @@ export const handler = async (
       };
     }
 
+    // Extract user information from API Gateway authorizer context
+    // The JWT authorizer has already validated the token and provided user context
+    const userId =
+      event.requestContext?.authorizer?.userId ||
+      event.headers['X-User-Id'] ||
+      event.headers['x-user-id'] ||
+      'demo-user';
+    const userEmail =
+      event.requestContext?.authorizer?.email ||
+      event.headers['X-User-Email'] ||
+      event.headers['x-user-email'] ||
+      '';
+
+    console.log('✅ User authenticated via API Gateway authorizer:', userId);
+
     if (!process.env.VIDEO_QUEUE_URL) {
       console.log('❌ Error: VIDEO_QUEUE_URL is not set');
       return {
@@ -53,7 +68,7 @@ export const handler = async (
     // Prepare message for SQS
     const messageBody = {
       prompt: request.prompt,
-      userId: request.userId || 'demo-user',
+      userId: userId || request.userId || 'demo-user',
       timestamp: request.timestamp || new Date().toISOString(),
       totalDuration: request.totalDuration || 30,
       sceneCount: request.sceneCount || 3,

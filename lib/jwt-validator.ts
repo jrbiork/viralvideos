@@ -16,7 +16,7 @@ interface JWTPayload {
 }
 
 class JWTValidator {
-  private client: jwksClient.JwksClient;
+  private client: any;
   private userPoolId: string;
   private clientId: string;
 
@@ -34,14 +34,11 @@ class JWTValidator {
 
     this.client = jwksClient({
       jwksUri,
-      cache: true,
-      cacheMaxEntries: 5,
-      cacheMaxAge: 600000, // 10 minutes
     });
   }
 
   private getKey(header: any, callback: any) {
-    this.client.getSigningKey(header.kid, (err, key) => {
+    this.client.getSigningKey(header.kid, (err: any, key: any) => {
       if (err) {
         callback(err);
         return;
