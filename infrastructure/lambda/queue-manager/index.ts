@@ -6,6 +6,7 @@ const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 interface VideoGenerationRequest {
   prompt: string;
   userId: string;
+  userEmail?: string;
   timestamp: string;
   totalDuration: number;
   sceneCount: number;
@@ -14,10 +15,7 @@ interface VideoGenerationRequest {
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
-  console.log('🚀 Queue Manager Lambda started');
-
   try {
-    console.log('📝 Parsing request...');
     let request: VideoGenerationRequest;
 
     // Handle different event formats
@@ -42,20 +40,11 @@ export const handler = async (
       };
     }
 
-    // Extract user information from API Gateway authorizer context
-    // The JWT authorizer has already validated the token and provided user context
+    // Extract user information from JWT authorizer context or request body
     const userId =
-      event.requestContext?.authorizer?.userId ||
-      event.headers['X-User-Id'] ||
-      event.headers['x-user-id'] ||
-      'demo-user';
+      event.requestContext?.authorizer?.userId || request.userId || 'demo-user';
     const userEmail =
-      event.requestContext?.authorizer?.email ||
-      event.headers['X-User-Email'] ||
-      event.headers['x-user-email'] ||
-      '';
-
-    console.log('✅ User authenticated via API Gateway authorizer:', userId);
+      event.requestContext?.authorizer?.email || request.userEmail || '';
 
     if (!process.env.VIDEO_QUEUE_URL) {
       console.log('❌ Error: VIDEO_QUEUE_URL is not set');
@@ -74,8 +63,6 @@ export const handler = async (
       sceneCount: request.sceneCount || 3,
     };
 
-    console.log('📦 Preparing SQS message:', messageBody);
-
     // Send message to SQS
     const sendMessageCommand = new SendMessageCommand({
       QueueUrl: process.env.VIDEO_QUEUE_URL,
@@ -92,9 +79,7 @@ export const handler = async (
       },
     });
 
-    console.log('📡 Sending message to SQS...');
     const sqsResponse = await sqs.send(sendMessageCommand);
-    console.log('✅ Message sent to SQS:', sqsResponse.MessageId);
 
     return {
       statusCode: 200,

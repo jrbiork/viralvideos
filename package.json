@@ -22,6 +22,7 @@
     "autoprefixer": "^10.4.17",
     "axios": "^1.6.7",
     "date-fns": "^4.1.0",
+    "jose": "^6.0.12",
     "jsonwebtoken": "^9.0.2",
     "jwks-client": "^2.0.5",
     "lucide-react": "^0.330.0",

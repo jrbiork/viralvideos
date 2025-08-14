@@ -140,29 +140,6 @@ export class ViralVideosStack extends cdk.Stack {
       }),
     );
 
-    // Lambda function for JWT authorization
-    const jwtAuthorizerLambda = new lambda.Function(
-      this,
-      'JWTAuthorizerLambda',
-      {
-        runtime: lambda.Runtime.NODEJS_20_X,
-        handler: 'index.handler',
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, '../dist/jwt-authorizer'),
-        ),
-        role: lambdaRole,
-        timeout: cdk.Duration.seconds(30),
-        memorySize: 128,
-        environment: {
-          COGNITO_USER_POOL_ID:
-            process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
-          COGNITO_CLIENT_ID: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '',
-          COGNITO_REGION: process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1',
-          DEPLOYMENT_TIMESTAMP: new Date().toISOString(), // Force redeployment
-        },
-      },
-    );
-
     // Lambda function for queue management (receives requests and puts them in SQS)
     const queueManagerLambda = new lambda.Function(this, 'QueueManagerLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -178,6 +155,43 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    // Lambda function for JWT authorization
+    const jwtAuthorizerLambda = new lambda.Function(
+      this,
+      'JWTAuthorizerLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/jwt-authorizer'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        environment: {
+          NEXT_PUBLIC_COGNITO_USER_POOL_ID:
+            process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
+          NEXT_PUBLIC_COGNITO_CLIENT_ID:
+            process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '',
+          NEXT_PUBLIC_COGNITO_REGION:
+            process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1',
+        },
+      },
+    );
+
+    // Lambda function for fetching videos
+    const fetchVideosLambda = new lambda.Function(this, 'FetchVideosLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/fetch-videos')),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(1),
+      memorySize: 128,
+      environment: {
+        VIDEO_BUCKET_NAME: videoBucket.bucketName,
+      },
+    });
+
     // API Gateway REST API
     const api = new apigateway.RestApi(this, 'VideoGenerationApi', {
       restApiName: 'Video Generation API',
@@ -188,17 +202,6 @@ export class ViralVideosStack extends cdk.Stack {
         allowHeaders: ['Content-Type', 'Authorization'],
       },
     });
-
-    // Lambda authorizer for JWT validation
-    const jwtAuthorizer = new apigateway.TokenAuthorizer(
-      this,
-      'JWTAuthorizer',
-      {
-        handler: jwtAuthorizerLambda,
-        identitySource: 'method.request.header.Authorization',
-        authorizerName: 'JWTAuthorizer',
-      },
-    );
 
     // Lambda integration for the queue manager
     const queueManagerIntegration = new apigateway.LambdaIntegration(
@@ -212,10 +215,37 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    // Create API resource and method
+    // JWT Authorizer
+    const jwtAuthorizer = new apigateway.TokenAuthorizer(
+      this,
+      'JWTAuthorizer',
+      {
+        handler: jwtAuthorizerLambda,
+        identitySource: 'method.request.header.Authorization',
+        authorizerName: 'JWTAuthorizer',
+      },
+    );
+
+    // Lambda integration for fetching videos
+    const fetchVideosIntegration = new apigateway.LambdaIntegration(
+      fetchVideosLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
+    // Create API resources and methods with JWT authorization
     const videoResource = api.root.addResource('generate-video');
     videoResource.addMethod('POST', queueManagerIntegration, {
-      authorizationType: apigateway.AuthorizationType.CUSTOM,
+      authorizer: jwtAuthorizer,
+    });
+
+    const fetchVideosResource = api.root.addResource('fetch-videos');
+    fetchVideosResource.addMethod('GET', fetchVideosIntegration, {
       authorizer: jwtAuthorizer,
     });
 
@@ -228,6 +258,18 @@ export class ViralVideosStack extends cdk.Stack {
 
     new logs.LogGroup(this, 'QueueManagerLogGroup', {
       logGroupName: `/aws/lambda/${queueManagerLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'FetchVideosLogGroup', {
+      logGroupName: `/aws/lambda/${fetchVideosLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'JWTAuthorizerLogGroup', {
+      logGroupName: `/aws/lambda/${jwtAuthorizerLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -258,9 +300,24 @@ export class ViralVideosStack extends cdk.Stack {
       description: 'Lambda function ARN for queue management',
     });
 
+    new cdk.CfnOutput(this, 'FetchVideosLambdaArn', {
+      value: fetchVideosLambda.functionArn,
+      description: 'Lambda function ARN for fetching videos',
+    });
+
+    new cdk.CfnOutput(this, 'FetchVideosLambdaName', {
+      value: fetchVideosLambda.functionName,
+      description: 'Lambda function name for fetching videos',
+    });
+
     new cdk.CfnOutput(this, 'JWTAuthorizerLambdaArn', {
       value: jwtAuthorizerLambda.functionArn,
       description: 'Lambda function ARN for JWT authorization',
+    });
+
+    new cdk.CfnOutput(this, 'JWTAuthorizerLambdaName', {
+      value: jwtAuthorizerLambda.functionName,
+      description: 'Lambda function name for JWT authorization',
     });
 
     new cdk.CfnOutput(this, 'VideoQueueUrl', {
@@ -276,6 +333,11 @@ export class ViralVideosStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiGatewayEndpoint', {
       value: `${api.url}generate-video`,
       description: 'API Gateway endpoint for video generation',
+    });
+
+    new cdk.CfnOutput(this, 'FetchVideosEndpoint', {
+      value: `${api.url}fetch-videos`,
+      description: 'API Gateway endpoint for fetching videos',
     });
   }
 }

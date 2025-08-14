@@ -25,6 +25,7 @@
   "include": [
     "video-generation/**/*.ts",
     "queue-manager/**/*.ts",
+    "fetch-videos/**/*.ts",
     "jwt-authorizer/**/*.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]

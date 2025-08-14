@@ -17,21 +17,15 @@ export function useAuthenticatedFetch() {
       throw new Error('User must be authenticated to make this request');
     }
 
-    const token = localStorage.getItem('cognito_token');
-
-    if (!token) {
-      throw new Error('No authentication token found');
-    }
-
     const { method = 'GET', headers = {}, body } = options;
 
     const fetchOptions: RequestInit = {
       method,
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
         ...headers,
       },
+      credentials: 'include', // Include cookies for session authentication
     };
 
     if (body && method !== 'GET') {

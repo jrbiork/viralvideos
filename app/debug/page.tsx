@@ -8,48 +8,34 @@ export default function DebugPage() {
   const [tokenInfo, setTokenInfo] = useState<any>(null);
   const [testResult, setTestResult] = useState<string>('');
 
-  const checkToken = () => {
-    const token = localStorage.getItem('cognito_token');
-    if (!token) {
-      setTokenInfo({ error: 'No token found' });
-      return;
-    }
-
+  const checkSession = async () => {
     try {
-      // Decode the JWT token (without verification) to see its contents
-      const parts = token.split('.');
-      if (parts.length !== 3) {
-        setTokenInfo({ error: 'Invalid token format' });
-        return;
-      }
+      const response = await fetch('/api/auth/session');
+      const data = await response.json();
 
-      const payload = JSON.parse(atob(parts[1]));
-      setTokenInfo({
-        token: token.substring(0, 50) + '...',
-        payload,
-        exp: new Date(payload.exp * 1000).toISOString(),
-        now: new Date().toISOString(),
-        isExpired: Date.now() > payload.exp * 1000,
-      });
+      if (data.user) {
+        setTokenInfo({
+          session: 'Active',
+          user: data.user,
+          timestamp: new Date().toISOString(),
+          responseData: data,
+        });
+      } else {
+        setTokenInfo({ error: 'No active session' });
+      }
     } catch (error) {
-      setTokenInfo({ error: 'Failed to decode token', details: error });
+      setTokenInfo({ error: 'Failed to check session', details: error });
     }
   };
 
   const testApiGateway = async () => {
-    const token = localStorage.getItem('cognito_token');
-    if (!token) {
-      setTestResult('No token found');
-      return;
-    }
-
     try {
       const response = await fetch('/api/generate-video', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
+        credentials: 'include',
         body: JSON.stringify({
           prompt: 'Test video generation',
           totalDuration: 10,
@@ -59,6 +45,46 @@ export default function DebugPage() {
 
       const result = await response.text();
       setTestResult(`Status: ${response.status}\nResponse: ${result}`);
+    } catch (error) {
+      setTestResult(`Error: ${error}`);
+    }
+  };
+
+  const debugToken = async () => {
+    try {
+      setTestResult(
+        'Token debugging is not available with session-based auth. The token is only used temporarily during login.',
+      );
+    } catch (error) {
+      setTestResult(`Error: ${error}`);
+    }
+  };
+
+  const testCognitoUserInfo = async () => {
+    try {
+      setTestResult(
+        'Cognito user info testing is not available with session-based auth. User info is fetched during session creation.',
+      );
+    } catch (error) {
+      setTestResult(`Error: ${error}`);
+    }
+  };
+
+  const testSessionCreation = async () => {
+    try {
+      setTestResult(
+        'Testing session creation... Please sign out and sign in again to see the debug logs in your server console.',
+      );
+    } catch (error) {
+      setTestResult(`Error: ${error}`);
+    }
+  };
+
+  const testCognitoConfig = async () => {
+    try {
+      const response = await fetch('/api/auth/test-cognito-config');
+      const result = await response.json();
+      setTestResult(`Cognito Config Test:\n${JSON.stringify(result, null, 2)}`);
     } catch (error) {
       setTestResult(`Error: ${error}`);
     }
@@ -86,12 +112,12 @@ export default function DebugPage() {
         </div>
 
         <div className="bg-slate-800 p-6 rounded-lg">
-          <h2 className="text-xl font-semibold mb-4">Token Analysis</h2>
+          <h2 className="text-xl font-semibold mb-4">Session Analysis</h2>
           <button
-            onClick={checkToken}
+            onClick={checkSession}
             className="bg-blue-500 px-4 py-2 rounded mb-4"
           >
-            Check Token
+            Check Session
           </button>
           {tokenInfo && (
             <pre className="bg-slate-900 p-4 rounded text-sm overflow-auto">
@@ -104,9 +130,33 @@ export default function DebugPage() {
           <h2 className="text-xl font-semibold mb-4">API Gateway Test</h2>
           <button
             onClick={testApiGateway}
-            className="bg-green-500 px-4 py-2 rounded mb-4"
+            className="bg-green-500 px-4 py-2 rounded mb-4 mr-2"
           >
             Test API Gateway
+          </button>
+          <button
+            onClick={debugToken}
+            className="bg-purple-500 px-4 py-2 rounded mb-4 mr-2"
+          >
+            Debug Token
+          </button>
+          <button
+            onClick={testCognitoUserInfo}
+            className="bg-orange-500 px-4 py-2 rounded mb-4 mr-2"
+          >
+            Test Cognito User Info
+          </button>
+          <button
+            onClick={testSessionCreation}
+            className="bg-blue-500 px-4 py-2 rounded mb-4 mr-2"
+          >
+            Test Session Creation
+          </button>
+          <button
+            onClick={testCognitoConfig}
+            className="bg-green-500 px-4 py-2 rounded mb-4"
+          >
+            Test Cognito Config
           </button>
           {testResult && (
             <pre className="bg-slate-900 p-4 rounded text-sm overflow-auto">

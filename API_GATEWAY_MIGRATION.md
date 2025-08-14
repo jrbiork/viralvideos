@@ -22,7 +22,6 @@ This document explains the migration from direct Lambda invocation to using API 
 ### 3. Environment Configuration
 
 - Updated `env.example` to use `API_GATEWAY_URL` instead of `QUEUE_MANAGER_LAMBDA_ARN`
-- Created deployment script `infrastructure/deploy-api-gateway.sh`
 
 ## Benefits of Using API Gateway
 
@@ -35,21 +34,21 @@ This document explains the migration from direct Lambda invocation to using API 
 
 ## Authentication
 
-The API Gateway endpoint now uses a Lambda authorizer for JWT validation:
+The API Gateway endpoint now uses session-based authentication:
 
-1. **Next.js API Route**: Extracts the Authorization header and forwards it to API Gateway
-2. **API Gateway Authorizer**: Validates the JWT token using a dedicated Lambda function
-3. **JWT Authorizer Lambda**: Validates the token against Cognito and provides user context
-4. **Queue Manager Lambda**: Receives the validated user information from the authorizer context
+1. **Next.js API Route**: Verifies session and forwards user information to API Gateway
+2. **API Gateway**: Public endpoint (no authorization required)
+3. **Queue Manager Lambda**: Receives user information from the request body
+4. **Session Management**: Handled by Next.js with secure HTTP-only cookies
 
-This provides a secure, scalable authentication mechanism at the API Gateway level.
+This provides a fast, secure authentication mechanism without external API calls.
 
-### JWT Authorizer Features:
+### Session-Based Authentication Features:
 
-- Validates JWT tokens against AWS Cognito
-- Checks token expiration and format
-- Provides user context (ID, email, name) to downstream Lambda functions
-- Returns proper IAM policies for API Gateway authorization
+- Fast local session verification (no Cognito API calls)
+- Secure HTTP-only cookies
+- 24-hour session duration
+- Automatic session expiration handling
 
 ## Deployment Steps
 
@@ -57,7 +56,7 @@ This provides a secure, scalable authentication mechanism at the API Gateway lev
 
    ```bash
    cd infrastructure
-   ./deploy-api-gateway.sh
+   ./deploy.sh
    ```
 
 2. **Update your environment variables**:
@@ -85,19 +84,20 @@ You can test the endpoint directly:
 ```bash
 curl -X POST https://your-api-id.execute-api.region.amazonaws.com/prod/generate-video \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer your-jwt-token" \
   -d '{
     "prompt": "A beautiful sunset over the ocean",
     "totalDuration": 30,
     "sceneCount": 3,
     "userId": "test-user",
+    "userEmail": "test@example.com",
     "timestamp": "2024-01-01T00:00:00.000Z"
   }'
 ```
 
-**Note**: The API Gateway endpoint requires only the Authorization header:
+**Note**: The API Gateway endpoint is now public and expects user information in the request body:
 
-- `Authorization`: Bearer token (JWT) - The JWT authorizer will validate this token and extract user information
+- `userId`: User ID from the session
+- `userEmail`: User email from the session
 
 ## Troubleshooting
 

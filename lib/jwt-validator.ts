@@ -65,7 +65,7 @@ class JWTValidator {
             issuer: `https://cognito-idp.${
               process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1'
             }.amazonaws.com/${this.userPoolId}`,
-            audience: this.clientId,
+            // Don't validate audience here - we'll do it manually below
           },
           (err, decoded) => {
             if (err) {
@@ -78,6 +78,19 @@ class JWTValidator {
             const payload = decoded as JWTPayload;
             console.log('✅ JWT token validated successfully');
             console.log('Token payload keys:', Object.keys(payload));
+
+            // Manual audience validation for Cognito tokens
+            const hasValidAudience =
+              (payload.aud && payload.aud === this.clientId) ||
+              (payload.client_id && payload.client_id === this.clientId);
+
+            if (!hasValidAudience) {
+              console.error('❌ Invalid audience. Expected:', this.clientId);
+              console.error('❌ Token aud:', payload.aud);
+              console.error('❌ Token client_id:', payload.client_id);
+              resolve(null);
+              return;
+            }
 
             // Additional validation
             if (payload.token_use !== 'access') {

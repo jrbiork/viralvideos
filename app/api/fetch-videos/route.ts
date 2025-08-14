@@ -1,180 +1,146 @@
 import { NextRequest, NextResponse } from 'next/server';
-import {
-  S3Client,
-  ListObjectsV2Command,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { validateAuthToken } from '../../../lib/auth-utils';
-
-const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
+import { verifySession } from '../../../lib/session-utils';
 
 export async function GET(request: NextRequest) {
   console.log('🚀 Starting video fetch request...');
 
   try {
-    // Validate authentication
-    const authResult = await validateAuthToken(request);
-    if (!authResult) {
-      console.log('❌ Unauthorized: Missing or invalid auth token');
+    // Verify session
+    console.log('🔍 Verifying session...');
+    const session = await verifySession();
+    console.log('📋 Session verification result:', {
+      hasSession: !!session,
+      userId: session?.userId,
+      email: session?.email,
+      hasCognitoToken: !!session?.cognitoToken,
+      cognitoTokenLength: session?.cognitoToken?.length,
+    });
 
-      // Temporary fallback for debugging - check if we have a basic token
-      const authHeader = request.headers.get('authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.replace('Bearer ', '');
-        console.log('🔍 Debug: Found token with length:', token.length);
-        console.log('🔍 Debug: Token preview:', token.substring(0, 50) + '...');
-
-        // For debugging, allow requests with any token longer than 10 chars
-        if (token.length > 10) {
-          console.log(
-            '⚠️  Debug mode: Allowing request with basic token validation',
-          );
-          const { searchParams } = new URL(request.url);
-          const userId = searchParams.get('userId') || 'demo-user4';
-
-          // Continue with the rest of the function using demo user
-          console.log('🔍 Checking environment variables...');
-          console.log('AWS_REGION:', process.env.AWS_REGION);
-          console.log('VIDEO_BUCKET_NAME:', process.env.VIDEO_BUCKET_NAME);
-
-          if (!process.env.VIDEO_BUCKET_NAME) {
-            console.log('❌ Error: VIDEO_BUCKET_NAME is not set');
-            return NextResponse.json(
-              { error: 'S3 bucket name not configured' },
-              { status: 500 },
-            );
-          }
-
-          // List objects in the S3 bucket for this user
-          console.log('📋 Listing videos for user:', userId);
-          const listCommand = new ListObjectsV2Command({
-            Bucket: process.env.VIDEO_BUCKET_NAME,
-            Prefix: `${userId}/`,
-          });
-
-          const listResponse = await s3.send(listCommand);
-          console.log('✅ Listed objects:', listResponse.Contents?.length || 0);
-
-          if (!listResponse.Contents || listResponse.Contents.length === 0) {
-            console.log('📭 No videos found for user:', userId);
-            return NextResponse.json({
-              videos: [],
-              message: 'No videos found',
-            });
-          }
-
-          // Filter for video files and generate pre-signed URLs
-          const videos = await Promise.all(
-            listResponse.Contents.filter((object) =>
-              object.Key?.endsWith('.mp4'),
-            ).map(async (object) => {
-              if (!object.Key) return null;
-
-              console.log('🔗 Generating pre-signed URL for:', object.Key);
-              const getObjectCommand = new GetObjectCommand({
-                Bucket: process.env.VIDEO_BUCKET_NAME,
-                Key: object.Key,
-              });
-
-              const videoUrl = await getSignedUrl(s3, getObjectCommand, {
-                expiresIn: 3600, // 1 hour
-              });
-
-              return {
-                key: object.Key,
-                url: videoUrl,
-                size: object.Size,
-                lastModified: object.LastModified,
-                timestamp: object.Key.split('/').pop()?.split('.')[0] || '',
-              };
-            }),
-          );
-
-          const validVideos = videos.filter((video) => video !== null);
-          console.log('✅ Generated URLs for', validVideos.length, 'videos');
-
-          return NextResponse.json({
-            videos: validVideos,
-            message: `Found ${validVideos.length} videos`,
-          });
-        }
-      }
-
+    if (!session) {
+      console.log('❌ Unauthorized: No valid session found');
       return NextResponse.json(
-        { error: 'Unauthorized: Missing or invalid authentication token' },
+        { error: 'Unauthorized: No valid session found' },
         { status: 401 },
       );
     }
 
-    const { userInfo } = authResult;
+    // Use session user info
+    const userInfo = {
+      id: session.userId,
+      email: session.email,
+    };
+
+    console.log('✅ Authenticated user:', userInfo.id);
+
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId') || userInfo.id;
 
-    console.log('🔍 Checking environment variables...');
-    console.log('AWS_REGION:', process.env.AWS_REGION);
-    console.log('VIDEO_BUCKET_NAME:', process.env.VIDEO_BUCKET_NAME);
+    console.log('👤 User info:', {
+      userId: userId,
+      userInfoId: userInfo.id,
+      searchParamsUserId: searchParams.get('userId'),
+    });
 
-    if (!process.env.VIDEO_BUCKET_NAME) {
-      console.log('❌ Error: VIDEO_BUCKET_NAME is not set');
+    console.log('🔧 Environment check:', {
+      hasApiGatewayUrl: !!process.env.API_GATEWAY_URL,
+      apiGatewayUrl: process.env.API_GATEWAY_URL,
+    });
+
+    if (!process.env.API_GATEWAY_URL) {
+      console.log('❌ Error: API_GATEWAY_URL is not set');
       return NextResponse.json(
-        { error: 'S3 bucket name not configured' },
+        { error: 'API Gateway URL not configured' },
         { status: 500 },
       );
     }
 
-    // List objects in the S3 bucket for this user
-    console.log('📋 Listing videos for user:', userId);
-    const listCommand = new ListObjectsV2Command({
-      Bucket: process.env.VIDEO_BUCKET_NAME,
-      Prefix: `${userId}/`,
-    });
+    // Get the Cognito JWT token from the session or request headers
+    let cognitoToken = session.cognitoToken;
 
-    const listResponse = await s3.send(listCommand);
-    console.log('✅ Listed objects:', listResponse.Contents?.length || 0);
-
-    if (!listResponse.Contents || listResponse.Contents.length === 0) {
-      console.log('📭 No videos found for user:', userId);
-      return NextResponse.json({
-        videos: [],
-        message: 'No videos found',
-      });
+    // If not in session, try to get from request headers
+    if (!cognitoToken) {
+      const authHeader = request.headers.get('authorization');
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        cognitoToken = authHeader.replace('Bearer ', '');
+        console.log(
+          '🔍 Found Cognito token in request headers, length:',
+          cognitoToken.length,
+        );
+      }
     }
 
-    // Filter for video files and generate pre-signed URLs
-    const videos = await Promise.all(
-      listResponse.Contents.filter((object) =>
-        object.Key?.endsWith('.mp4'),
-      ).map(async (object) => {
-        if (!object.Key) return null;
-
-        console.log('🔗 Generating pre-signed URL for:', object.Key);
-        const getObjectCommand = new GetObjectCommand({
-          Bucket: process.env.VIDEO_BUCKET_NAME,
-          Key: object.Key,
-        });
-
-        const videoUrl = await getSignedUrl(s3, getObjectCommand, {
-          expiresIn: 3600, // 1 hour
-        });
-
-        return {
-          key: object.Key,
-          url: videoUrl,
-          size: object.Size,
-          lastModified: object.LastModified,
-          timestamp: object.Key.split('/').pop()?.split('.')[0] || '',
-        };
-      }),
-    );
-
-    const validVideos = videos.filter((video) => video !== null);
-    console.log('✅ Generated URLs for', validVideos.length, 'videos');
-
-    return NextResponse.json({
-      videos: validVideos,
-      message: `Found ${validVideos.length} videos`,
+    console.log('Session data for fetch-videos:', {
+      userId: session.userId,
+      email: session.email,
+      hasCognitoToken: !!cognitoToken,
+      cognitoTokenLength: cognitoToken?.length,
     });
+
+    if (!cognitoToken) {
+      console.log('❌ No Cognito JWT token found in session or headers');
+      return NextResponse.json(
+        { error: 'Unauthorized: No valid Cognito token found' },
+        { status: 401 },
+      );
+    }
+
+    const authHeader = `Bearer ${cognitoToken}`;
+
+    // Call the API Gateway endpoint
+    const apiGatewayUrl = `${
+      process.env.API_GATEWAY_URL
+    }fetch-videos?userId=${encodeURIComponent(userId)}`;
+
+    console.log('🔗 Calling API Gateway:', apiGatewayUrl);
+    console.log('🔗 Full URL breakdown:', {
+      baseUrl: process.env.API_GATEWAY_URL,
+      endpoint: 'fetch-videos',
+      userId: userId,
+      encodedUserId: encodeURIComponent(userId),
+      fullUrl: apiGatewayUrl,
+    });
+    console.log('🔑 Using Cognito token length:', cognitoToken.length);
+
+    const lambdaResponse = await fetch(apiGatewayUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+      },
+    });
+
+    console.log('📡 API Gateway response:', {
+      status: lambdaResponse.status,
+      statusText: lambdaResponse.statusText,
+      ok: lambdaResponse.ok,
+    });
+
+    if (!lambdaResponse.ok) {
+      console.log(
+        '❌ API Gateway error:',
+        lambdaResponse.status,
+        lambdaResponse.statusText,
+      );
+      return NextResponse.json(
+        {
+          error: `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
+        },
+        { status: lambdaResponse.status },
+      );
+    }
+
+    const responsePayload = await lambdaResponse.json();
+
+    if (responsePayload.error) {
+      console.log('❌ Lambda error:', responsePayload.error);
+      return NextResponse.json(
+        { error: responsePayload.error },
+        { status: 500 },
+      );
+    }
+
+    console.log('✅ Successfully fetched videos from API Gateway');
+    return NextResponse.json(responsePayload);
   } catch (error) {
     console.error('💥 Error in video fetch:', error);
     console.error(

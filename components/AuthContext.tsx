@@ -31,18 +31,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already authenticated (e.g., from localStorage or session)
+    // Check if user is already authenticated via session
     const checkAuthStatus = async () => {
       try {
-        const token = localStorage.getItem('cognito_token');
-        if (token) {
-          // Validate token and get user info
-          const userInfo = await getUserInfo(token);
-          setUser(userInfo);
+        const response = await fetch('/api/auth/session');
+        const data = await response.json();
+
+        if (data.user) {
+          setUser(data.user);
         }
       } catch (error) {
         console.error('Auth check failed:', error);
-        localStorage.removeItem('cognito_token');
       } finally {
         setIsLoading(false);
       }
@@ -100,12 +99,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Exchange authorization code for tokens
       const tokens = await exchangeCodeForTokens(code);
 
-      // Store the access token
-      localStorage.setItem('cognito_token', tokens.access_token);
+      console.log('Tokens received:', {
+        access_token: tokens.access_token ? 'present' : 'missing',
+        token_type: tokens.token_type,
+        available_tokens: Object.keys(tokens),
+      });
 
-      // Get user information
-      const userInfo = await getUserInfo(tokens.access_token);
-      setUser(userInfo);
+      // Create a session with the token
+      const sessionResponse = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ token: tokens.access_token }),
+      });
+
+      console.log('Session response status:', sessionResponse.status);
+
+      if (!sessionResponse.ok) {
+        const errorText = await sessionResponse.text();
+        console.error('Session creation failed:', errorText);
+        throw new Error('Failed to create session');
+      }
+
+      const sessionData = await sessionResponse.json();
+      console.log('Session data received:', sessionData);
+      setUser(sessionData.user);
 
       // Clear the state parameter
       localStorage.removeItem('oauth_state');
@@ -126,9 +145,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Clear the session on the server
+      await fetch('/api/auth/session', {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+
     setUser(null);
-    localStorage.removeItem('cognito_token');
     localStorage.removeItem('oauth_state');
 
     // Redirect to Cognito logout if needed

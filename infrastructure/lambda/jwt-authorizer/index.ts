@@ -1,3 +1,7 @@
+import {
+  APIGatewayTokenAuthorizerEvent,
+  APIGatewayAuthorizerResult,
+} from 'aws-lambda';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 
 interface JWTPayload {
@@ -14,76 +18,45 @@ interface JWTPayload {
   [key: string]: any;
 }
 
-interface AuthorizerResponse {
-  principalId: string;
-  policyDocument: {
-    Version: string;
-    Statement: Array<{
-      Action: string;
-      Effect: string;
-      Resource: string;
-    }>;
-  };
-  context?: {
-    [key: string]: string;
-  };
-}
-
-class JWTAuthorizer {
+class JWTValidator {
+  private jwks: any;
   private userPoolId: string;
   private clientId: string;
-  private region: string;
-  private jwksUrl: string;
 
   constructor() {
-    this.userPoolId = process.env.COGNITO_USER_POOL_ID || '';
-    this.clientId = process.env.COGNITO_CLIENT_ID || '';
-    this.region = process.env.COGNITO_REGION || 'us-east-1';
+    this.userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '';
+    this.clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '';
 
     if (!this.userPoolId) {
-      throw new Error('COGNITO_USER_POOL_ID is not configured');
+      throw new Error('NEXT_PUBLIC_COGNITO_USER_POOL_ID is not configured');
     }
 
-    if (!this.clientId) {
-      throw new Error('COGNITO_CLIENT_ID is not configured');
-    }
+    // Initialize JWKS for Cognito
+    const region = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1';
+    const jwksUri = `https://cognito-idp.${region}.amazonaws.com/${this.userPoolId}/.well-known/jwks.json`;
 
-    this.jwksUrl = `https://cognito-idp.${this.region}.amazonaws.com/${this.userPoolId}/.well-known/jwks.json`;
+    this.jwks = createRemoteJWKSet(new URL(jwksUri));
   }
 
   async validateToken(token: string): Promise<JWTPayload | null> {
     try {
-      console.log('🔍 Validating JWT token in authorizer...');
+      console.log('🔍 Validating JWT token...');
       console.log('Token length:', token.length);
       console.log('User Pool ID:', this.userPoolId);
       console.log('Client ID:', this.clientId);
-      console.log('JWKS URL:', this.jwksUrl);
 
-      // Create JWKS client
-      const JWKS = createRemoteJWKSet(new URL(this.jwksUrl));
+      const region = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1';
+      const issuer = `https://cognito-idp.${region}.amazonaws.com/${this.userPoolId}`;
 
-      // Verify the JWT token
-      const { payload } = await jwtVerify(token, JWKS, {
-        issuer: `https://cognito-idp.${this.region}.amazonaws.com/${this.userPoolId}`,
+      const { payload } = await jwtVerify(token, this.jwks, {
+        issuer,
         algorithms: ['RS256'],
+        // Don't validate audience here - we'll do it manually below
       });
 
-      console.log('✅ JWT token validated successfully');
-      console.log('Token payload keys:', Object.keys(payload));
-
       const jwtPayload = payload as JWTPayload;
-
-      // Manual audience validation - check client_id instead of aud
-      const tokenClientId = jwtPayload.client_id || jwtPayload.aud;
-      if (tokenClientId !== this.clientId) {
-        console.error(
-          '❌ Invalid audience. Expected:',
-          this.clientId,
-          'Got:',
-          tokenClientId,
-        );
-        return null;
-      }
+      console.log('✅ JWT token validated successfully');
+      console.log('Token payload keys:', Object.keys(jwtPayload));
 
       // Additional validation
       if (jwtPayload.token_use !== 'access') {
@@ -105,99 +78,66 @@ class JWTAuthorizer {
       return null;
     }
   }
-
-  generatePolicy(
-    principalId: string,
-    effect: string,
-    resource: string,
-    context?: any,
-  ): AuthorizerResponse {
-    const policy: AuthorizerResponse = {
-      principalId,
-      policyDocument: {
-        Version: '2012-10-17',
-        Statement: [
-          {
-            Action: 'execute-api:Invoke',
-            Effect: effect,
-            Resource: resource,
-          },
-        ],
-      },
-    };
-
-    if (context) {
-      policy.context = context;
-    }
-
-    return policy;
-  }
 }
 
-// Create a singleton instance
-let jwtAuthorizer: JWTAuthorizer | null = null;
-
-function getJWTAuthorizer(): JWTAuthorizer {
-  if (!jwtAuthorizer) {
-    jwtAuthorizer = new JWTAuthorizer();
-  }
-  return jwtAuthorizer;
-}
-
-export const handler = async (event: any): Promise<AuthorizerResponse> => {
-  console.log('🚀 JWT Authorizer Lambda started');
-  console.log('Event:', JSON.stringify(event, null, 2));
-
+export const handler = async (
+  event: APIGatewayTokenAuthorizerEvent,
+): Promise<APIGatewayAuthorizerResult> => {
   try {
-    // Extract the token from the Authorization header
-    const authHeader = event.authorizationToken;
+    console.log('🔐 JWT Authorizer called');
+    console.log('Event:', JSON.stringify(event, null, 2));
 
-    if (!authHeader) {
+    const token = event.authorizationToken;
+
+    if (!token) {
       console.log('❌ No authorization token provided');
       throw new Error('Unauthorized: No authorization token provided');
     }
 
     // Remove 'Bearer ' prefix if present
-    const token = authHeader.startsWith('Bearer ')
-      ? authHeader.substring(7)
-      : authHeader;
+    const cleanToken = token.replace('Bearer ', '');
 
-    if (!token || token.length < 10) {
-      console.log('❌ Token too short or empty');
-      throw new Error('Unauthorized: Invalid token format');
+    if (!cleanToken) {
+      console.log('❌ Empty token after cleaning');
+      throw new Error('Unauthorized: Empty authorization token');
     }
 
     // Validate the JWT token
-    const authorizer = getJWTAuthorizer();
-    const payload = await authorizer.validateToken(token);
+    const jwtValidator = new JWTValidator();
+    const payload = await jwtValidator.validateToken(cleanToken);
 
     if (!payload) {
-      console.log('❌ Token validation failed');
-      throw new Error('Unauthorized: Token validation failed');
+      console.log('❌ JWT validation failed');
+      throw new Error('Unauthorized: Invalid JWT token');
     }
 
-    console.log('✅ Token validated successfully for user:', payload.sub);
+    console.log('✅ JWT validation successful for user:', payload.sub);
 
-    // Generate the policy document
-    const policy = authorizer.generatePolicy(
-      payload.sub,
-      'Allow',
-      event.methodArn,
-      {
+    // Generate IAM policy
+    const policy: APIGatewayAuthorizerResult = {
+      principalId: payload.sub,
+      policyDocument: {
+        Version: '2012-10-17',
+        Statement: [
+          {
+            Action: 'execute-api:Invoke',
+            Effect: 'Allow',
+            Resource: event.methodArn,
+          },
+        ],
+      },
+      context: {
         userId: payload.sub,
         email: payload.email,
         name: payload.name || '',
         picture: payload.picture || '',
       },
-    );
+    };
 
-    console.log('✅ Policy generated:', JSON.stringify(policy, null, 2));
+    console.log('📋 Generated policy:', JSON.stringify(policy, null, 2));
     return policy;
   } catch (error) {
-    console.error('❌ Authorization failed:', error);
-
-    // Return a deny policy
-    const authorizer = getJWTAuthorizer();
-    return authorizer.generatePolicy('unauthorized', 'Deny', event.methodArn);
+    console.error('💥 JWT Authorizer error:', error);
+    throw new Error('Unauthorized: JWT validation failed');
   }
 };

@@ -39,17 +39,17 @@ export default function LoginButton({
             {user.picture ? (
               <img
                 src={user.picture}
-                alt={user.name}
+                alt={user.name || user.email}
                 className="w-6 h-6 rounded-full mr-2"
               />
             ) : (
               <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center mr-2">
                 <span className="text-white text-xs font-bold">
-                  {user.name.charAt(0).toUpperCase()}
+                  {(user.name || user.email || 'U').charAt(0).toUpperCase()}
                 </span>
               </div>
             )}
-            <span className="text-white">{user.name}</span>
+            <span className="text-white">{user.name || user.email}</span>
             <svg
               className="w-4 h-4 ml-2 text-white"
               fill="none"
