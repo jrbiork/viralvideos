@@ -223,6 +223,8 @@ export class ViralVideosStack extends cdk.Stack {
         handler: jwtAuthorizerLambda,
         identitySource: 'method.request.header.Authorization',
         authorizerName: 'JWTAuthorizer',
+        // Disable caching completely for debugging
+        resultsCacheTtl: cdk.Duration.seconds(0),
       },
     );
 

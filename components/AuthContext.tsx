@@ -31,7 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already authenticated via session
+    // Check if user is already authenticated via Cognito token
     const checkAuthStatus = async () => {
       try {
         const response = await fetch('/api/auth/session');
@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         available_tokens: Object.keys(tokens),
       });
 
-      // Create a session with the token
+      // Store the Cognito token in a cookie via the session API
       const sessionResponse = await fetch('/api/auth/session', {
         method: 'POST',
         headers: {
@@ -147,7 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      // Clear the session on the server
+      // Clear the Cognito token cookie
       await fetch('/api/auth/session', {
         method: 'DELETE',
       });

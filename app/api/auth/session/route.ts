@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { cookies } from 'next/headers';
-import { SignJWT, jwtDecode } from 'jose';
 
-const SESSION_SECRET =
-  process.env.SESSION_SECRET || 'your-session-secret-key-change-in-production';
-const SESSION_COOKIE_NAME = 'viral-videos-session';
+const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
 interface JWTPayload {
   sub: string;
@@ -20,16 +17,6 @@ interface JWTPayload {
   auth_time: number;
   client_id: string;
   [key: string]: any;
-}
-
-interface SessionPayload {
-  userId: string;
-  email: string;
-  name: string;
-  picture?: string;
-  cognitoToken?: string; // Store the Cognito JWT token
-  iat: number;
-  exp: number;
 }
 
 async function verifyCognitoToken(token: string): Promise<JWTPayload | null> {
@@ -117,68 +104,6 @@ async function getUserInfoFromCognito(accessToken: string) {
   return null;
 }
 
-async function createSession(
-  userData: JWTPayload,
-  accessToken: string,
-): Promise<string> {
-  // Try to get additional user info from Cognito user info endpoint
-  const cognitoUserInfo = await getUserInfoFromCognito(accessToken);
-
-  const userInfo = {
-    name:
-      cognitoUserInfo?.name ||
-      cognitoUserInfo?.given_name ||
-      cognitoUserInfo?.preferred_username ||
-      userData.name ||
-      userData.email?.split('@')[0] ||
-      'User',
-    picture:
-      cognitoUserInfo?.picture ||
-      cognitoUserInfo?.picture_url ||
-      userData.picture,
-  };
-
-  console.log('User info extraction:', {
-    cognitoUserInfo: cognitoUserInfo
-      ? {
-          name: cognitoUserInfo.name,
-          given_name: cognitoUserInfo.given_name,
-          preferred_username: cognitoUserInfo.preferred_username,
-        }
-      : null,
-    userData: {
-      name: userData.name,
-      email: userData.email,
-    },
-    finalUserInfo: userInfo,
-  });
-
-  const sessionPayload: SessionPayload = {
-    userId: userData.sub,
-    email: userData.email,
-    name: userInfo.name,
-    picture: userInfo.picture,
-    cognitoToken: accessToken, // Store the Cognito JWT token
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
-  };
-
-  console.log('Session payload created:', {
-    userId: sessionPayload.userId,
-    email: sessionPayload.email,
-    hasCognitoToken: !!sessionPayload.cognitoToken,
-    cognitoTokenLength: sessionPayload.cognitoToken?.length,
-  });
-
-  const sessionToken = await new SignJWT(sessionPayload)
-    .setProtectedHeader({ alg: 'HS256' })
-    .setIssuedAt()
-    .setExpirationTime('24h')
-    .sign(new TextEncoder().encode(SESSION_SECRET));
-
-  return sessionToken;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const { token } = await request.json();
@@ -203,10 +128,6 @@ export async function POST(request: NextRequest) {
       allData: userData,
     });
 
-    // Create a session
-    console.log('Creating session with token length:', token.length);
-    const sessionToken = await createSession(userData, token);
-
     // Get user info for response
     const cognitoUserInfo = await getUserInfoFromCognito(token);
 
@@ -224,7 +145,7 @@ export async function POST(request: NextRequest) {
         userData.picture,
     };
 
-    // Set the session cookie
+    // Set the Cognito token directly in a cookie
     const response = NextResponse.json({
       success: true,
       user: {
@@ -235,11 +156,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    response.cookies.set(SESSION_COOKIE_NAME, sessionToken, {
+    response.cookies.set(COGNITO_TOKEN_COOKIE_NAME, token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 24 * 60 * 60, // 24 hours
+      maxAge: 60 * 60, // 1 hour (matches Cognito token lifetime)
       path: '/',
     });
 
@@ -256,39 +177,47 @@ export async function POST(request: NextRequest) {
 export async function GET() {
   try {
     const cookieStore = cookies();
-    const sessionToken = cookieStore.get(SESSION_COOKIE_NAME);
+    const cognitoToken = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
 
-    if (!sessionToken) {
+    if (!cognitoToken) {
       return NextResponse.json({ user: null });
     }
 
-    // Verify the session token
-    const { payload } = await jwtVerify(
-      sessionToken.value,
-      new TextEncoder().encode(SESSION_SECRET),
-    );
-
-    const sessionData = payload as unknown as SessionPayload;
-
-    // Check if session is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (sessionData.exp < now) {
+    // Verify the Cognito token directly
+    const userData = await verifyCognitoToken(cognitoToken.value);
+    if (!userData) {
       return NextResponse.json({ user: null });
     }
+
+    // Get additional user info from Cognito
+    const cognitoUserInfo = await getUserInfoFromCognito(cognitoToken.value);
+
+    const userInfo = {
+      name:
+        cognitoUserInfo?.name ||
+        cognitoUserInfo?.given_name ||
+        cognitoUserInfo?.preferred_username ||
+        userData.name ||
+        userData.email?.split('@')[0] ||
+        'User',
+      picture:
+        cognitoUserInfo?.picture ||
+        cognitoUserInfo?.picture_url ||
+        userData.picture,
+    };
 
     const userResponse = {
       user: {
-        id: sessionData.userId,
-        email: sessionData.email,
-        name: sessionData.name || sessionData.email?.split('@')[0] || 'User',
-        picture: sessionData.picture,
+        id: userData.sub,
+        email: userData.email,
+        name: userInfo.name,
+        picture: userInfo.picture,
       },
     };
 
     console.log('Session GET response:', {
-      sessionData,
+      userData,
       userResponse,
-      hasCognitoToken: !!sessionData.cognitoToken,
     });
 
     return NextResponse.json(userResponse);
@@ -300,6 +229,6 @@ export async function GET() {
 
 export async function DELETE() {
   const response = NextResponse.json({ success: true });
-  response.cookies.delete(SESSION_COOKIE_NAME);
+  response.cookies.delete(COGNITO_TOKEN_COOKIE_NAME);
   return response;
 }

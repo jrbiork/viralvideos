@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../lib/session-utils';
+import { cookies } from 'next/headers';
+
+const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
 export async function GET(request: NextRequest) {
   console.log('🚀 Starting video fetch request...');
@@ -10,10 +13,8 @@ export async function GET(request: NextRequest) {
     const session = await verifySession();
     console.log('📋 Session verification result:', {
       hasSession: !!session,
-      userId: session?.userId,
+      userId: session?.sub,
       email: session?.email,
-      hasCognitoToken: !!session?.cognitoToken,
-      cognitoTokenLength: session?.cognitoToken?.length,
     });
 
     if (!session) {
@@ -26,7 +27,7 @@ export async function GET(request: NextRequest) {
 
     // Use session user info
     const userInfo = {
-      id: session.userId,
+      id: session.sub,
       email: session.email,
     };
 
@@ -54,37 +55,32 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get the Cognito JWT token from the session or request headers
-    let cognitoToken = session.cognitoToken;
+    // Get the Cognito JWT token from the httpOnly cookie
+    const cookieStore = cookies();
+    const cognitoTokenCookie = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
 
-    // If not in session, try to get from request headers
-    if (!cognitoToken) {
-      const authHeader = request.headers.get('authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        cognitoToken = authHeader.replace('Bearer ', '');
-        console.log(
-          '🔍 Found Cognito token in request headers, length:',
-          cognitoToken.length,
-        );
-      }
-    }
-
-    console.log('Session data for fetch-videos:', {
-      userId: session.userId,
-      email: session.email,
-      hasCognitoToken: !!cognitoToken,
-      cognitoTokenLength: cognitoToken?.length,
-    });
-
-    if (!cognitoToken) {
-      console.log('❌ No Cognito JWT token found in session or headers');
+    if (!cognitoTokenCookie) {
+      console.log('❌ No Cognito JWT token found in cookie');
       return NextResponse.json(
         { error: 'Unauthorized: No valid Cognito token found' },
         { status: 401 },
       );
     }
 
-    const authHeader = `Bearer ${cognitoToken}`;
+    const cognitoToken = cognitoTokenCookie.value;
+    console.log(
+      '🔍 Found Cognito token in cookie, length:',
+      cognitoToken.length,
+    );
+
+    console.log('Session data for fetch-videos:', {
+      userId: session.sub,
+      email: session.email,
+      hasCognitoToken: !!cognitoToken,
+      cognitoTokenLength: cognitoToken?.length,
+    });
+
+    const authHeaderValue = `Bearer ${cognitoToken}`;
 
     // Call the API Gateway endpoint
     const apiGatewayUrl = `${
@@ -105,7 +101,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: authHeader,
+        Authorization: authHeaderValue,
       },
     });
 

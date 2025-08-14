@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import VideoGenerator from '../../components/VideoGenerator';
 import VideoPreview from '../../components/VideoPreview';
-import VideoGallery from '../../components/VideoGallery';
+// import VideoGallery from '../../components/VideoGallery'; // COMMENTED OUT FOR TESTING
 import LoginButton from '../../components/LoginButton';
 import Breadcrumb from '../../components/Breadcrumb';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
@@ -51,7 +51,7 @@ export default function GeneratePage() {
       );
 
       // Start polling for video completion
-      startPollingForVideo();
+      // startPollingForVideo(); // COMMENTED OUT FOR TESTING
     } catch (error) {
       console.error('Error queuing video generation:', error);
       setGenerationStatus('error');
@@ -62,6 +62,8 @@ export default function GeneratePage() {
     }
   };
 
+  // COMMENTED OUT FOR TESTING - fetch-videos API call
+  /*
   const startPollingForVideo = () => {
     // Clear any existing polling interval
     if (pollingInterval) {
@@ -94,6 +96,7 @@ export default function GeneratePage() {
 
     setPollingInterval(interval);
   };
+  */
 
   const handleGalleryVideoSelect = (video: any) => {
     setSelectedGalleryVideo(video);
@@ -113,6 +116,7 @@ export default function GeneratePage() {
   useEffect(() => {
     // This will be handled by the VideoGallery component
     // which will automatically select the latest video
+    // COMMENTED OUT FOR TESTING - VideoGallery is disabled
   }, []);
 
   const getStatusIcon = () => {
@@ -355,9 +359,11 @@ export default function GeneratePage() {
             )}
 
             {/* Hidden VideoGallery for auto-selecting latest video */}
+            {/* COMMENTED OUT FOR TESTING - VideoGallery makes fetch-videos API call
             <div className="hidden">
               <VideoGallery onVideoSelect={handleGalleryVideoSelect} />
             </div>
+            */}
           </div>
         </div>
       </div>

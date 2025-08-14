@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../lib/session-utils';
+import { cookies } from 'next/headers';
+
+const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
 export async function POST(request: NextRequest) {
   console.log('🚀 generate-video API route called');
@@ -10,10 +13,8 @@ export async function POST(request: NextRequest) {
     const session = await verifySession();
     console.log('📋 Session verification result:', {
       hasSession: !!session,
-      userId: session?.userId,
+      userId: session?.sub,
       email: session?.email,
-      hasCognitoToken: !!session?.cognitoToken,
-      cognitoTokenLength: session?.cognitoToken?.length,
     });
 
     if (!session) {
@@ -23,32 +24,27 @@ export async function POST(request: NextRequest) {
 
     // Use session user info
     const userInfo = {
-      id: session.userId,
+      id: session.sub,
       email: session.email,
     };
 
-    // Get the Cognito JWT token from the session or request headers
-    let cognitoToken = session.cognitoToken;
+    // Get the Cognito JWT token from the httpOnly cookie
+    const cookieStore = cookies();
+    const cognitoTokenCookie = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
 
-    // If not in session, try to get from request headers
-    if (!cognitoToken) {
-      const authHeader = request.headers.get('authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        cognitoToken = authHeader.replace('Bearer ', '');
-        console.log(
-          '🔍 Found Cognito token in request headers, length:',
-          cognitoToken.length,
-        );
-      }
-    }
-
-    if (!cognitoToken) {
-      console.log('❌ No Cognito JWT token found in session or headers');
+    if (!cognitoTokenCookie) {
+      console.log('❌ No Cognito JWT token found in cookie');
       return NextResponse.json(
         { error: 'Unauthorized: No valid Cognito token found' },
         { status: 401 },
       );
     }
+
+    const cognitoToken = cognitoTokenCookie.value;
+    console.log(
+      '🔍 Found Cognito token in cookie, length:',
+      cognitoToken.length,
+    );
 
     const { prompt, totalDuration = 30, sceneCount = 1 } = await request.json();
 
@@ -65,6 +61,17 @@ export async function POST(request: NextRequest) {
     // Validate scene count
     const numScenes = Math.max(1, Math.min(6, sceneCount));
 
+    const script = (prompt ?? '').toString();
+    const duration = videoTotalDuration;
+    const aspect_ratio = '9:16';
+    const voice = 'en-US-Standard-C';
+    const captions = true;
+
+    console.log('🔧 Environment check (generate-video):', {
+      hasApiGatewayUrl: !!process.env.API_GATEWAY_URL,
+      apiGatewayUrl: process.env.API_GATEWAY_URL,
+    });
+
     if (!process.env.API_GATEWAY_URL) {
       return NextResponse.json(
         { error: 'API Gateway URL not configured' },
@@ -74,6 +81,13 @@ export async function POST(request: NextRequest) {
 
     // Prepare Lambda payload
     const lambdaPayload = {
+      // prefer the backend-friendly schema
+      script,
+      duration,
+      aspect_ratio,
+      voice,
+      captions,
+      // keep your originals in case backend accepts them too
       prompt,
       totalDuration: videoTotalDuration,
       sceneCount: numScenes,
@@ -84,14 +98,24 @@ export async function POST(request: NextRequest) {
 
     // Call the API Gateway endpoint
     const apiGatewayUrl = `${process.env.API_GATEWAY_URL}generate-video`;
-    console.log('🔗 Calling API Gateway:', apiGatewayUrl);
-    console.log('🔑 Using Cognito token length:', cognitoToken.length);
+    console.log('🔗 Calling API Gateway (generate-video):', apiGatewayUrl);
+    console.log('🔗 Full URL breakdown (generate-video):', {
+      baseUrl: process.env.API_GATEWAY_URL,
+      endpoint: 'generate-video',
+      fullUrl: apiGatewayUrl,
+    });
+    console.log(
+      '🔑 Using Cognito token length (generate-video):',
+      cognitoToken.length,
+    );
+
+    const authHeaderValue = `Bearer ${cognitoToken}`;
 
     const lambdaResponse = await fetch(apiGatewayUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${cognitoToken}`,
+        Authorization: authHeaderValue,
       },
       body: JSON.stringify(lambdaPayload),
     });
@@ -103,15 +127,20 @@ export async function POST(request: NextRequest) {
     });
 
     if (!lambdaResponse.ok) {
+      const errorText = await lambdaResponse.text();
+      console.error('❌ API Gateway error response:', errorText);
       return NextResponse.json(
         {
           error: `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
+          details: errorText,
         },
         { status: lambdaResponse.status },
       );
     }
 
+    // Parse the response JSON
     const responsePayload = await lambdaResponse.json();
+    console.log('✅ API Gateway success response:', responsePayload);
 
     if (responsePayload.error) {
       return NextResponse.json(
@@ -119,6 +148,7 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
     return NextResponse.json({
       messageId: responsePayload.messageId,
       status: responsePayload.status,

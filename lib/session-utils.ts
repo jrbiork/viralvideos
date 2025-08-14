@@ -1,44 +1,79 @@
-import { jwtVerify } from 'jose';
+import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { cookies } from 'next/headers';
 
-const SESSION_SECRET =
-  process.env.SESSION_SECRET || 'your-session-secret-key-change-in-production';
-const SESSION_COOKIE_NAME = 'viral-videos-session';
+const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
-export interface SessionPayload {
-  userId: string;
+export interface CognitoUserPayload {
+  sub: string;
   email: string;
-  name: string;
+  name?: string;
   picture?: string;
-  cognitoToken?: string;
-  iat: number;
   exp: number;
+  iat: number;
+  iss: string;
+  aud: string;
+  token_use: string;
+  auth_time: number;
+  client_id: string;
+  [key: string]: any;
 }
 
-export async function verifySession(): Promise<SessionPayload | null> {
+async function verifyCognitoToken(token: string): Promise<CognitoUserPayload | null> {
+  try {
+    const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
+    const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
+    const region = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1';
+
+    if (!userPoolId || !clientId) {
+      return null;
+    }
+
+    const jwksUrl = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
+    const JWKS = createRemoteJWKSet(new URL(jwksUrl));
+
+    const { payload } = await jwtVerify(token, JWKS, {
+      issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
+      algorithms: ['RS256'],
+    });
+
+    const jwtPayload = payload as CognitoUserPayload;
+
+    // Manual audience validation
+    const tokenClientId = jwtPayload.client_id || jwtPayload.aud;
+    if (tokenClientId !== clientId) {
+      return null;
+    }
+
+    // Additional validation
+    if (jwtPayload.token_use !== 'access') {
+      return null;
+    }
+
+    // Check if token is expired
+    const now = Math.floor(Date.now() / 1000);
+    if (jwtPayload.exp < now) {
+      return null;
+    }
+
+    return jwtPayload;
+  } catch (error) {
+    console.error('Cognito token verification failed:', error);
+    return null;
+  }
+}
+
+export async function verifySession(): Promise<CognitoUserPayload | null> {
   try {
     const cookieStore = cookies();
-    const sessionToken = cookieStore.get(SESSION_COOKIE_NAME);
+    const cognitoToken = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
 
-    if (!sessionToken) {
+    if (!cognitoToken) {
       return null;
     }
 
-    const { payload } = await jwtVerify(
-      sessionToken.value,
-      new TextEncoder().encode(SESSION_SECRET),
-    );
-
-    const sessionData = payload as unknown as SessionPayload;
-
-    // Check if session is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (sessionData.exp < now) {
-      return null;
-    }
-
-    return sessionData;
+    return await verifyCognitoToken(cognitoToken.value);
   } catch (error) {
+    console.error('Session verification failed:', error);
     return null;
   }
 }

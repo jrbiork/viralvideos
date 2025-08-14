@@ -51,6 +51,8 @@ class JWTValidator {
       const { payload } = await jwtVerify(token, this.jwks, {
         issuer,
         algorithms: ['RS256'],
+        // Add clock skew tolerance to handle slight time differences
+        clockTolerance: 30, // 30 seconds tolerance
         // Don't validate audience here - we'll do it manually below
       });
 
@@ -58,16 +60,36 @@ class JWTValidator {
       console.log('✅ JWT token validated successfully');
       console.log('Token payload keys:', Object.keys(jwtPayload));
 
+      // Manual audience validation for Cognito tokens
+      const hasValidAudience =
+        (jwtPayload.aud && jwtPayload.aud === this.clientId) ||
+        (jwtPayload.client_id && jwtPayload.client_id === this.clientId);
+
+      if (!hasValidAudience) {
+        console.error('❌ Invalid audience. Expected:', this.clientId);
+        console.error('❌ Token aud:', jwtPayload.aud);
+        console.error('❌ Token client_id:', jwtPayload.client_id);
+        return null;
+      }
+
       // Additional validation
       if (jwtPayload.token_use !== 'access') {
         console.error('❌ Invalid token use:', jwtPayload.token_use);
         return null;
       }
 
-      // Check if token is expired
+      // Check if token is expired (with clock skew tolerance)
       const now = Math.floor(Date.now() / 1000);
-      if (jwtPayload.exp < now) {
-        console.error('❌ Token expired. Exp:', jwtPayload.exp, 'Now:', now);
+      const clockSkew = 30; // 30 seconds tolerance
+      if (jwtPayload.exp < now - clockSkew) {
+        console.error(
+          '❌ Token expired. Exp:',
+          jwtPayload.exp,
+          'Now:',
+          now,
+          'Tolerance:',
+          clockSkew,
+        );
         return null;
       }
 
@@ -83,9 +105,19 @@ class JWTValidator {
 export const handler = async (
   event: APIGatewayTokenAuthorizerEvent,
 ): Promise<APIGatewayAuthorizerResult> => {
+  console.log('🔐 JWT Authorizer called - START');
+  console.log('Event type:', typeof event);
+  console.log('Event keys:', Object.keys(event || {}));
+  console.log('Method ARN:', event.methodArn);
+
   try {
     console.log('🔐 JWT Authorizer called');
-    console.log('Event:', JSON.stringify(event, null, 2));
+    console.log('Event summary:', {
+      methodArn: event.methodArn,
+      type: typeof event,
+      hasAuthToken: !!event.authorizationToken,
+      tokenLength: (event.authorizationToken || '').length,
+    });
 
     const token = event.authorizationToken;
 
@@ -95,7 +127,7 @@ export const handler = async (
     }
 
     // Remove 'Bearer ' prefix if present
-    const cleanToken = token.replace('Bearer ', '');
+    const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
 
     if (!cleanToken) {
       console.log('❌ Empty token after cleaning');
@@ -103,7 +135,10 @@ export const handler = async (
     }
 
     // Validate the JWT token
+    console.log('🔧 Creating JWT validator...');
     const jwtValidator = new JWTValidator();
+    console.log('🔧 JWT validator created successfully');
+    console.log('🔧 Validating token...');
     const payload = await jwtValidator.validateToken(cleanToken);
 
     if (!payload) {
@@ -113,7 +148,22 @@ export const handler = async (
 
     console.log('✅ JWT validation successful for user:', payload.sub);
 
-    // Generate IAM policy
+    // Parse the method ARN to get the correct resource pattern
+    const arnParts = event.methodArn.split('/');
+    const apiGatewayArn = arnParts[0];
+    const stage = arnParts[1];
+    const resource = arnParts[2];
+    const method = arnParts[3];
+
+    // Create specific resource ARN for this exact endpoint
+    const specificResource = `${apiGatewayArn}/${stage}/${resource}/${method}`;
+    // Also create wildcard resource for broader access
+    const wildcardResource = `${apiGatewayArn}/${stage}/*`;
+
+    console.log('Specific resource:', specificResource);
+    console.log('Wildcard resource:', wildcardResource);
+
+    // Generate IAM policy with both specific and wildcard resources
     const policy: APIGatewayAuthorizerResult = {
       principalId: payload.sub,
       policyDocument: {
@@ -122,7 +172,7 @@ export const handler = async (
           {
             Action: 'execute-api:Invoke',
             Effect: 'Allow',
-            Resource: event.methodArn,
+            Resource: [specificResource, wildcardResource],
           },
         ],
       },
@@ -131,10 +181,13 @@ export const handler = async (
         email: payload.email,
         name: payload.name || '',
         picture: payload.picture || '',
+        // Add timestamp to prevent caching issues
+        timestamp: Date.now().toString(),
       },
     };
 
     console.log('📋 Generated policy:', JSON.stringify(policy, null, 2));
+    console.log('🔐 JWT Authorizer completed successfully');
     return policy;
   } catch (error) {
     console.error('💥 JWT Authorizer error:', error);
