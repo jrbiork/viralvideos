@@ -25,9 +25,11 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="relative mb-6">
-            <div className="w-16 h-16 border-4 border-slate-600 rounded-full animate-pulse-slow"></div>
-            <div className="absolute inset-0 w-16 h-16 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
+          <div className="relative mb-6 flex justify-center">
+            <div className="relative w-16 h-16">
+              <div className="absolute inset-0 w-16 h-16 border-4 border-slate-600 rounded-full animate-pulse-slow"></div>
+              <div className="absolute inset-0 w-16 h-16 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
+            </div>
           </div>
           <h3 className="text-2xl font-bold text-white mb-3">
             Checking Authentication

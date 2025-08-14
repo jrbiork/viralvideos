@@ -27,6 +27,9 @@ export default function GeneratePage() {
   );
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
+  // Example video URL
+  const exampleVideoUrl = '/assets/example.mp4';
+
   const handleGenerateVideo = async () => {
     if (!script.trim() || !isAuthenticated) return;
 
@@ -350,11 +353,12 @@ export default function GeneratePage() {
             )}
 
             {!generatedVideoUrl && !selectedGalleryVideo && (
-              <div className="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-700 h-96 flex items-center justify-center mb-4">
-                <div className="text-center text-gray-400">
-                  <div className="text-4xl mb-4">📹</div>
-                  <p className="text-sm">Generate a video to see preview</p>
-                </div>
+              <div className="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-700 mb-4">
+                <VideoPreview
+                  videoUrl={exampleVideoUrl}
+                  autoPlay={true}
+                  loop={true}
+                />
               </div>
             )}
 

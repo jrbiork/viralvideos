@@ -5,13 +5,20 @@ import { useState, useRef, useEffect } from 'react';
 
 interface VideoPreviewProps {
   videoUrl: string;
+  autoPlay?: boolean;
+  loop?: boolean;
 }
 
-export default function VideoPreview({ videoUrl }: VideoPreviewProps) {
+export default function VideoPreview({
+  videoUrl,
+  autoPlay = false,
+  loop = false,
+}: VideoPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const togglePlay = () => {
@@ -19,7 +26,9 @@ export default function VideoPreview({ videoUrl }: VideoPreviewProps) {
       if (isPlaying) {
         videoRef.current.pause();
       } else {
-        videoRef.current.play();
+        videoRef.current.play().catch((error) => {
+          console.error('Error playing video:', error);
+        });
       }
       setIsPlaying(!isPlaying);
     }
@@ -45,7 +54,25 @@ export default function VideoPreview({ videoUrl }: VideoPreviewProps) {
   const handleLoadedMetadata = () => {
     if (videoRef.current) {
       setDuration(videoRef.current.duration);
+      setHasError(false);
+
+      // Auto-play if requested
+      if (autoPlay) {
+        // Ensure video is muted for autoplay to work
+        videoRef.current.muted = true;
+        setIsMuted(true);
+
+        videoRef.current.play().catch((error) => {
+          console.error('Error auto-playing video:', error);
+          // Don't show error for autoplay failures (browser policy)
+        });
+      }
     }
+  };
+
+  const handleError = () => {
+    console.error('Video failed to load:', videoUrl);
+    setHasError(true);
   };
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,7 +94,36 @@ export default function VideoPreview({ videoUrl }: VideoPreviewProps) {
     setCurrentTime(0);
     setDuration(0);
     setIsPlaying(false);
+    setHasError(false);
   }, [videoUrl]);
+
+  // Auto-play effect
+  useEffect(() => {
+    if (autoPlay && videoRef.current && !hasError) {
+      // Ensure video is muted for autoplay to work
+      videoRef.current.muted = true;
+      setIsMuted(true);
+
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((error) => {
+          console.error('Error auto-playing video:', error);
+          // Don't show error for autoplay failures (browser policy)
+        });
+      }
+    }
+  }, [autoPlay, hasError]);
+
+  if (hasError) {
+    return (
+      <div className="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-700 h-96 flex items-center justify-center">
+        <div className="text-center text-gray-400">
+          <div className="text-4xl mb-4">❌</div>
+          <p className="text-sm">Failed to load video</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-700">
@@ -81,6 +137,10 @@ export default function VideoPreview({ videoUrl }: VideoPreviewProps) {
           onPause={() => setIsPlaying(false)}
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
+          onError={handleError}
+          muted={isMuted}
+          loop={loop}
+          preload="metadata"
         />
 
         <div className="absolute top-6 left-6 bg-black bg-opacity-60 text-white px-4 py-2 rounded-full text-sm backdrop-blur-sm border border-slate-600">
