@@ -22,32 +22,124 @@ interface AuthContextType {
   login: (provider: string) => void;
   logout: () => void;
   handleAuthCallback: (code: string) => Promise<void>;
+  refreshAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Cache keys for localStorage
+const AUTH_CACHE_KEY = 'viral-videos-auth-cache';
+const AUTH_CACHE_TIMESTAMP_KEY = 'viral-videos-auth-timestamp';
+const CACHE_DURATION = 20 * 60 * 1000; // 20 minutes in milliseconds
+
+interface AuthCache {
+  user: User;
+  timestamp: number;
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is already authenticated via Cognito token
-    const checkAuthStatus = async () => {
-      try {
-        const response = await fetch('/api/auth/session');
-        const data = await response.json();
+  // Check if cached auth data is still valid
+  const isCacheValid = (): boolean => {
+    try {
+      const timestamp = localStorage.getItem(AUTH_CACHE_TIMESTAMP_KEY);
+      if (!timestamp) return false;
 
-        if (data.user) {
-          setUser(data.user);
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error);
-      } finally {
-        setIsLoading(false);
+      const cacheAge = Date.now() - parseInt(timestamp);
+      return cacheAge < CACHE_DURATION;
+    } catch {
+      return false;
+    }
+  };
+
+  // Get cached auth data
+  const getCachedAuth = (): User | null => {
+    try {
+      if (!isCacheValid()) return null;
+
+      const cached = localStorage.getItem(AUTH_CACHE_KEY);
+      if (!cached) return null;
+
+      const authCache: AuthCache = JSON.parse(cached);
+      return authCache.user;
+    } catch {
+      return null;
+    }
+  };
+
+  // Set cached auth data
+  const setCachedAuth = (user: User | null) => {
+    try {
+      if (user) {
+        const authCache: AuthCache = {
+          user,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(authCache));
+        localStorage.setItem(AUTH_CACHE_TIMESTAMP_KEY, Date.now().toString());
+      } else {
+        localStorage.removeItem(AUTH_CACHE_KEY);
+        localStorage.removeItem(AUTH_CACHE_TIMESTAMP_KEY);
       }
+    } catch (error) {
+      console.error('Failed to cache auth data:', error);
+    }
+  };
+
+  // Check authentication status from server
+  const checkAuthStatus = async (): Promise<User | null> => {
+    try {
+      console.log('checkAuthStatus: Checking server for auth status');
+      const response = await fetch('/api/auth/session');
+      const data = await response.json();
+
+      if (data.user) {
+        setCachedAuth(data.user);
+        return data.user;
+      }
+
+      // Clear cache if no user found
+      setCachedAuth(null);
+      return null;
+    } catch (error) {
+      console.error('Auth check failed:', error);
+      return null;
+    }
+  };
+
+  // Refresh authentication status (force server check)
+  const refreshAuth = async () => {
+    setIsLoading(true);
+    try {
+      const user = await checkAuthStatus();
+      setUser(user);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const initializeAuth = async () => {
+      // First, try to get auth from cache
+      const cachedUser = getCachedAuth();
+
+      if (cachedUser) {
+        console.log('Using cached auth data');
+        setUser(cachedUser);
+        setIsLoading(false);
+        return;
+      }
+
+      // If no valid cache, check with server
+      console.log('No valid cache, checking server for auth status');
+      const user = await checkAuthStatus();
+      setUser(user);
+      setIsLoading(false);
     };
 
-    checkAuthStatus();
+    initializeAuth();
   }, []);
 
   const login = (provider: string) => {
@@ -124,6 +216,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       const sessionData = await sessionResponse.json();
       console.log('Session data received:', sessionData);
+
+      // Cache the user data and update state
+      setCachedAuth(sessionData.user);
       setUser(sessionData.user);
 
       // Clear the state parameter
@@ -155,6 +250,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.error('Logout failed:', error);
     }
 
+    // Clear cached auth data and state
+    setCachedAuth(null);
     setUser(null);
     localStorage.removeItem('oauth_state');
 
@@ -183,6 +280,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     handleAuthCallback,
+    refreshAuth,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
