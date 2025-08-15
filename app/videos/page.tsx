@@ -1,6 +1,7 @@
 'use client';
 
 import VideoGallery from '../../components/VideoGallery';
+import LoginButton from '../../components/LoginButton';
 import Breadcrumb from '../../components/Breadcrumb';
 
 export default function VideosPage() {
@@ -48,33 +49,39 @@ export default function VideosPage() {
             </div>
 
             {/* Credits Section */}
-            <div className="border-t border-slate-800 pt-4">
-              <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-                <div className="text-white text-sm font-medium">
-                  10 Free Credits available
+            <div className="mt-auto">
+              <div className="bg-gradient-to-b from-purple-900 to-purple-800 border border-purple-700 rounded-xl p-4">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="relative">
+                      <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                        $
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-white text-2xl font-bold">10</div>
+                      <div className="text-gray-300 text-xs">
+                        Credits available
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-purple-600 text-white text-xs px-2 py-1 rounded-full">
+                    Free
+                  </div>
                 </div>
-                <div className="text-gray-400 text-xs">Free</div>
-                <button className="w-full mt-2 bg-purple-600 hover:bg-purple-700 text-white text-xs py-2 rounded-lg transition-colors">
+                <div className="text-white text-xs mb-3">
+                  Need more? Upgrade your plan
+                </div>
+                <button className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm font-semibold py-2 rounded-xl transition-colors">
                   Upgrade now
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Bottom Section - User Info */}
+          {/* Bottom Section - Login Button */}
           <div className="border-t border-slate-800 pt-4 mt-auto">
-            <div className="flex items-center justify-between text-white">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-sm">
-                  R
-                </div>
-                <div>
-                  <div className="text-sm font-medium">Rubens</div>
-                  <div className="text-xs text-gray-400">rbiork@gmail.com</div>
-                </div>
-              </div>
-              <span>▼</span>
-            </div>
+            <LoginButton variant="outline" className="w-full" />
           </div>
         </div>
 
