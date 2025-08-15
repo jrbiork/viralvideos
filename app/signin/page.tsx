@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/AuthContext';
+import AnimatedBackground from '../../components/AnimatedBackground';
 
 export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
@@ -46,10 +47,7 @@ export default function SignIn() {
   };
 
   return (
-    <div
-      className="min-h-screen flex"
-      style={{ backgroundColor: 'rgba(9,5,38,255)' }}
-    >
+    <div className="min-h-screen flex">
       {/* Left Section - Sign In Form */}
       <div className="w-1/2 flex items-center justify-center p-12">
         <div className="max-w-md w-full">
@@ -191,10 +189,8 @@ export default function SignIn() {
       </div>
 
       {/* Right Section - Video Examples */}
-      <div
-        className="w-1/2 flex items-center justify-center p-12 relative"
-        style={{ backgroundColor: 'rgba(26,9,64,255)' }}
-      >
+      <div className="w-1/2 flex items-center justify-center p-12 relative">
+        <AnimatedBackground />
         {/* Video Cards Container */}
         <div
           className="relative w-full md:w-1/2 min-w-1/2 h-[600px] flex items-center justify-center"
@@ -291,7 +287,10 @@ export default function SignIn() {
                 loop
                 playsInline
               >
-                <source src="https://strshrt.xyz/cleopatra-features.mp4" type="video/mp4" />
+                <source
+                  src="https://strshrt.xyz/cleopatra-features.mp4"
+                  type="video/mp4"
+                />
               </video>
             </div>
           </div>

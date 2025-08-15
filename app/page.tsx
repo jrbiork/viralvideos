@@ -1,17 +1,18 @@
 'use client';
 
+import React, { Fragment } from 'react';
+
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import AnimatedBackground from '../components/AnimatedBackground';
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: 'rgba(9,5,38,255)' }}
-    >
+    <div className="min-h-screen relative">
+      <AnimatedBackground />
       {/* Header */}
       <nav
         className="flex items-center justify-between p-6"
@@ -194,10 +195,7 @@ export default function Home() {
                   loop
                   playsInline
                 >
-                  <source
-                    src="/assets/sample1.mp4"
-                    type="video/mp4"
-                  />
+                  <source src="/assets/sample1.mp4" type="video/mp4" />
                 </video>
               </div>
             </div>
@@ -231,10 +229,7 @@ export default function Home() {
                   loop
                   playsInline
                 >
-                  <source
-                    src="/assets/sample2.mp4"
-                    type="video/mp4"
-                  />
+                  <source src="/assets/sample2.mp4" type="video/mp4" />
                 </video>
               </div>
             </div>
@@ -268,10 +263,7 @@ export default function Home() {
                   loop
                   playsInline
                 >
-                  <source
-                    src="/assets/sample3.mp4"
-                    type="video/mp4"
-                  />
+                  <source src="/assets/sample3.mp4" type="video/mp4" />
                 </video>
               </div>
             </div>
