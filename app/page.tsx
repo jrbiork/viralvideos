@@ -2,118 +2,201 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import LoginButton from '../components/LoginButton';
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900">
-      {/* Navigation */}
-      <nav className="flex items-center justify-between p-6">
-        <div className="text-white text-2xl font-bold">ViralVideos</div>
-        <LoginButton />
+    <div className="min-h-screen bg-[#1A0033]">
+      {/* Header */}
+      <nav className="flex items-center justify-between p-6 bg-white/5">
+        <div className="flex items-center space-x-2">
+          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+            <svg
+              className="w-5 h-5 text-[#1A0033]"
+              fill="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path d="M8 5v14l11-7z" />
+            </svg>
+          </div>
+          <span className="text-white text-xl font-bold">Viral Shorts</span>
+        </div>
+        <div className="flex items-center space-x-4">
+          <button
+            onClick={() => router.push('/signin')}
+            className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border border-white/30"
+          >
+            Sign In
+          </button>
+          <button
+            onClick={() => router.push('/signin')}
+            className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
+          >
+            Get started for free
+          </button>
+        </div>
       </nav>
 
       {/* Hero Section */}
       <div className="container mx-auto px-6 py-20">
         <div className="text-center">
           <h1 className="text-6xl font-bold text-white mb-6">
-            Create Viral Videos
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-yellow-400">
-              in Minutes
-            </span>
+            From idea to viral short
+            <span className="block">in seconds.</span>
           </h1>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Transform your ideas into engaging viral content with AI-powered
-            video generation. No editing skills required.
+            Create short videos with audio & captions. Start free with 10
+            credits — no card required.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
             <button
-              className="bg-gradient-to-r from-pink-500 to-purple-600 text-white px-8 py-4 rounded-full text-lg font-semibold hover:from-pink-600 hover:to-purple-700 transition-all duration-300 transform hover:scale-105"
-              onClick={() => router.push('/create')}
+              onClick={() => router.push('/signin')}
+              className="px-8 py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
             >
-              Start Creating
+              Get started for free
             </button>
-            <LoginButton variant="outline" />
-          </div>
-        </div>
-
-        {/* Features Section */}
-        <div className="mt-20 grid md:grid-cols-3 gap-8">
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-pink-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 10V3L4 14h7v7l9-11h-7z"
-                />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              Lightning Fast
-            </h3>
-            <p className="text-gray-300">
-              Generate videos in seconds with our optimized AI pipeline
-            </p>
+            <button className="px-8 py-3 text-white rounded-lg hover:bg-white/10 transition-colors font-semibold border border-white/30">
+              Watch Demo
+            </button>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                />
-              </svg>
+          {/* Trust Section */}
+          <div className="flex items-center justify-center space-x-4 mb-20">
+            <div className="flex -space-x-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div
+                  key={i}
+                  className="w-10 h-10 bg-gradient-to-r from-purple-400 to-blue-500 rounded-full border-2 border-[#1A0033] flex items-center justify-center text-white text-sm font-bold"
+                >
+                  {String.fromCharCode(64 + i)}
+                </div>
+              ))}
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              AI Powered
-            </h3>
-            <p className="text-gray-300">
-              Advanced AI algorithms create engaging content automatically
-            </p>
+            <span className="text-white text-base font-bold">
+              TRUSTED BY 100k+ Creators, marketers, educators, and storytellers
+              worldwide.
+            </span>
           </div>
 
-          <div className="bg-white/10 backdrop-blur-sm rounded-lg p-6 text-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg
-                className="w-8 h-8 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                />
-              </svg>
+          {/* Video Examples Section */}
+          <div className="relative h-96 max-w-4xl mx-auto flex items-center justify-center">
+            {/* Card 1 - Instagram */}
+            <div
+              className="absolute w-[80%] max-w-[220px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
+              style={{
+                transform: 'rotate(0deg) translateX(-300px)',
+                zIndex: 3,
+                boxShadow:
+                  'rgba(0, 0, 0, 0.1) 0px 4px 6px, rgba(0, 0, 0, 0.08) 0px 1px 3px',
+              }}
+            >
+              <div className="relative w-full h-full rounded-2xl overflow-hidden">
+                <div className="absolute top-2 left-2 z-10">
+                  <div className="w-6 h-6 bg-gradient-to-r from-orange-400 to-pink-500 rounded flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">IG</span>
+                  </div>
+                </div>
+                <video
+                  className="absolute inset-0 w-full h-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                >
+                  <source src="/assets/example.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
+                  <p className="text-white text-sm font-semibold">
+                    Uncover the <span className="text-blue-400">secrets</span>,
+                    power, and betrayal
+                  </p>
+                </div>
+              </div>
             </div>
-            <h3 className="text-xl font-semibold text-white mb-2">
-              Secure & Private
-            </h3>
-            <p className="text-gray-300">
-              Your content is protected with enterprise-grade security
-            </p>
+
+            {/* Card 2 - YouTube */}
+            <div
+              className="absolute w-[80%] max-w-[220px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
+              style={{
+                transform: 'rotate(0deg) translateX(0px)',
+                zIndex: 2,
+                boxShadow:
+                  'rgba(0, 0, 0, 0.1) 0px 4px 6px, rgba(0, 0, 0, 0.08) 0px 1px 3px',
+              }}
+            >
+              <div className="relative w-full h-full rounded-2xl overflow-hidden">
+                <div className="absolute top-2 left-2 z-10">
+                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                </div>
+                <video
+                  className="absolute inset-0 w-full h-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                >
+                  <source src="/assets/example.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
+                  <p className="text-white text-sm font-semibold">
+                    A lone explorer's{' '}
+                    <span className="text-blue-400">journey</span> beyond the
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3 - TikTok */}
+            <div
+              className="absolute w-[80%] max-w-[220px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
+              style={{
+                transform: 'rotate(0deg) translateX(300px)',
+                zIndex: 1,
+                boxShadow:
+                  'rgba(0, 0, 0, 0.1) 0px 4px 6px, rgba(0, 0, 0, 0.08) 0px 1px 3px',
+              }}
+            >
+              <div className="relative w-full h-full rounded-2xl overflow-hidden">
+                <div className="absolute top-2 left-2 z-10">
+                  <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
+                    <svg
+                      className="w-3 h-3 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                    </svg>
+                  </div>
+                </div>
+                <video
+                  className="absolute inset-0 w-full h-full object-cover"
+                  autoPlay
+                  muted
+                  loop
+                  playsInline
+                >
+                  <source src="/assets/example.mp4" type="video/mp4" />
+                </video>
+                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/60 to-transparent">
+                  <p className="text-white text-sm font-semibold">
+                    A <span className="text-blue-400">breathtaking</span> dive
+                    into the mysterious
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

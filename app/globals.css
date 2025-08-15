@@ -179,3 +179,33 @@ body {
 .animate-pulse-slow {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
+
+/* Video controls hover effect */
+video {
+  transition: all 0.3s ease;
+}
+
+video::-webkit-media-controls {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+video::-webkit-media-controls-panel {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+video:hover::-webkit-media-controls,
+video:hover::-webkit-media-controls-panel {
+  opacity: 1;
+}
+
+/* For Firefox */
+video::-moz-media-controls {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+video:hover::-moz-media-controls {
+  opacity: 1;
+}

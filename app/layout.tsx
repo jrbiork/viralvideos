@@ -9,6 +9,15 @@ export const metadata: Metadata = {
   title: 'Viral Videos MVP - AI Video Generator',
   description:
     'Generate 60-second vertical videos for TikTok and Instagram Reels using AI',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    apple: '/favicon.svg',
+    shortcut: '/favicon.ico',
+  },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({

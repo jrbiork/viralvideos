@@ -68,11 +68,34 @@ export default function AuthCallback() {
         // Handle the authentication callback
         await handleAuthCallback(code);
 
-        // Redirect to the main page after successful authentication
-        router.push('/');
+        // Send success message to parent window and close popup
+        if (window.opener) {
+          window.opener.postMessage(
+            { type: 'AUTH_SUCCESS' },
+            window.location.origin,
+          );
+          window.close();
+        } else {
+          // Fallback: redirect to create page if not in popup
+          router.push('/create');
+        }
       } catch (error) {
         console.error('Auth callback error:', error);
-        setError('Authentication failed. Please try again.');
+
+        // Send error message to parent window and close popup
+        if (window.opener) {
+          window.opener.postMessage(
+            {
+              type: 'AUTH_ERROR',
+              error: 'Authentication failed. Please try again.',
+            },
+            window.location.origin,
+          );
+          window.close();
+        } else {
+          // Fallback: show error if not in popup
+          setError('Authentication failed. Please try again.');
+        }
       }
     };
 

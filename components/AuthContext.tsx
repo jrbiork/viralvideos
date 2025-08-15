@@ -164,7 +164,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       `scope=openid+email+profile&` +
       `state=${state}`;
 
-    window.location.href = authUrl;
+    // Open popup window for authentication
+    const popup = window.open(
+      authUrl,
+      'auth-popup',
+      'width=500,height=600,scrollbars=yes,resizable=yes',
+    );
+
+    if (!popup) {
+      console.error('Popup blocked by browser');
+      alert('Please allow popups for this site to sign in with Google');
+      return;
+    }
+
+    // Listen for popup close or message
+    const checkClosed = setInterval(() => {
+      if (popup.closed) {
+        clearInterval(checkClosed);
+        // Check if authentication was successful by checking the session
+        refreshAuth();
+      }
+    }, 1000);
+
+    // Listen for messages from popup (if needed)
+    const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+
+      if (event.data.type === 'AUTH_SUCCESS') {
+        clearInterval(checkClosed);
+        popup.close();
+        refreshAuth();
+      } else if (event.data.type === 'AUTH_ERROR') {
+        clearInterval(checkClosed);
+        popup.close();
+        console.error('Authentication failed:', event.data.error);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+
+    // Cleanup listener when popup closes
+    const cleanup = () => {
+      window.removeEventListener('message', handleMessage);
+      clearInterval(checkClosed);
+    };
+
+    // Set up cleanup when popup closes
+    const originalOnBeforeUnload = window.onbeforeunload;
+    window.onbeforeunload = () => {
+      cleanup();
+      if (originalOnBeforeUnload) {
+        return originalOnBeforeUnload.call(window);
+      }
+    };
   };
 
   const handleAuthCallback = async (code: string) => {
