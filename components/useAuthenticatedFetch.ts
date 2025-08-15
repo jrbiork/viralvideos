@@ -50,15 +50,3 @@ export function useAuthenticatedFetch() {
     user,
   };
 }
-
-// Example usage:
-// const { authenticatedFetch, isAuthenticated, user } = useAuthenticatedFetch();
-//
-// const fetchUserData = async () => {
-//   try {
-//     const data = await authenticatedFetch('/api/user');
-//     console.log('User data:', data);
-//   } catch (error) {
-//     console.error('Failed to fetch user data:', error);
-//   }
-// };

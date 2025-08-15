@@ -91,7 +91,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check authentication status from server
   const checkAuthStatus = async (): Promise<User | null> => {
     try {
-      console.log('checkAuthStatus: Checking server for auth status');
       const response = await fetch('/api/auth/session');
       const data = await response.json();
 
@@ -126,14 +125,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const cachedUser = getCachedAuth();
 
       if (cachedUser) {
-        console.log('Using cached auth data');
         setUser(cachedUser);
         setIsLoading(false);
         return;
       }
 
       // If no valid cache, check with server
-      console.log('No valid cache, checking server for auth status');
       const user = await checkAuthStatus();
       setUser(user);
       setIsLoading(false);
@@ -147,19 +144,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
     const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
 
-    console.log('Login debug:', {
-      cognitoDomain,
-      clientId: clientId ? '***' : 'undefined',
-      redirectUri,
-      provider,
-    });
-
     if (!cognitoDomain || !clientId || !redirectUri) {
-      console.error('Missing Cognito configuration:', {
-        cognitoDomain: !!cognitoDomain,
-        clientId: !!clientId,
-        redirectUri: !!redirectUri,
-      });
+      console.error('Missing Cognito configuration');
       return;
     }
 
@@ -178,9 +164,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       `scope=openid+email+profile&` +
       `state=${state}`;
 
-    console.log('Constructed auth URL:', authUrl);
-
-    console.log('Redirecting to auth URL:', authUrl);
     window.location.href = authUrl;
   };
 
@@ -191,12 +174,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Exchange authorization code for tokens
       const tokens = await exchangeCodeForTokens(code);
 
-      console.log('Tokens received:', {
-        access_token: tokens.access_token ? 'present' : 'missing',
-        token_type: tokens.token_type,
-        available_tokens: Object.keys(tokens),
-      });
-
       // Store the Cognito token in a cookie via the session API
       const sessionResponse = await fetch('/api/auth/session', {
         method: 'POST',
@@ -206,8 +183,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ token: tokens.access_token }),
       });
 
-      console.log('Session response status:', sessionResponse.status);
-
       if (!sessionResponse.ok) {
         const errorText = await sessionResponse.text();
         console.error('Session creation failed:', errorText);
@@ -215,7 +190,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       const sessionData = await sessionResponse.json();
-      console.log('Session data received:', sessionData);
 
       // Cache the user data and update state
       setCachedAuth(sessionData.user);
@@ -229,9 +203,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If it's an invalid_grant error, clear the state and suggest retry
       if (error instanceof Error && error.message.includes('invalid_grant')) {
         localStorage.removeItem('oauth_state');
-        console.log(
-          'Authorization code expired or already used. Please try signing in again.',
-        );
       }
 
       throw error;
@@ -301,18 +272,8 @@ async function exchangeCodeForTokens(code: string) {
   const clientSecret = process.env.NEXT_PUBLIC_COGNITO_CLIENT_SECRET;
   const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
 
-  console.log('Token exchange debug:', {
-    cognitoDomain,
-    clientId: clientId ? clientId : 'undefined',
-    clientSecret: clientSecret ? clientSecret : 'undefined',
-    redirectUri,
-    code: code ? code : 'undefined',
-  });
-
   if (!cognitoDomain || !clientId || !redirectUri) {
-    throw new Error(
-      `Missing Cognito configuration: domain=${!!cognitoDomain}, clientId=${!!clientId}, redirectUri=${!!redirectUri}`,
-    );
+    throw new Error('Missing Cognito configuration');
   }
 
   // Ensure the domain doesn't already include the protocol
@@ -332,9 +293,6 @@ async function exchangeCodeForTokens(code: string) {
     bodyParams.append('client_secret', clientSecret);
   }
 
-  console.log('Making token request to:', tokenUrl);
-  console.log('Request body params:', Object.fromEntries(bodyParams.entries()));
-
   const response = await fetch(tokenUrl, {
     method: 'POST',
     headers: {
@@ -342,12 +300,6 @@ async function exchangeCodeForTokens(code: string) {
     },
     body: bodyParams,
   });
-
-  console.log('Token response status:', response);
-  console.log(
-    'Token response headers:',
-    Object.fromEntries(response.headers.entries()),
-  );
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -358,10 +310,6 @@ async function exchangeCodeForTokens(code: string) {
   }
 
   const tokens = await response.json();
-  console.log(
-    'Token exchange successful, received tokens:',
-    Object.keys(tokens),
-  );
   return tokens;
 }
 
