@@ -7,9 +7,15 @@ import Breadcrumb from '../../components/Breadcrumb';
 
 export default function VideosPage() {
   return (
-    <div className="h-screen bg-black flex flex-col">
+    <div
+      className="h-screen flex flex-col"
+      style={{ backgroundColor: 'rgba(9,5,38,255)' }}
+    >
       {/* Top Bar */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0">
+      <div
+        className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0"
+        style={{ backgroundColor: 'rgba(26,9,64,255)' }}
+      >
         <div className="flex items-center space-x-4">
           <div className="text-yellow-400 text-2xl">⚡</div>
           <div className="text-white text-xl font-bold">Viral Shorts</div>
@@ -31,7 +37,10 @@ export default function VideosPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar */}
-        <div className="w-64 bg-black border-r border-slate-800 p-6 flex flex-col">
+        <div
+          className="w-64 border-r border-slate-800 p-6 flex flex-col"
+          style={{ backgroundColor: 'rgba(26,9,64,255)' }}
+        >
           {/* Top Section */}
           <div className="flex-1 space-y-6">
             {/* Navigation Links */}
@@ -86,7 +95,10 @@ export default function VideosPage() {
         </div>
 
         {/* Center Content - Video Gallery */}
-        <div className="flex-1 p-8 bg-black overflow-y-auto">
+        <div
+          className="flex-1 p-8 overflow-y-auto"
+          style={{ backgroundColor: 'rgba(9,5,38,255)' }}
+        >
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <div className="mb-8">

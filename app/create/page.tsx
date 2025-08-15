@@ -100,9 +100,15 @@ export default function GeneratePage() {
   };
 
   return (
-    <div className="h-screen bg-black flex flex-col">
+    <div
+      className="h-screen flex flex-col"
+      style={{ backgroundColor: 'rgba(9,5,38,255)' }}
+    >
       {/* Top Bar */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900 flex-shrink-0">
+      <div
+        className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0"
+        style={{ backgroundColor: 'rgba(26,9,64,255)' }}
+      >
         <div className="flex items-center space-x-4">
           <div className="text-yellow-400 text-2xl">⚡</div>
           <div className="text-white text-xl font-bold">Viral Shorts</div>
@@ -124,7 +130,10 @@ export default function GeneratePage() {
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* Left Sidebar */}
-        <div className="w-full lg:w-64 bg-black border-b lg:border-b-0 lg:border-r border-slate-800 p-4 lg:p-6 flex flex-col">
+        <div
+          className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-800 p-4 lg:p-6 flex flex-col"
+          style={{ backgroundColor: 'rgba(26,9,64,255)' }}
+        >
           {/* Top Section */}
           <div className="flex-1 space-y-4 lg:space-y-6">
             {/* Navigation Links */}
@@ -181,7 +190,10 @@ export default function GeneratePage() {
         </div>
 
         {/* Center Content */}
-        <div className="flex-1 p-4 lg:p-8 bg-black overflow-y-auto">
+        <div
+          className="flex-1 p-4 lg:p-8 overflow-y-auto"
+          style={{ backgroundColor: 'rgba(9,5,38,255)' }}
+        >
           <div className="max-w-4xl mx-auto flex flex-col justify-start pt-4 lg:pt-8">
             {/* Header */}
             <div className="mb-6 lg:mb-8">
@@ -395,7 +407,10 @@ export default function GeneratePage() {
         </div>
 
         {/* Right Sidebar - Video Preview */}
-        <div className="w-full lg:w-2/6 bg-black border-l border-slate-800 overflow-y-auto">
+        <div
+          className="w-full lg:w-2/6 border-l border-slate-800 overflow-y-auto"
+          style={{ backgroundColor: 'rgba(26,9,64,255)' }}
+        >
           <div className="sticky top-4">
             <div className="rounded-lg border-slate-800 border bg-slate-900 text-white p-4 border-none shadow-none">
               <div className="flex flex-col space-y-1.5 p-6">
@@ -423,7 +438,7 @@ export default function GeneratePage() {
 
                 {!generatedVideoUrl && !selectedGalleryVideo && (
                   <video
-                    className="w-full rounded-lg shadow-lg border border-slate-800 group"
+                    className="w-4/5 mx-auto rounded-lg shadow-lg border border-slate-800 group"
                     controls
                     autoPlay
                     muted
