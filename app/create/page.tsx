@@ -26,6 +26,9 @@ export default function GeneratePage() {
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<
     '9:16' | '16:9' | '1:1'
   >('9:16');
+  const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
+    '30s',
+  );
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
   // Word count calculation
@@ -356,6 +359,34 @@ export default function GeneratePage() {
                   }`}
                 >
                   {wordCount}/{maxWords}
+                </div>
+              </div>
+            </div>
+
+            {/* Duration Selection */}
+            <div className="mb-6">
+              <div className="flex justify-end">
+                <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                  <button
+                    onClick={() => setSelectedDuration('30s')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedDuration === '30s'
+                        ? 'bg-slate-700 text-white'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    30s
+                  </button>
+                  <button
+                    onClick={() => setSelectedDuration('60s')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      selectedDuration === '60s'
+                        ? 'bg-slate-700 text-white'
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    60s
+                  </button>
                 </div>
               </div>
             </div>

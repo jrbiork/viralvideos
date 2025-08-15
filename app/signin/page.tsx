@@ -198,7 +198,7 @@ export default function SignIn() {
         {/* Video Cards Container */}
         <div
           className="relative w-full md:w-1/2 min-w-1/2 h-[600px] flex items-center justify-center"
-          style={{ marginTop: '-30px' }}
+          style={{ marginTop: '-60px' }}
         >
           {/* Card 1 - Instagram (Left, no rotation) */}
           <div
@@ -223,7 +223,7 @@ export default function SignIn() {
                 loop
                 playsInline
               >
-                <source src="/assets/example.mp4" type="video/mp4" />
+                <source src="/assets/sample1.mp4" type="video/mp4" />
               </video>
             </div>
           </div>
@@ -257,7 +257,7 @@ export default function SignIn() {
                 loop
                 playsInline
               >
-                <source src="/assets/example.mp4" type="video/mp4" />
+                <source src="https://strshrt.xyz/apollo.mp4" type="video/mp4" />
               </video>
             </div>
           </div>
@@ -291,7 +291,7 @@ export default function SignIn() {
                 loop
                 playsInline
               >
-                <source src="/assets/example.mp4" type="video/mp4" />
+                <source src="https://strshrt.xyz/cleopatra-features.mp4" type="video/mp4" />
               </video>
             </div>
           </div>
