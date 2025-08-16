@@ -7,6 +7,7 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
@@ -77,6 +78,32 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    // DynamoDB Users Table
+    const usersTable = new dynamodb.Table(this, 'UsersTable', {
+      tableName: 'viral-videos-users',
+      partitionKey: {
+        name: 'userId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      sortKey: {
+        name: 'email',
+        type: dynamodb.AttributeType.STRING,
+      },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY, // For demo purposes
+      pointInTimeRecovery: true,
+    });
+
+    // Add GSI for email lookups
+    usersTable.addGlobalSecondaryIndex({
+      indexName: 'EmailIndex',
+      partitionKey: {
+        name: 'email',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // IAM Role for Lambda
     const lambdaRole = new iam.Role(this, 'VideoGenerationLambdaRole', {
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
@@ -94,6 +121,9 @@ export class ViralVideosStack extends cdk.Stack {
     // Grant SQS permissions to Lambda
     videoQueue.grantSendMessages(lambdaRole);
     videoQueue.grantConsumeMessages(lambdaRole);
+
+    // Grant DynamoDB permissions to Lambda
+    usersTable.grantReadWriteData(lambdaRole);
 
     // Create FFmpeg Lambda Layer
     const ffmpegLayer = new lambda.LayerVersion(this, 'FFmpegLayer', {
@@ -122,6 +152,7 @@ export class ViralVideosStack extends cdk.Stack {
         environment: {
           VIDEO_BUCKET_NAME: videoBucket.bucketName,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+          USERS_TABLE_NAME: usersTable.tableName,
           RUNWAY_API_KEY: runwayApiKey,
           OPENAI_API_KEY: openaiApiKey,
           VIDEO_QUEUE_URL: videoQueue.queueUrl,
@@ -152,6 +183,7 @@ export class ViralVideosStack extends cdk.Stack {
       memorySize: 128,
       environment: {
         VIDEO_QUEUE_URL: videoQueue.queueUrl,
+        USERS_TABLE_NAME: usersTable.tableName,
       },
     });
 
@@ -175,6 +207,7 @@ export class ViralVideosStack extends cdk.Stack {
             process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '',
           NEXT_PUBLIC_COGNITO_REGION:
             process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1',
+          USERS_TABLE_NAME: usersTable.tableName,
         },
       },
     );
@@ -189,6 +222,7 @@ export class ViralVideosStack extends cdk.Stack {
       memorySize: 128,
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
+        USERS_TABLE_NAME: usersTable.tableName,
       },
     });
 
@@ -340,6 +374,16 @@ export class ViralVideosStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'FetchVideosEndpoint', {
       value: `${api.url}fetch-videos`,
       description: 'API Gateway endpoint for fetching videos',
+    });
+
+    new cdk.CfnOutput(this, 'UsersTableName', {
+      value: usersTable.tableName,
+      description: 'DynamoDB table name for users',
+    });
+
+    new cdk.CfnOutput(this, 'UsersTableArn', {
+      value: usersTable.tableArn,
+      description: 'DynamoDB table ARN for users',
     });
   }
 }

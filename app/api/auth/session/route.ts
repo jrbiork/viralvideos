@@ -131,26 +131,74 @@ export async function POST(request: NextRequest) {
     // Get user info for response
     const cognitoUserInfo = await getUserInfoFromCognito(token);
 
+    // Get email from userInfo if not in JWT
+    const userEmail = userData.email || cognitoUserInfo?.email;
+    const userName =
+      userData.name ||
+      cognitoUserInfo?.name ||
+      cognitoUserInfo?.given_name ||
+      userData.username?.split('_')[1] ||
+      'User';
+
+    // Validate required fields after getting user info
+    if (!userData.sub || !userEmail) {
+      console.error('Missing required user data fields:', {
+        sub: userData.sub,
+        email: userEmail,
+        cognitoUserInfo: cognitoUserInfo,
+        allData: userData,
+      });
+      return NextResponse.json({ error: 'Invalid user data' }, { status: 400 });
+    }
+
     const userInfo = {
-      name:
-        cognitoUserInfo?.name ||
-        cognitoUserInfo?.given_name ||
-        cognitoUserInfo?.preferred_username ||
-        userData.name ||
-        userData.email?.split('@')[0] ||
-        'User',
+      name: userName,
       picture:
         cognitoUserInfo?.picture ||
         cognitoUserInfo?.picture_url ||
         userData.picture,
     };
 
+    // Create or update user in DynamoDB
+    try {
+      const userPayload = {
+        userId: userData.sub,
+        email: userEmail,
+        name: userInfo.name,
+      };
+
+      console.log('Sending user data to DynamoDB:', userPayload);
+
+      const userManagementResponse = await fetch(
+        `${request.nextUrl.origin}/api/user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userPayload),
+        },
+      );
+
+      if (userManagementResponse.ok) {
+        const userData = await userManagementResponse.json();
+        console.log('User management result:', userData);
+      } else {
+        console.error(
+          'Failed to manage user in DynamoDB:',
+          await userManagementResponse.text(),
+        );
+      }
+    } catch (error) {
+      console.error('Error managing user in DynamoDB:', error);
+    }
+
     // Set the Cognito token directly in a cookie
     const response = NextResponse.json({
       success: true,
       user: {
         id: userData.sub,
-        email: userData.email,
+        email: userEmail,
         name: userInfo.name,
         picture: userInfo.picture,
       },
@@ -174,7 +222,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const cookieStore = cookies();
     const cognitoToken = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
@@ -192,24 +240,72 @@ export async function GET() {
     // Get additional user info from Cognito
     const cognitoUserInfo = await getUserInfoFromCognito(cognitoToken.value);
 
+    // Get email from userInfo if not in JWT
+    const userEmail = userData.email || cognitoUserInfo?.email;
+    const userName =
+      userData.name ||
+      cognitoUserInfo?.name ||
+      cognitoUserInfo?.given_name ||
+      userData.username?.split('_')[1] ||
+      'User';
+
+    // Validate required fields after getting user info
+    if (!userData.sub || !userEmail) {
+      console.error('Missing required user data fields in GET:', {
+        sub: userData.sub,
+        email: userEmail,
+        cognitoUserInfo: cognitoUserInfo,
+        allData: userData,
+      });
+      return NextResponse.json({ user: null });
+    }
+
     const userInfo = {
-      name:
-        cognitoUserInfo?.name ||
-        cognitoUserInfo?.given_name ||
-        cognitoUserInfo?.preferred_username ||
-        userData.name ||
-        userData.email?.split('@')[0] ||
-        'User',
+      name: userName,
       picture:
         cognitoUserInfo?.picture ||
         cognitoUserInfo?.picture_url ||
         userData.picture,
     };
 
+    // Update lastLoginAt in DynamoDB for existing sessions
+    try {
+      const userPayload = {
+        userId: userData.sub,
+        email: userEmail,
+        name: userInfo.name,
+      };
+
+      console.log('Sending user session update to DynamoDB:', userPayload);
+
+      const userManagementResponse = await fetch(
+        `${request.nextUrl.origin}/api/user`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(userPayload),
+        },
+      );
+
+      if (userManagementResponse.ok) {
+        const userData = await userManagementResponse.json();
+        console.log('User session update result:', userData);
+      } else {
+        console.error(
+          'Failed to update user session in DynamoDB:',
+          await userManagementResponse.text(),
+        );
+      }
+    } catch (error) {
+      console.error('Error updating user session in DynamoDB:', error);
+    }
+
     const userResponse = {
       user: {
         id: userData.sub,
-        email: userData.email,
+        email: userEmail,
         name: userInfo.name,
         picture: userInfo.picture,
       },

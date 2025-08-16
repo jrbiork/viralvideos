@@ -6,6 +6,7 @@ import LoginButton from '../../components/LoginButton';
 import UserDropdown from '../../components/UserDropdown';
 import Breadcrumb from '../../components/Breadcrumb';
 import AIScriptWriterModal from '../../components/AIScriptWriterModal';
+import CreditsDisplay from '../../components/CreditsDisplay';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
 
 export default function GeneratePage() {
@@ -163,13 +164,15 @@ export default function GeneratePage() {
                 <div className="flex items-center space-x-2 lg:space-x-3">
                   <div className="relative">
                     <div className="w-6 h-6 lg:w-8 lg:h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs lg:text-sm font-bold">
-                      $
+                      ⭐
                     </div>
                   </div>
                   <div>
-                    <div className="text-white text-lg lg:text-2xl font-bold">
-                      10
-                    </div>
+                    <CreditsDisplay
+                      size="lg"
+                      showLabel={false}
+                      className="text-white text-lg lg:text-2xl font-bold"
+                    />
                     <div className="text-gray-300 text-xs">
                       Credits available
                     </div>
@@ -200,9 +203,12 @@ export default function GeneratePage() {
           <div className="max-w-4xl mx-auto flex flex-col justify-start pt-4 lg:pt-8">
             {/* Header */}
             <div className="mb-6 lg:mb-8">
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                Create a new video
-              </h1>
+              <div className="flex items-center justify-between mb-2">
+                <h1 className="text-2xl lg:text-3xl font-bold text-white">
+                  Create a new video
+                </h1>
+                <CreditsDisplay size="lg" showLabel={true} />
+              </div>
               <p className="text-gray-300 text-sm lg:text-base">
                 Select a tool and pick your options to create your video.
               </p>

@@ -1,34 +1,124 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateAuthToken } from '../../../lib/auth-utils';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
 
-export async function GET(request: NextRequest) {
+const client = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+});
+
+const docClient = DynamoDBDocumentClient.from(client);
+
+const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'viral-videos-users';
+
+interface UserData {
+  userId: string;
+  email: string;
+  name?: string;
+}
+
+export async function POST(request: NextRequest) {
   try {
-    // Validate authentication
-    const authResult = await validateAuthToken(request);
-    if (!authResult) {
+    const body = await request.json();
+    console.log('User management API received:', body);
+
+    const { userId, email, name }: UserData = body;
+
+    if (!userId || !email) {
+      console.error('Missing required fields:', {
+        userId,
+        email,
+        receivedBody: body,
+      });
       return NextResponse.json(
-        { error: 'Missing or invalid authorization header' },
-        { status: 401 },
+        { error: 'userId and email are required' },
+        { status: 400 },
       );
     }
 
-    const { userInfo } = authResult;
+    const now = new Date().toISOString();
 
-    // Return actual user data from the JWT token
-    const userData = {
-      id: userInfo.id,
-      email: userInfo.email,
-      name: userInfo.name || userInfo.email,
-      picture: userInfo.picture,
-      createdAt: new Date().toISOString(),
-    };
-
-    return NextResponse.json({
-      message: 'Protected user data',
-      user: userData,
+    // Check if user already exists
+    const getCommand = new GetCommand({
+      TableName: USERS_TABLE_NAME,
+      Key: {
+        userId: userId,
+        email: email,
+      },
     });
+
+    const existingUser = await docClient.send(getCommand);
+
+    if (existingUser.Item) {
+      // User exists, update lastLoginAt
+      const updateCommand = new UpdateCommand({
+        TableName: USERS_TABLE_NAME,
+        Key: {
+          userId: userId,
+          email: email,
+        },
+        UpdateExpression: 'SET lastLoginAt = :lastLoginAt',
+        ExpressionAttributeValues: {
+          ':lastLoginAt': now,
+        },
+        ReturnValues: 'ALL_NEW',
+      });
+
+      const result = await docClient.send(updateCommand);
+
+      console.log('User updated in DynamoDB:', {
+        userId,
+        email,
+        lastLoginAt: now,
+        creditsAvailable: result.Attributes?.creditsAvailable,
+      });
+
+      return NextResponse.json({
+        success: true,
+        user: result.Attributes,
+        action: 'updated',
+      });
+    } else {
+      // User doesn't exist, create new user
+      const putCommand = new PutCommand({
+        TableName: USERS_TABLE_NAME,
+        Item: {
+          userId: userId,
+          email: email,
+          createdAt: now,
+          lastLoginAt: now,
+          creditsAvailable: 10,
+        },
+      });
+
+      await docClient.send(putCommand);
+
+      console.log('New user created in DynamoDB:', {
+        userId,
+        email,
+        createdAt: now,
+        lastLoginAt: now,
+        creditsAvailable: 10,
+      });
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          userId: userId,
+          email: email,
+          createdAt: now,
+          lastLoginAt: now,
+          creditsAvailable: 10,
+        },
+        action: 'created',
+      });
+    }
   } catch (error) {
-    console.error('API error:', error);
+    console.error('User management error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
@@ -36,31 +126,39 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // Validate authentication
-    const authResult = await validateAuthToken(request);
-    if (!authResult) {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const email = searchParams.get('email');
+
+    if (!userId || !email) {
       return NextResponse.json(
-        { error: 'Missing or invalid authorization header' },
-        { status: 401 },
+        { error: 'userId and email are required' },
+        { status: 400 },
       );
     }
 
-    const { userInfo } = authResult;
-    const body = await request.json();
+    const getCommand = new GetCommand({
+      TableName: USERS_TABLE_NAME,
+      Key: {
+        userId: userId,
+        email: email,
+      },
+    });
 
-    // Process user data update
-    // In a real implementation, you would update the user in your database
-    // You can use userInfo.id to ensure the user can only update their own data
+    const result = await docClient.send(getCommand);
+
+    if (!result.Item) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
     return NextResponse.json({
-      message: 'User data updated successfully',
-      updatedData: body,
-      userId: userInfo.id,
+      success: true,
+      user: result.Item,
     });
   } catch (error) {
-    console.error('API error:', error);
+    console.error('User fetch error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

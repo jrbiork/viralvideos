@@ -4,6 +4,7 @@ import VideoGallery from '../../components/VideoGallery';
 import LoginButton from '../../components/LoginButton';
 import UserDropdown from '../../components/UserDropdown';
 import Breadcrumb from '../../components/Breadcrumb';
+import CreditsDisplay from '../../components/CreditsDisplay';
 
 export default function VideosPage() {
   return (
@@ -67,11 +68,15 @@ export default function VideosPage() {
                 <div className="flex items-center space-x-3">
                   <div className="relative">
                     <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                      $
+                      ⭐
                     </div>
                   </div>
                   <div>
-                    <div className="text-white text-2xl font-bold">10</div>
+                    <CreditsDisplay
+                      size="lg"
+                      showLabel={false}
+                      className="text-white text-2xl font-bold"
+                    />
                     <div className="text-gray-300 text-xs">
                       Credits available
                     </div>

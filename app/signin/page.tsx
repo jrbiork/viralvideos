@@ -194,7 +194,10 @@ export default function SignIn() {
         {/* Video Cards Container */}
         <div
           className="relative w-full md:w-1/2 min-w-1/2 h-[600px] flex items-center justify-center"
-          style={{ marginTop: '-60px' }}
+          style={{
+            marginTop: '-60px',
+            transform: 'rotate(-10deg)',
+          }}
         >
           {/* Card 1 - Instagram (Left, no rotation) */}
           <div
