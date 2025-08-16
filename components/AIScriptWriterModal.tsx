@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 
 interface AIScriptWriterModalProps {
   isOpen: boolean;
@@ -19,14 +19,58 @@ export default function AIScriptWriterModal({
 }: AIScriptWriterModalProps) {
   const [prompt, setPrompt] = useState(initialScript);
 
+  // Update prompt when modal opens or initialScript changes
+  React.useEffect(() => {
+    setPrompt(initialScript);
+  }, [initialScript, isOpen]);
+
+  // Handle Escape key to close modal
+  React.useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('keydown', handleEscape);
+    }
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isOpen, onClose]);
+
   // Word count calculation
   const wordCount = prompt.trim() ? prompt.trim().split(/\s+/).length : 0;
   const maxWords = 100;
   const isOverLimit = wordCount > maxWords;
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (prompt.trim()) {
-      onGenerate(prompt.trim());
+      try {
+        // Call the enhance-prompt API
+        const response = await fetch(
+          `/api/enhance-prompt?prompt=${encodeURIComponent(
+            prompt.trim(),
+          )}&duration=30s`,
+          {
+            method: 'GET',
+            credentials: 'include',
+          },
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.enhancedPrompt) {
+            setPrompt(data.enhancedPrompt);
+          }
+        } else {
+          console.error('Failed to generate script');
+        }
+      } catch (error) {
+        console.error('Error generating script:', error);
+      }
     }
   };
 
@@ -99,7 +143,7 @@ export default function AIScriptWriterModal({
                 }}
                 onKeyDown={handleKeyPress}
                 placeholder="Describe your video idea, topic, or what you want to create. For example: 'A short video about a cat playing in a garden' or 'A tutorial on making the perfect coffee'"
-                className={`w-full h-32 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 ${
+                className={`w-full h-56 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 ${
                   isOverLimit
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-slate-700'
@@ -146,32 +190,52 @@ export default function AIScriptWriterModal({
         </div>
 
         {/* Footer */}
-        <div className="flex justify-end space-x-3 mt-6 pt-4 border-t border-slate-700">
+        <div className="flex justify-between items-center mt-6 pt-4 border-t border-slate-700">
+          {/* Left side - Use button */}
           <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-            disabled={isGenerating}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleGenerate}
-            disabled={!prompt.trim() || isGenerating}
+            onClick={() => {
+              onGenerate(prompt.trim());
+              onClose();
+            }}
+            disabled={!prompt.trim()}
             className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
-              !prompt.trim() || isGenerating
+              !prompt.trim()
                 ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : 'bg-purple-600 hover:bg-purple-700 text-white'
+                : 'text-white hover:bg-white/10 border'
             }`}
+            style={!prompt.trim() ? {} : { borderColor: '#5b5bff' }}
           >
-            {isGenerating ? (
-              <div className="flex items-center space-x-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                <span>Generating...</span>
-              </div>
-            ) : (
-              'Generate Script'
-            )}
+            Use
           </button>
+
+          {/* Right side - Cancel and Generate buttons */}
+          <div className="flex space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
+              disabled={isGenerating}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleGenerate}
+              disabled={!prompt.trim()}
+              className={`px-6 py-2 rounded-lg font-semibold transition-colors ${
+                !prompt.trim()
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-purple-400 to-blue-500 text-white hover:from-purple-500 hover:to-blue-600'
+              }`}
+            >
+              {isGenerating ? (
+                <div className="flex items-center space-x-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Generating...</span>
+                </div>
+              ) : (
+                'Generate Script'
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </div>

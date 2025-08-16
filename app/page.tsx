@@ -98,6 +98,12 @@ export default function Home() {
           </div>
           <div className="flex items-center space-x-4">
             <button
+              onClick={() => router.push('/pricing')}
+              className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
+            >
+              Pricing
+            </button>
+            <button
               onClick={() => router.push('/signin')}
               className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border"
               style={{ borderColor: '#5b5bff' }}
@@ -510,8 +516,8 @@ export default function Home() {
           boxShadow: '0 12px 40px rgba(0, 0, 0, 0.4)',
         }}
       >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
+        <div className="flex flex-col md:flex-row items-center justify-between">
+          <div className="flex items-center space-x-2 mb-4 md:mb-0">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <svg
                 className="w-5 h-5 text-[#1A0033]"
@@ -523,7 +529,23 @@ export default function Home() {
             </div>
             <span className="text-white text-xl font-bold">Viral Shorts</span>
           </div>
-          <div className="text-gray-400 text-sm">
+
+          <div className="flex items-center space-x-6 mb-4 md:mb-0">
+            <button
+              onClick={() => router.push('/pricing')}
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              Pricing
+            </button>
+            <button
+              onClick={() => router.push('/contact')}
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              Contact
+            </button>
+          </div>
+
+          <div className="text-gray-400 text-sm text-center md:text-right">
             <div>Copyright © 2025 Viral Shorts</div>
             <div className="mt-1">All rights reserved</div>
           </div>

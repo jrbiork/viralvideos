@@ -119,7 +119,10 @@ export default function SignIn() {
               <div className="relative flex justify-center text-sm">
                 <span
                   className="px-2 text-gray-300"
-                  style={{ backgroundColor: 'rgba(9,5,38,255)' }}
+                  style={{
+                    background:
+                      'linear-gradient(135deg, rgb(var(--background-start-rgb)) 0%, rgb(var(--background-end-rgb)) 100%)',
+                  }}
                 >
                   Or continue with
                 </span>
@@ -131,10 +134,10 @@ export default function SignIn() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-3 bg-white text-gray-900 py-3 px-4 rounded-lg border border-gray-300 hover:bg-gray-50 transition-colors font-semibold"
+              className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white py-3 px-4 rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
               ) : (
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path

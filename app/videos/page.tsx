@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import VideoGallery from '../../components/VideoGallery';
 import LoginButton from '../../components/LoginButton';
 import UserDropdown from '../../components/UserDropdown';
@@ -7,33 +9,104 @@ import Breadcrumb from '../../components/Breadcrumb';
 import CreditsDisplay from '../../components/CreditsDisplay';
 
 export default function VideosPage() {
+  const router = useRouter();
+
+  // Handle navbar scroll animation
+  useEffect(() => {
+    const handleScroll = () => {
+      const navbarWrapper = document.getElementById('navbar-wrapper');
+      const navbar = document.getElementById('navbar');
+      if (navbarWrapper && navbar) {
+        const scrollY = window.scrollY;
+        const maxScroll = 200; // Maximum scroll distance for full animation
+
+        if (scrollY > 0) {
+          // Calculate width reduction (100% to 90%)
+          const widthReduction = Math.min(scrollY / maxScroll, 1);
+          const newWidth = 100 - widthReduction * 10; // 100% to 90%
+
+          // Apply styles to navbar
+          navbar.style.width = `${newWidth}%`;
+          navbar.style.maxWidth = `${newWidth}%`;
+          navbar.style.marginLeft = 'auto';
+          navbar.style.marginRight = 'auto';
+
+          // Add more styling for scrolled state
+          if (scrollY > 50) {
+            navbarWrapper.style.marginTop = '20px'; // Add margin to wrapper
+            navbar.style.padding = '0.88rem 1.32rem'; // Keep reduced padding
+            navbar.style.backdropFilter = 'blur(15px)';
+            navbar.style.backgroundColor = 'rgba(26,9,64,0.7)';
+            navbar.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.4)';
+            navbar.style.borderRadius = '28px'; // Much more rounded corners when floating
+          } else {
+            navbarWrapper.style.marginTop = '0px'; // Reset margin
+            navbar.style.padding = '0.88rem 1.32rem'; // Keep reduced padding
+            navbar.style.backdropFilter = 'blur(8px)';
+            navbar.style.backgroundColor = 'rgba(26,9,64,0.8)';
+            navbar.style.boxShadow = '0 8px 28px rgba(0, 0, 0, 0.25)';
+            navbar.style.borderRadius = '20px'; // More rounded
+          }
+        } else {
+          // Reset to original state
+          navbarWrapper.style.marginTop = '0px'; // Reset margin
+          navbar.style.width = '100%';
+          navbar.style.maxWidth = '100%';
+          navbar.style.padding = '0.88rem 1.32rem'; // Keep reduced padding
+          navbar.style.backdropFilter = 'none';
+          navbar.style.backgroundColor = 'rgba(26,9,64,255)';
+          navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)';
+          navbar.style.borderRadius = '12px'; // Original rounded corners
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
   return (
     <div
       className="h-screen flex flex-col"
       style={{ backgroundColor: 'rgba(9,5,38,255)' }}
     >
-      {/* Top Bar */}
-      <div
-        className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0"
-        style={{ backgroundColor: 'rgba(26,9,64,255)' }}
-      >
-        <div className="flex items-center space-x-4">
-          <div className="text-yellow-400 text-2xl">⚡</div>
-          <div className="text-white text-xl font-bold">Viral Shorts</div>
-        </div>
-
-        <div className="flex-1 flex justify-center">
-          <div className="max-w-7xl w-full">
-            <Breadcrumb
-              items={[
-                { label: 'Dashboard', href: '/create' },
-                { label: 'Videos' },
-              ]}
-            />
+      {/* Header */}
+      <div className="sticky top-0 z-50 w-full" id="navbar-wrapper">
+        <nav
+          className="mx-auto transition-all duration-300 ease-in-out flex items-center justify-between"
+          style={{
+            backgroundColor: 'rgba(26,9,64,255)',
+            width: '100%',
+            maxWidth: '100%',
+            padding: '0.88rem 1.32rem',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          }}
+          id="navbar"
+        >
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <svg
+                className="w-5 h-5 text-[#1A0033]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <span className="text-white text-xl font-bold">Viral Shorts</span>
           </div>
-        </div>
-
-        <div className="w-32">{/* Spacer to balance the layout */}</div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.push('/pricing')}
+              className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
+            >
+              Pricing
+            </button>
+            <CreditsDisplay size="lg" showLabel={true} />
+            <UserDropdown className="w-auto" />
+          </div>
+        </nav>
       </div>
 
       <div className="flex flex-1 overflow-hidden">

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import VideoPreview from '../../components/VideoPreview';
 import LoginButton from '../../components/LoginButton';
 import UserDropdown from '../../components/UserDropdown';
@@ -10,6 +11,7 @@ import CreditsDisplay from '../../components/CreditsDisplay';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
 
 export default function GeneratePage() {
+  const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(
     null,
@@ -31,6 +33,60 @@ export default function GeneratePage() {
     '30s',
   );
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
+
+  // Handle navbar scroll animation
+  useEffect(() => {
+    const handleScroll = () => {
+      const navbarWrapper = document.getElementById('navbar-wrapper');
+      const navbar = document.getElementById('navbar');
+      if (navbarWrapper && navbar) {
+        const scrollY = window.scrollY;
+        const maxScroll = 200; // Maximum scroll distance for full animation
+
+        if (scrollY > 0) {
+          // Calculate width reduction (100% to 90%)
+          const widthReduction = Math.min(scrollY / maxScroll, 1);
+          const newWidth = 100 - widthReduction * 10; // 100% to 90%
+
+          // Apply styles to navbar
+          navbar.style.width = `${newWidth}%`;
+          navbar.style.maxWidth = `${newWidth}%`;
+          navbar.style.marginLeft = 'auto';
+          navbar.style.marginRight = 'auto';
+
+          // Add more styling for scrolled state
+          if (scrollY > 50) {
+            navbarWrapper.style.marginTop = '20px'; // Add margin to wrapper
+            navbar.style.padding = '0.88rem 1.32rem'; // Keep reduced padding
+            navbar.style.backdropFilter = 'blur(15px)';
+            navbar.style.backgroundColor = 'rgba(26,9,64,0.7)';
+            navbar.style.boxShadow = '0 12px 40px rgba(0, 0, 0, 0.4)';
+            navbar.style.borderRadius = '28px'; // Much more rounded corners when floating
+          } else {
+            navbarWrapper.style.marginTop = '0px'; // Reset margin
+            navbar.style.padding = '0.88rem 1.32rem'; // Keep reduced padding
+            navbar.style.backdropFilter = 'blur(8px)';
+            navbar.style.backgroundColor = 'rgba(26,9,64,0.8)';
+            navbar.style.boxShadow = '0 8px 28px rgba(0, 0, 0, 0.25)';
+            navbar.style.borderRadius = '20px'; // More rounded
+          }
+        } else {
+          // Reset to original state
+          navbarWrapper.style.marginTop = '0px'; // Reset margin
+          navbar.style.width = '100%';
+          navbar.style.maxWidth = '100%';
+          navbar.style.padding = '0.88rem 1.32rem'; // Keep reduced padding
+          navbar.style.backdropFilter = 'none';
+          navbar.style.backgroundColor = 'rgba(26,9,64,255)';
+          navbar.style.boxShadow = '0 4px 20px rgba(0, 0, 0, 0.15)';
+          navbar.style.borderRadius = '12px'; // Original rounded corners
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Word count calculation
   const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0;
@@ -71,21 +127,8 @@ export default function GeneratePage() {
   };
 
   const handleGenerateScript = async (prompt: string) => {
-    setIsGeneratingScript(true);
-
-    try {
-      // For now, we'll simulate AI script generation
-      // In the future, this would call an AI API
-      const generatedScript = `Create a short video about ${prompt}. The video should be engaging and show ${prompt} in an interesting and visually appealing way.`;
-
-      setScript(generatedScript);
-      setIsScriptModalOpen(false);
-    } catch (error) {
-      console.error('Error generating script:', error);
-      alert('Failed to generate script. Please try again.');
-    } finally {
-      setIsGeneratingScript(false);
-    }
+    setScript(prompt);
+    setIsScriptModalOpen(false);
   };
 
   const getStatusIcon = () => {
@@ -108,28 +151,43 @@ export default function GeneratePage() {
       className="h-screen flex flex-col"
       style={{ backgroundColor: 'rgba(9,5,38,255)' }}
     >
-      {/* Top Bar */}
-      <div
-        className="flex items-center justify-between p-4 border-b border-slate-800 flex-shrink-0"
-        style={{ backgroundColor: 'rgba(26,9,64,255)' }}
-      >
-        <div className="flex items-center space-x-4">
-          <div className="text-yellow-400 text-2xl">⚡</div>
-          <div className="text-white text-xl font-bold">Viral Shorts</div>
-        </div>
-
-        <div className="flex-1 flex justify-center">
-          <div className="max-w-4xl w-full">
-            <Breadcrumb
-              items={[
-                { label: 'Dashboard', href: '/create' },
-                { label: 'Create' },
-              ]}
-            />
+      {/* Header */}
+      <div className="sticky top-0 z-50 w-full" id="navbar-wrapper">
+        <nav
+          className="mx-auto transition-all duration-300 ease-in-out flex items-center justify-between"
+          style={{
+            backgroundColor: 'rgba(26,9,64,255)',
+            width: '100%',
+            maxWidth: '100%',
+            padding: '0.88rem 1.32rem',
+            borderRadius: '12px',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.15)',
+          }}
+          id="navbar"
+        >
+          <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+              <svg
+                className="w-5 h-5 text-[#1A0033]"
+                fill="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            </div>
+            <span className="text-white text-xl font-bold">Viral Shorts</span>
           </div>
-        </div>
-
-        <div className="w-32">{/* Spacer to balance the layout */}</div>
+          <div className="flex items-center space-x-4">
+            <button
+              onClick={() => router.push('/pricing')}
+              className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
+            >
+              Pricing
+            </button>
+            <CreditsDisplay size="lg" showLabel={true} />
+            <UserDropdown className="w-auto" />
+          </div>
+        </nav>
       </div>
 
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
@@ -239,15 +297,11 @@ export default function GeneratePage() {
             <div className="mb-8">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
-                  <h2 className="text-xl font-semibold text-white">Script</h2>
-                  <div className="relative group">
-                    <span className="text-gray-400 cursor-help">❓</span>
-                    <div className="absolute bottom-full left-full ml-2 mt-5 px-3 py-3 bg-slate-800 border border-slate-600 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-10 w-[275px]">
-                      Write or generate a script for your video.
-                      <br />
-                      The AI will use this text to create matching visuals.
-                      <div className="absolute top-2 -left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
-                    </div>
+                  <div className="absolute bottom-full left-full ml-2 mt-5 px-3 py-3 bg-slate-800 border border-slate-600 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-10 w-[275px]">
+                    Write your video idea and use AI to improve it.
+                    <br />
+                    The AI will use this text to create matching visuals.
+                    <div className="absolute top-2 -left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-4">
@@ -328,11 +382,11 @@ export default function GeneratePage() {
                 </div>
               </div>
               <p className="text-gray-300 text-sm mb-4">
-                Enter your video script or use AI to generate one.
+                Write your video idea and use AI to improve it.
               </p>
               <div className="relative">
                 <textarea
-                  className={`w-full h-32 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full h-48 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     isOverLimit
                       ? 'border-red-500 focus:ring-red-500'
                       : 'border-slate-700'
