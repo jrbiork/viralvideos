@@ -40,9 +40,6 @@ export const handler = async (
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         },
         body: JSON.stringify({ error: 'Request body is required' }),
       };
@@ -60,9 +57,6 @@ export const handler = async (
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         },
         body: JSON.stringify({
           error: 'userId, username, and email are required in request body',
@@ -76,9 +70,6 @@ export const handler = async (
         statusCode: 405,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         },
         body: JSON.stringify({ error: 'Method not allowed' }),
       };
@@ -92,9 +83,6 @@ export const handler = async (
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
       },
       body: JSON.stringify({ error: 'Internal server error' }),
     };
@@ -157,9 +145,6 @@ async function handleCreateOrUpdateUser(
       statusCode: 200,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
       },
       body: JSON.stringify({
         success: true,
@@ -179,6 +164,8 @@ async function handleCreateOrUpdateUser(
         createdAt: now,
         lastLoginAt: now,
         creditsAvailable: 10,
+        plan: 'free',
+        lastPaymentAt: null,
       },
     });
 
@@ -198,9 +185,6 @@ async function handleCreateOrUpdateUser(
       statusCode: 201,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
       },
       body: JSON.stringify({
         success: true,

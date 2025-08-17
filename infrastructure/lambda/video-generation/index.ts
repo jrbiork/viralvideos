@@ -2,6 +2,7 @@ import { SQSEvent, SQSRecord, SQSBatchResponse } from 'aws-lambda';
 import { format } from 'date-fns';
 import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { generateVideoClip } from './video';
+import { generateImage } from './image';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
 import { generateSubtitles } from './subtitles';
 import { combineVideoAndAudio } from './videoCombiner';
@@ -71,7 +72,43 @@ async function processVideoGeneration(
       throw new Error('Failed to generate story breakdown');
     }
 
-    // Step 2: Generate video clips (includes image generation)
+    console.log('🎥 Story breakdown generated:', scenes);
+
+    // Step 2: Generate images for each scene
+    console.log('🎨 Generating images for each scene...');
+    const imageUrls: string[] = [];
+    const seed = Math.floor(Math.random() * 1000000);
+
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
+      console.log(`🎨 Generating image for scene ${i + 1}:`, scene.description);
+      try {
+        const imageUrl = await generateImage(
+          scene.description,
+          i,
+          request.userId,
+          timestamp,
+          seed,
+          scene.id,
+        );
+        imageUrls.push(imageUrl);
+        console.log(`✅ Scene ${i + 1} image generated:`, imageUrl);
+      } catch (error) {
+        console.error(`❌ Failed to generate image for scene ${i + 1}:`, error);
+        throw new Error(
+          `Failed to generate image for scene ${i + 1}: ${error}`,
+        );
+      }
+    }
+
+    if (imageUrls.length === 0) {
+      console.log('❌ Error: No images were generated');
+      throw new Error('No images were generated');
+    }
+
+    console.log('🎥 Images generated:', imageUrls);
+
+    // Step 3: Generate video clips (includes image generation)
     // Video generation is currently disabled for testing
 
     // Step 3: Generate audio narration with word-level timestamps
@@ -82,7 +119,48 @@ async function processVideoGeneration(
       voiceToneInstruction,
     );
 
-    // Step 4: Generate subtitles based on word-level timestamps
+    console.log('🎥 Audio narration generated:', narrationResult);
+
+    // Step 4: Generate video clips from images
+    // console.log('🎥 Generating video clips from images...');
+    // const videoClips: string[] = [];
+
+    // for (let i = 0; i < scenes.length; i++) {
+    //   const scene = scenes[i];
+    //   const imageUrl = imageUrls[i];
+    //   console.log(
+    //     `🎬 Generating video for scene ${i + 1} from image:`,
+    //     scene.description,
+    //   );
+    //   try {
+    //     const videoClip = await generateVideoClip(
+    //       scene.description,
+    //       scene.duration,
+    //       i,
+    //       request.userId,
+    //       timestamp,
+    //       seed,
+    //       scene.id,
+    //       imageUrl,
+    //     );
+    //     videoClips.push(videoClip);
+    //     console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
+    //   } catch (error) {
+    //     console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
+    //     throw new Error(
+    //       `Failed to generate video for scene ${i + 1}: ${error}`,
+    //     );
+    //   }
+    // }
+
+    // if (videoClips.length === 0) {
+    //   console.log('❌ Error: No video clips were generated');
+    //   throw new Error('No video clips were generated');
+    // }
+
+    // console.log(`✅ Generated ${videoClips.length} video clips`);
+
+    // Step 5: Generate subtitles based on word-level timestamps
     const subtitleKeys = await generateSubtitles(
       scenes,
       request.userId,
@@ -90,7 +168,9 @@ async function processVideoGeneration(
       narrationResult.subtitles,
     );
 
-    // Step 5: Combine video clips, audio, and subtitles
+    console.log('🎥 Subtitles generated:', subtitleKeys);
+
+    // Step 6: Combine video clips, audio, and subtitles
     const finalVideo = await combineVideoAndAudio(
       request.userId,
       timestamp,

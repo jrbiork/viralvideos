@@ -1,7 +1,6 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import axios from 'axios';
 import { RunwayML } from '@runwayml/sdk';
-import { generateImage } from './image';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 
@@ -20,6 +19,7 @@ export async function generateVideoClip(
   timestamp: string,
   seed: number,
   sceneId?: number,
+  imageUrl?: string,
 ): Promise<string> {
   try {
     // Initialize Runway SDK
@@ -35,16 +35,11 @@ export async function generateVideoClip(
     console.log('- Duration:', duration, 'seconds');
     console.log('- Aspect ratio: 9:16 (vertical)');
 
-    // Step 1: Generate an image from text using text-to-image API
-    console.log('🎨 Generating image from text...');
-    const imageUrl = await generateImage(
-      description,
-      sceneIndex,
-      userId,
-      timestamp,
-      seed,
-      sceneId,
-    );
+    // Use the provided image URL or throw error if not provided
+    if (!imageUrl) {
+      throw new Error('Image URL is required for video generation');
+    }
+    console.log('🎨 Using provided image URL for video generation:', imageUrl);
 
     // Step 2: Generate video from the image using image-to-video API
     console.log('🎬 Generating video from image...');

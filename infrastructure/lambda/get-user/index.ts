@@ -26,9 +26,6 @@ export const handler = async (
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         },
         body: JSON.stringify({ error: 'Query parameters are required' }),
       };
@@ -46,9 +43,6 @@ export const handler = async (
         statusCode: 400,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         },
         body: JSON.stringify({
           error: 'userId is required in query parameters',
@@ -67,9 +61,6 @@ export const handler = async (
         statusCode: 405,
         headers: {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-          'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
         },
         body: JSON.stringify({ error: 'Method not allowed' }),
       };
@@ -82,9 +73,6 @@ export const handler = async (
       statusCode: 500,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
       },
       body: JSON.stringify({ error: 'Internal server error' }),
     };
@@ -113,9 +101,6 @@ async function handleGetUser(
       statusCode: 404,
       headers: {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-        'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
       },
       body: JSON.stringify({ error: 'User not found' }),
     };
@@ -125,9 +110,6 @@ async function handleGetUser(
     statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-      'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS',
     },
     body: JSON.stringify({
       success: true,
