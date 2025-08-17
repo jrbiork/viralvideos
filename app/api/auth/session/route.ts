@@ -165,9 +165,10 @@ export async function POST(request: NextRequest) {
         userId: userData.sub,
         email: userEmail,
         name: userInfo.name,
+        username: userData.username,
       };
 
-      console.log('Sending user data to DynamoDB:', userPayload);
+      console.log('Sending user data to API Gateway:', userPayload);
 
       const userManagementResponse = await fetch(
         `${request.nextUrl.origin}/api/user`,
@@ -175,8 +176,9 @@ export async function POST(request: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
           },
-          body: JSON.stringify(userPayload),
+          body: JSON.stringify(userPayload), // User info comes from JWT token
         },
       );
 
@@ -185,12 +187,12 @@ export async function POST(request: NextRequest) {
         console.log('User management result:', userData);
       } else {
         console.error(
-          'Failed to manage user in DynamoDB:',
+          'Failed to manage user via API Gateway:',
           await userManagementResponse.text(),
         );
       }
     } catch (error) {
-      console.error('Error managing user in DynamoDB:', error);
+      console.error('Error managing user via API Gateway:', error);
     }
 
     // Set the Cognito token directly in a cookie
@@ -274,9 +276,10 @@ export async function GET(request: NextRequest) {
         userId: userData.sub,
         email: userEmail,
         name: userInfo.name,
+        username: userData.username,
       };
 
-      console.log('Sending user session update to DynamoDB:', userPayload);
+      console.log('Sending user session update to API Gateway:', userPayload);
 
       const userManagementResponse = await fetch(
         `${request.nextUrl.origin}/api/user`,
@@ -284,8 +287,9 @@ export async function GET(request: NextRequest) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            Authorization: `Bearer ${cognitoToken.value}`,
           },
-          body: JSON.stringify(userPayload),
+          body: JSON.stringify(userPayload), // User info comes from JWT token
         },
       );
 
@@ -294,12 +298,12 @@ export async function GET(request: NextRequest) {
         console.log('User session update result:', userData);
       } else {
         console.error(
-          'Failed to update user session in DynamoDB:',
+          'Failed to update user session via API Gateway:',
           await userManagementResponse.text(),
         );
       }
     } catch (error) {
-      console.error('Error updating user session in DynamoDB:', error);
+      console.error('Error updating user session via API Gateway:', error);
     }
 
     const userResponse = {

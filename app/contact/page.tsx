@@ -64,7 +64,10 @@ export default function Contact() {
           }}
           id="navbar"
         >
-          <div className="flex items-center space-x-2">
+          <div
+            className="flex items-center space-x-2 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={() => router.push('/')}
+          >
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <svg
                 className="w-5 h-5 text-[#1A0033]"
@@ -77,12 +80,6 @@ export default function Contact() {
             <span className="text-white text-xl font-bold">Viral Shorts</span>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => router.push('/')}
-              className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
-            >
-              Home
-            </button>
             <button
               onClick={() => router.push('/pricing')}
               className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
@@ -121,220 +118,103 @@ export default function Contact() {
           </p>
         </div>
 
-        <div className="max-w-6xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-12">
-            {/* Contact Form */}
-            <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700/50">
-              <h2 className="text-2xl font-bold text-white mb-6">
-                Send us a message
-              </h2>
+        <div className="max-w-2xl mx-auto">
+          {/* Contact Form */}
+          <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700/50">
+            <h2 className="text-2xl font-bold text-white mb-6">
+              Send us a message
+            </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                  <label
-                    htmlFor="name"
-                    className="block text-gray-300 text-sm font-medium mb-2"
-                  >
-                    Name
-                  </label>
-                  <input
-                    type="text"
-                    id="name"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="Your name"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-gray-300 text-sm font-medium mb-2"
-                  >
-                    Email
-                  </label>
-                  <input
-                    type="email"
-                    id="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    placeholder="your.email@example.com"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="subject"
-                    className="block text-gray-300 text-sm font-medium mb-2"
-                  >
-                    Subject
-                  </label>
-                  <select
-                    id="subject"
-                    name="subject"
-                    value={formData.subject}
-                    onChange={handleInputChange}
-                    required
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  >
-                    <option value="">Select a subject</option>
-                    <option value="general">General Inquiry</option>
-                    <option value="support">Technical Support</option>
-                    <option value="billing">Billing Question</option>
-                    <option value="partnership">Partnership</option>
-                    <option value="feedback">Feedback</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="message"
-                    className="block text-gray-300 text-sm font-medium mb-2"
-                  >
-                    Message
-                  </label>
-                  <textarea
-                    id="message"
-                    name="message"
-                    value={formData.message}
-                    onChange={handleInputChange}
-                    required
-                    rows={6}
-                    className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                    placeholder="Tell us how we can help you..."
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-3 px-6 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-gray-300 text-sm font-medium mb-2"
                 >
-                  {isSubmitting ? 'Sending...' : 'Send Message'}
-                </button>
-              </form>
-            </div>
-
-            {/* Contact Information */}
-            <div className="space-y-8">
-              <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700/50">
-                <h2 className="text-2xl font-bold text-white mb-6">
-                  Contact Information
-                </h2>
-
-                <div className="space-y-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg
-                        className="w-6 h-6 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z" />
-                        <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        Email
-                      </h3>
-                      <p className="text-gray-300">support@viralshorts.ai</p>
-                      <p className="text-gray-400 text-sm">
-                        We typically respond within 24 hours
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg
-                        className="w-6 h-6 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-2 0c0 .993-.241 1.929-.668 2.754l-1.524-1.525a3.997 3.997 0 00.078-2.183l1.562-1.562C15.802 8.249 16 9.1 16 10zm-5.165 3.913l1.58 1.58A5.98 5.98 0 0110 16a5.976 5.976 0 01-2.516-.552l1.562-1.562a4.006 4.006 0 001.789.027zm-4.677-2.796a4.002 4.002 0 01-.041-2.08l-.08.08-1.53-1.533A5.98 5.98 0 004 10c0 .954.223 1.856.619 2.657l1.54-1.54zm1.088-6.45A5.974 5.974 0 0110 4c.954 0 1.856.223 2.657.619l-1.54 1.54a4.002 4.002 0 00-2.346.033L7.246 4.668zM12 10a2 2 0 11-4 0 2 2 0 014 0z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        Live Chat
-                      </h3>
-                      <p className="text-gray-300">Available 24/7</p>
-                      <p className="text-gray-400 text-sm">
-                        Get instant help from our support team
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start space-x-4">
-                    <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg
-                        className="w-6 h-6 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M3 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm0 4a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-white mb-1">
-                        Help Center
-                      </h3>
-                      <p className="text-gray-300">Documentation & Tutorials</p>
-                      <p className="text-gray-400 text-sm">
-                        Find answers to common questions
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  Name
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="Your name"
+                />
               </div>
 
-              <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700/50">
-                <h2 className="text-2xl font-bold text-white mb-6">
-                  Business Hours
-                </h2>
-
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Monday - Friday</span>
-                    <span className="text-white font-medium">
-                      9:00 AM - 6:00 PM EST
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Saturday</span>
-                    <span className="text-white font-medium">
-                      10:00 AM - 4:00 PM EST
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-300">Sunday</span>
-                    <span className="text-white font-medium">Closed</span>
-                  </div>
-                </div>
-
-                <div className="mt-6 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                  <p className="text-blue-300 text-sm">
-                    <strong>Note:</strong> For urgent technical issues, please
-                    use our live chat support which is available 24/7.
-                  </p>
-                </div>
+              <div>
+                <label
+                  htmlFor="email"
+                  className="block text-gray-300 text-sm font-medium mb-2"
+                >
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="your.email@example.com"
+                />
               </div>
-            </div>
+
+              <div>
+                <label
+                  htmlFor="subject"
+                  className="block text-gray-300 text-sm font-medium mb-2"
+                >
+                  Subject
+                </label>
+                <select
+                  id="subject"
+                  name="subject"
+                  value={formData.subject}
+                  onChange={handleInputChange}
+                  required
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  <option value="">Select a subject</option>
+                  <option value="general">General Inquiry</option>
+                  <option value="support">Technical Support</option>
+                  <option value="billing">Billing Question</option>
+                  <option value="partnership">Partnership</option>
+                  <option value="feedback">Feedback</option>
+                </select>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="message"
+                  className="block text-gray-300 text-sm font-medium mb-2"
+                >
+                  Message
+                </label>
+                <textarea
+                  id="message"
+                  name="message"
+                  value={formData.message}
+                  onChange={handleInputChange}
+                  required
+                  rows={6}
+                  className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                  placeholder="Tell us how we can help you..."
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3 px-6 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? 'Sending...' : 'Send Message'}
+              </button>
+            </form>
           </div>
         </div>
       </div>

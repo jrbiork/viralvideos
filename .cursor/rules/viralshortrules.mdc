@@ -1,0 +1,9 @@
+---
+description: Project-wide rules (Next.js + AWS)
+globs: '*'
+alwaysApply: true
+---
+
+- Always use jose lib for jwt authentication and verification
+- Never create new package.json and tsconfig.ts when creating new lambdas
+- in the auth token there are only sub and username fields available

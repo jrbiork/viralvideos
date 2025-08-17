@@ -12,20 +12,28 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
     console.log(`📊 Parameters: ${sceneCount} scenes, ${totalDuration} seconds total`);
     console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
     try {
+        const wordsPerSecond = 2.2;
+        const wordsPerMinute = Math.round(wordsPerSecond * 60);
+        const maxWordsPerScene = Math.max(8, Math.round(sceneDuration * wordsPerSecond));
+        const maxTotalWords = Math.round(totalDuration * wordsPerSecond);
         const response = await openai.chat.completions.create({
             model: 'gpt-4o-mini',
             messages: [
                 {
                     role: 'system',
-                    content: `You are a script writer for social media. Break down the given prompt into ${sceneCount} scenes, each ${sceneDuration} seconds long, for a ${totalDuration}-second vertical video. 
-          Each scene should have a clear visual description and narration text. Also provide a voice tone instruction for the narration.
-          Return as JSON with:
-          - videoScenes: array of scene objects containing:
-            - description: short visual scene description
-            - duration: ${sceneDuration} (seconds)
-            - narration: text to be spoken in this scene (the narration should fit naturally within the ${sceneDuration}-seconds scene)
-          - voiceToneInstruction: a brief instruction for the voice tone (e.g., "Speak in a cheerful and positive tone", "Speak in a dramatic and suspenseful tone")
-          `,
+                    content: `You are a short-form video scriptwriter for TikTok/Reels/Shorts.
+Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
+
+Strict rules:
+- Output **JSON only** matching the provided schema; no prose, no backticks.
+- Language: **use the same language as the user's input**.
+- **Scene 1 must include a strong curiosity hook** in the narration (one sentence).
+- Each **description**: what viewers see (subject, action, framing/camera, motion, lighting). No dialogue.
+- Each **narration**: spoken VO, conversational, **no hashtags, emojis, or scene labels**.
+- **Timing**: narration per scene ≤ ${maxWordsPerScene} words; total narration must fit ${totalDuration}s at ~${wordsPerMinute} wpm.
+- Tone: energetic and clear; keep actions **safe and realistic**; brand-neutral (no logos, trademarks, or celebrity names).
+- End with a satisfying visual beat (rest, reveal, or resolution), not a hard sales CTA unless implied by the idea.
+  `,
                 },
                 {
                     role: 'user',

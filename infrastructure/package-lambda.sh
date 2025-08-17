@@ -7,6 +7,8 @@ mkdir -p dist/video-generation
 mkdir -p dist/queue-manager
 mkdir -p dist/fetch-videos
 mkdir -p dist/jwt-authorizer
+mkdir -p dist/get-user
+mkdir -p dist/upsert-user
 
 # Copy built JavaScript files
 echo "📋 Copying video-generation files..."
@@ -25,6 +27,12 @@ cp lambda/package.json dist/fetch-videos/
 echo "📋 Copying jwt-authorizer files..."
 cp lambda/jwt-authorizer/*.js dist/jwt-authorizer/
 cp lambda/package.json dist/jwt-authorizer/
+
+echo "📋 Copying get-user files..."
+cp lambda/get-user/*.js dist/get-user/
+
+echo "📋 Copying upsert-user files..."
+cp lambda/upsert-user/*.js dist/upsert-user/
 
 
 
@@ -46,6 +54,18 @@ cd ../..
 
 echo "📦 Installing dependencies for jwt-authorizer..."
 cd dist/jwt-authorizer
+npm install --production
+cd ../..
+
+echo "📦 Installing dependencies for get-user..."
+cd dist/get-user
+cp ../../lambda/package.json .
+npm install --production
+cd ../..
+
+echo "📦 Installing dependencies for upsert-user..."
+cd dist/upsert-user
+cp ../../lambda/package.json .
 npm install --production
 cd ../..
 

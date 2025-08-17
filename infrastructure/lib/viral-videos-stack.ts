@@ -86,7 +86,7 @@ export class ViralVideosStack extends cdk.Stack {
         type: dynamodb.AttributeType.STRING,
       },
       sortKey: {
-        name: 'email',
+        name: 'username',
         type: dynamodb.AttributeType.STRING,
       },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
@@ -94,11 +94,11 @@ export class ViralVideosStack extends cdk.Stack {
       pointInTimeRecovery: true,
     });
 
-    // Add GSI for email lookups
+    // Add GSI for username lookups
     usersTable.addGlobalSecondaryIndex({
-      indexName: 'EmailIndex',
+      indexName: 'UsernameIndex',
       partitionKey: {
-        name: 'email',
+        name: 'username',
         type: dynamodb.AttributeType.STRING,
       },
       projectionType: dynamodb.ProjectionType.ALL,
@@ -226,6 +226,31 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    // Lambda function for user management
+    const getUserLambda = new lambda.Function(this, 'GetUserLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/get-user')),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(1),
+      memorySize: 128,
+      environment: {
+        USERS_TABLE_NAME: usersTable.tableName,
+      },
+    });
+
+    const upsertUserLambda = new lambda.Function(this, 'UpsertUserLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/upsert-user')),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(1),
+      memorySize: 128,
+      environment: {
+        USERS_TABLE_NAME: usersTable.tableName,
+      },
+    });
+
     // API Gateway REST API
     const api = new apigateway.RestApi(this, 'VideoGenerationApi', {
       restApiName: 'Video Generation API',
@@ -274,6 +299,29 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda integration for get user
+    const getUserIntegration = new apigateway.LambdaIntegration(getUserLambda, {
+      requestTemplates: {
+        'application/json': JSON.stringify({
+          queryStringParameters: {
+            userId: "$input.params('userId')",
+          },
+        }),
+      },
+    });
+
+    // Lambda integration for upsert user
+    const upsertUserIntegration = new apigateway.LambdaIntegration(
+      upsertUserLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
     // Create API resources and methods with JWT authorization
     const videoResource = api.root.addResource('generate-video');
     videoResource.addMethod('POST', queueManagerIntegration, {
@@ -283,6 +331,19 @@ export class ViralVideosStack extends cdk.Stack {
     const fetchVideosResource = api.root.addResource('fetch-videos');
     fetchVideosResource.addMethod('GET', fetchVideosIntegration, {
       authorizer: jwtAuthorizer,
+    });
+
+    const userManagementResource = api.root.addResource('user');
+    userManagementResource.addMethod('POST', upsertUserIntegration, {
+      authorizer: jwtAuthorizer,
+    });
+
+    // Add GET method with query parameters
+    userManagementResource.addMethod('GET', getUserIntegration, {
+      authorizer: jwtAuthorizer,
+      requestParameters: {
+        'method.request.querystring.userId': true,
+      },
     });
 
     // CloudWatch Log Group for Lambda
@@ -300,6 +361,18 @@ export class ViralVideosStack extends cdk.Stack {
 
     new logs.LogGroup(this, 'FetchVideosLogGroup', {
       logGroupName: `/aws/lambda/${fetchVideosLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'GetUserLogGroup', {
+      logGroupName: `/aws/lambda/${getUserLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'UpsertUserLogGroup', {
+      logGroupName: `/aws/lambda/${upsertUserLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -346,6 +419,26 @@ export class ViralVideosStack extends cdk.Stack {
       description: 'Lambda function name for fetching videos',
     });
 
+    new cdk.CfnOutput(this, 'GetUserLambdaArn', {
+      value: getUserLambda.functionArn,
+      description: 'Lambda function ARN for get user',
+    });
+
+    new cdk.CfnOutput(this, 'GetUserLambdaName', {
+      value: getUserLambda.functionName,
+      description: 'Lambda function name for get user',
+    });
+
+    new cdk.CfnOutput(this, 'UpsertUserLambdaArn', {
+      value: upsertUserLambda.functionArn,
+      description: 'Lambda function ARN for upsert user',
+    });
+
+    new cdk.CfnOutput(this, 'UpsertUserLambdaName', {
+      value: upsertUserLambda.functionName,
+      description: 'Lambda function name for upsert user',
+    });
+
     new cdk.CfnOutput(this, 'JWTAuthorizerLambdaArn', {
       value: jwtAuthorizerLambda.functionArn,
       description: 'Lambda function ARN for JWT authorization',
@@ -374,6 +467,11 @@ export class ViralVideosStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'FetchVideosEndpoint', {
       value: `${api.url}fetch-videos`,
       description: 'API Gateway endpoint for fetching videos',
+    });
+
+    new cdk.CfnOutput(this, 'UserManagementEndpoint', {
+      value: `${api.url}user`,
+      description: 'API Gateway endpoint for user management',
     });
 
     new cdk.CfnOutput(this, 'UsersTableName', {

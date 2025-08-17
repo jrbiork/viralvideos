@@ -25,11 +25,11 @@ export function useUserCredits() {
     setError(null);
 
     try {
-      const response = await fetch(
-        `/api/user/credits?userId=${encodeURIComponent(
-          user.id,
-        )}&email=${encodeURIComponent(user.email)}`,
-      );
+      const params = new URLSearchParams({
+        userId: user.id,
+        username: user.email, // user.email is actually the username from JWT token
+      });
+      const response = await fetch(`/api/user?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch user credits');

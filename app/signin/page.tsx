@@ -134,12 +134,12 @@ export default function SignIn() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white py-3 px-4 rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
+              className="w-full flex items-center justify-center space-x-3 bg-white text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-50 transition-all font-semibold border border-gray-300 shadow-sm"
             >
               {isLoading ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                <div className="w-5 h-5 border-2 border-gray-800 border-t-transparent rounded-full animate-spin"></div>
               ) : (
-                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 text-gray-800" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
                     d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"

@@ -127,7 +127,7 @@ export default function Home() {
             className="font-bold text-white mb-6"
             style={{ fontSize: '5.61rem' }}
           >
-            From idea to{' '}
+            Idea to{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">
               viral short
             </span>

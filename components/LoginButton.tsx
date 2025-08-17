@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useAuth } from './AuthContext';
 
 interface LoginButtonProps {
-  variant?: 'primary' | 'outline';
+  variant?: 'primary' | 'outline' | 'google';
   className?: string;
 }
 
@@ -25,6 +25,8 @@ export default function LoginButton({
   const variantClasses =
     variant === 'primary'
       ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white hover:from-pink-600 hover:to-purple-700 shadow-lg hover:shadow-xl'
+      : variant === 'google'
+      ? 'bg-white text-gray-800 hover:bg-gray-50 border border-gray-300 shadow-sm'
       : 'border-2 border-white text-white hover:bg-white hover:text-purple-900';
 
   if (isAuthenticated && user) {
@@ -107,12 +109,21 @@ export default function LoginButton({
       >
         {isLoading ? (
           <div className="flex items-center">
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+            <div
+              className={`w-4 h-4 border-2 border-t-transparent rounded-full animate-spin mr-2 ${
+                variant === 'google' ? 'border-gray-800' : 'border-white'
+              }`}
+            ></div>
             Signing in...
           </div>
         ) : (
           <div className="flex items-center">
-            <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+            <svg
+              className={`w-5 h-5 mr-2 ${
+                variant === 'google' ? 'text-gray-800' : ''
+              }`}
+              viewBox="0 0 24 24"
+            >
               <path
                 fill="currentColor"
                 d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
