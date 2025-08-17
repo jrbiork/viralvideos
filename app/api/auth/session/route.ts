@@ -1,67 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { cookies } from 'next/headers';
+import {
+  verifyCognitoTokenPayload,
+  type CognitoUserPayload,
+} from '../../../../lib/auth-utils';
+import { userSessionCache } from '../../../../lib/session-cache';
 
 const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
-interface JWTPayload {
-  sub: string;
-  email: string;
-  name?: string;
-  picture?: string;
-  exp: number;
-  iat: number;
-  iss: string;
-  aud: string;
-  token_use: string;
-  auth_time: number;
-  client_id: string;
-  [key: string]: any;
-}
-
-async function verifyCognitoToken(token: string): Promise<JWTPayload | null> {
-  try {
-    const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
-    const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-    const region = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1';
-
-    if (!userPoolId || !clientId) {
-      throw new Error('Cognito configuration missing');
-    }
-
-    const jwksUrl = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
-    const JWKS = createRemoteJWKSet(new URL(jwksUrl));
-
-    const { payload } = await jwtVerify(token, JWKS, {
-      issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
-      algorithms: ['RS256'],
-    });
-
-    const jwtPayload = payload as JWTPayload;
-
-    // Manual audience validation
-    const tokenClientId = jwtPayload.client_id || jwtPayload.aud;
-    if (tokenClientId !== clientId) {
-      return null;
-    }
-
-    // Additional validation
-    if (jwtPayload.token_use !== 'access') {
-      return null;
-    }
-
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (jwtPayload.exp < now) {
-      return null;
-    }
-
-    return jwtPayload;
-  } catch (error) {
-    console.error('Token verification failed:', error);
-    return null;
-  }
-}
+type JWTPayload = CognitoUserPayload;
 
 async function getUserInfoFromCognito(accessToken: string) {
   try {
@@ -79,22 +26,12 @@ async function getUserInfoFromCognito(accessToken: string) {
 
       if (userInfoResponse.ok) {
         const cognitoUserInfo = await userInfoResponse.json();
-        console.log('Cognito user info response:', {
-          status: userInfoResponse.status,
-          headers: Object.fromEntries(userInfoResponse.headers.entries()),
-          data: cognitoUserInfo,
-          availableFields: Object.keys(cognitoUserInfo),
-          nameField: cognitoUserInfo.name,
-          givenNameField: cognitoUserInfo.given_name,
-          familyNameField: cognitoUserInfo.family_name,
-          emailField: cognitoUserInfo.email,
-        });
+        // User info retrieved successfully
         return cognitoUserInfo;
       } else {
         console.error('Cognito user info request failed:', {
           status: userInfoResponse.status,
           statusText: userInfoResponse.statusText,
-          headers: Object.fromEntries(userInfoResponse.headers.entries()),
         });
       }
     }
@@ -113,20 +50,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify the Cognito token
-    const userData = await verifyCognitoToken(token);
+    const userData = await verifyCognitoTokenPayload(token);
     if (!userData) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
-    // Debug: Log the user data to see what fields are available
-    console.log('Cognito JWT token payload:', {
-      sub: userData.sub,
-      email: userData.email,
-      name: userData.name,
-      picture: userData.picture,
-      availableFields: Object.keys(userData),
-      allData: userData,
-    });
+    // User data verified successfully
 
     // Get user info for response
     const cognitoUserInfo = await getUserInfoFromCognito(token);
@@ -168,8 +97,6 @@ export async function POST(request: NextRequest) {
         username: userData.username,
       };
 
-      console.log('Sending user data to API Gateway:', userPayload);
-
       const userManagementResponse = await fetch(
         `${request.nextUrl.origin}/api/user`,
         {
@@ -184,7 +111,7 @@ export async function POST(request: NextRequest) {
 
       if (userManagementResponse.ok) {
         const userData = await userManagementResponse.json();
-        console.log('User management result:', userData);
+        // User management successful
       } else {
         console.error(
           'Failed to manage user via API Gateway:',
@@ -234,9 +161,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify the Cognito token directly
-    const userData = await verifyCognitoToken(cognitoToken.value);
+    const userData = await verifyCognitoTokenPayload(cognitoToken.value);
     if (!userData) {
       return NextResponse.json({ user: null });
+    }
+
+    // Check cache first
+    const cachedUser = userSessionCache.getSession(
+      userData.sub,
+      cognitoToken.value,
+    );
+    if (cachedUser) {
+      return NextResponse.json({ user: cachedUser });
     }
 
     // Get additional user info from Cognito
@@ -279,8 +215,6 @@ export async function GET(request: NextRequest) {
         username: userData.username,
       };
 
-      console.log('Sending user session update to API Gateway:', userPayload);
-
       const userManagementResponse = await fetch(
         `${request.nextUrl.origin}/api/user`,
         {
@@ -295,7 +229,7 @@ export async function GET(request: NextRequest) {
 
       if (userManagementResponse.ok) {
         const userData = await userManagementResponse.json();
-        console.log('User session update result:', userData);
+        // Session update successful
       } else {
         console.error(
           'Failed to update user session via API Gateway:',
@@ -315,10 +249,12 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    console.log('Session GET response:', {
-      userData,
-      userResponse,
-    });
+    // Cache the user data for 1 hour
+    userSessionCache.setSession(
+      userData.sub,
+      cognitoToken.value,
+      userResponse.user,
+    );
 
     return NextResponse.json(userResponse);
   } catch (error) {
@@ -327,8 +263,26 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function DELETE() {
-  const response = NextResponse.json({ success: true });
-  response.cookies.delete(COGNITO_TOKEN_COOKIE_NAME);
-  return response;
+export async function DELETE(request: NextRequest) {
+  try {
+    const cookieStore = cookies();
+    const cognitoToken = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
+
+    // Clear cache for this user if token exists
+    if (cognitoToken) {
+      const userData = await verifyCognitoTokenPayload(cognitoToken.value);
+      if (userData?.sub) {
+        userSessionCache.deleteSession(userData.sub, cognitoToken.value);
+      }
+    }
+
+    const response = NextResponse.json({ success: true });
+    response.cookies.delete(COGNITO_TOKEN_COOKIE_NAME);
+    return response;
+  } catch (error) {
+    console.error('Session deletion failed:', error);
+    const response = NextResponse.json({ success: true });
+    response.cookies.delete(COGNITO_TOKEN_COOKIE_NAME);
+    return response;
+  }
 }

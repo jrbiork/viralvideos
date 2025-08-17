@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AnimatedBackground from '../../components/AnimatedBackground';
+import { useAuth } from '../../components/AuthContext';
+import UserDropdown from '../../components/UserDropdown';
 
 export default function Contact() {
   const router = useRouter();

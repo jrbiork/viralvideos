@@ -165,7 +165,10 @@ export default function GeneratePage() {
           }}
           id="navbar"
         >
-          <div className="flex items-center space-x-2">
+          <div
+            className="flex items-center space-x-2 cursor-pointer"
+            onClick={() => router.push('/')}
+          >
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <svg
                 className="w-5 h-5 text-[#1A0033]"
@@ -184,7 +187,6 @@ export default function GeneratePage() {
             >
               Pricing
             </button>
-            <CreditsDisplay size="lg" showLabel={true} />
             <UserDropdown className="w-auto" />
           </div>
         </nav>
@@ -222,7 +224,7 @@ export default function GeneratePage() {
                 <div className="flex items-center space-x-2 lg:space-x-3">
                   <div className="relative">
                     <div className="w-6 h-6 lg:w-8 lg:h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-xs lg:text-sm font-bold">
-                      ⭐
+                      🪙
                     </div>
                   </div>
                   <div>
@@ -243,13 +245,13 @@ export default function GeneratePage() {
               <div className="text-white text-xs mb-2 lg:mb-3">
                 Need more? Upgrade your plan
               </div>
-              <button className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs lg:text-sm font-semibold py-2 rounded-xl transition-colors">
+              <button
+                onClick={() => router.push('/pricing')}
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs lg:text-sm font-semibold py-2 rounded-xl transition-colors"
+              >
                 Upgrade now
               </button>
             </div>
-
-            {/* User Dropdown */}
-            <UserDropdown className="w-full" />
           </div>
         </div>
 

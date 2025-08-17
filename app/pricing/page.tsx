@@ -3,9 +3,12 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import AnimatedBackground from '../../components/AnimatedBackground';
+import { useAuth } from '../../components/AuthContext';
+import UserDropdown from '../../components/UserDropdown';
 
 export default function Pricing() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   const plans = [
     {
@@ -79,7 +82,10 @@ export default function Pricing() {
           }}
           id="navbar"
         >
-          <div className="flex items-center space-x-2">
+          <div 
+            className="flex items-center space-x-2 cursor-pointer"
+            onClick={() => router.push('/')}
+          >
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <svg
                 className="w-5 h-5 text-[#1A0033]"
@@ -92,25 +98,33 @@ export default function Pricing() {
             <span className="text-white text-xl font-bold">Viral Shorts</span>
           </div>
           <div className="flex items-center space-x-4">
-            <button
-              onClick={() => router.push('/')}
-              className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
-            >
-              Home
-            </button>
-            <button
-              onClick={() => router.push('/signin')}
-              className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border"
-              style={{ borderColor: '#5b5bff' }}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => router.push('/signin')}
-              className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
-            >
-              Get 10 Free Credits
-            </button>
+            {!isAuthenticated ? (
+              <>
+                <button
+                  onClick={() => router.push('/signin')}
+                  className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border"
+                  style={{ borderColor: '#5b5bff' }}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => router.push('/signin')}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
+                >
+                  Get 10 Free Credits
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push('/create')}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
+                >
+                  Dashboard
+                </button>
+                <UserDropdown className="w-auto" />
+              </>
+            )}
           </div>
         </nav>
       </div>

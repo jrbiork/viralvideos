@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { verifyCognitoTokenBoolean } from './lib/auth-utils';
 
 const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
@@ -8,48 +8,6 @@ const protectedRoutes = ['/create', '/videos', '/debug'];
 
 // Routes that should redirect to login if not authenticated
 const authRoutes = ['/auth/callback'];
-
-async function verifyCognitoToken(token: string): Promise<boolean> {
-  try {
-    const userPoolId = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID;
-    const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-    const region = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1';
-
-    if (!userPoolId || !clientId) {
-      return false;
-    }
-
-    const jwksUrl = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`;
-    const JWKS = createRemoteJWKSet(new URL(jwksUrl));
-
-    const { payload } = await jwtVerify(token, JWKS, {
-      issuer: `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`,
-      algorithms: ['RS256'],
-    });
-
-    // Manual audience validation
-    const tokenClientId = payload.client_id || payload.aud;
-    if (tokenClientId !== clientId) {
-      return false;
-    }
-
-    // Additional validation
-    if (payload.token_use !== 'access') {
-      return false;
-    }
-
-    // Check if token is expired
-    const now = Math.floor(Date.now() / 1000);
-    if (payload.exp && payload.exp < now) {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    console.error('Cognito token verification failed:', error);
-    return false;
-  }
-}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -87,7 +45,7 @@ export async function middleware(request: NextRequest) {
 
   try {
     // Verify the Cognito token
-    const isValid = await verifyCognitoToken(cognitoToken.value);
+    const isValid = await verifyCognitoTokenBoolean(cognitoToken.value);
 
     if (!isValid) {
       // Invalid token, redirect to login for protected routes

@@ -18,10 +18,6 @@ class JWTValidator {
     }
     async validateToken(token) {
         try {
-            console.log('🔍 Validating JWT token...');
-            console.log('Token length:', token.length);
-            console.log('User Pool ID:', this.userPoolId);
-            console.log('Client ID:', this.clientId);
             const region = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1';
             const issuer = `https://cognito-idp.${region}.amazonaws.com/${this.userPoolId}`;
             const { payload } = await (0, jose_1.jwtVerify)(token, this.jwks, {
@@ -30,8 +26,6 @@ class JWTValidator {
                 clockTolerance: 30,
             });
             const jwtPayload = payload;
-            console.log('✅ JWT token validated successfully');
-            console.log('Token payload keys:', Object.keys(jwtPayload));
             const hasValidAudience = (jwtPayload.aud && jwtPayload.aud === this.clientId) ||
                 (jwtPayload.client_id && jwtPayload.client_id === this.clientId);
             if (!hasValidAudience) {
@@ -50,7 +44,6 @@ class JWTValidator {
                 console.error('❌ Token expired. Exp:', jwtPayload.exp, 'Now:', now, 'Tolerance:', clockSkew);
                 return null;
             }
-            console.log('✅ Token is valid and not expired');
             return jwtPayload;
         }
         catch (error) {
@@ -60,18 +53,7 @@ class JWTValidator {
     }
 }
 const handler = async (event) => {
-    console.log('🔐 JWT Authorizer called - START');
-    console.log('Event type:', typeof event);
-    console.log('Event keys:', Object.keys(event || {}));
-    console.log('Method ARN:', event.methodArn);
     try {
-        console.log('🔐 JWT Authorizer called');
-        console.log('Event summary:', {
-            methodArn: event.methodArn,
-            type: typeof event,
-            hasAuthToken: !!event.authorizationToken,
-            tokenLength: (event.authorizationToken || '').length,
-        });
         const token = event.authorizationToken;
         if (!token) {
             console.log('❌ No authorization token provided');
@@ -82,16 +64,11 @@ const handler = async (event) => {
             console.log('❌ Empty token after cleaning');
             throw new Error('Unauthorized: Empty authorization token');
         }
-        console.log('🔧 Creating JWT validator...');
         const jwtValidator = new JWTValidator();
-        console.log('🔧 JWT validator created successfully');
-        console.log('🔧 Validating token...');
         const payload = await jwtValidator.validateToken(cleanToken);
         if (!payload) {
-            console.log('❌ JWT validation failed');
             throw new Error('Unauthorized: Invalid JWT token');
         }
-        console.log('✅ JWT validation successful for user:', payload.sub);
         const arnParts = event.methodArn.split('/');
         const apiGatewayArn = arnParts[0];
         const stage = arnParts[1];
@@ -99,8 +76,6 @@ const handler = async (event) => {
         const method = arnParts[3];
         const specificResource = `${apiGatewayArn}/${stage}/${resource}/${method}`;
         const wildcardResource = `${apiGatewayArn}/${stage}/*`;
-        console.log('Specific resource:', specificResource);
-        console.log('Wildcard resource:', wildcardResource);
         const policy = {
             principalId: payload.sub,
             policyDocument: {
@@ -121,8 +96,6 @@ const handler = async (event) => {
                 timestamp: Date.now().toString(),
             },
         };
-        console.log('📋 Generated policy:', JSON.stringify(policy, null, 2));
-        console.log('🔐 JWT Authorizer completed successfully');
         return policy;
     }
     catch (error) {

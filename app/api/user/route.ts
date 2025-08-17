@@ -3,6 +3,45 @@ import { decodeJwt } from 'jose';
 
 const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
 
+// In-memory cache for user data (30 seconds TTL)
+const userCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 30 * 1000; // 30 seconds in milliseconds
+
+// Cache helper functions
+function getCacheKey(userId: string, username: string): string {
+  return `${userId}:${username}`;
+}
+
+function getFromCache(cacheKey: string): any | null {
+  const cached = userCache.get(cacheKey);
+  if (!cached) return null;
+
+  const now = Date.now();
+  if (now - cached.timestamp > CACHE_TTL) {
+    userCache.delete(cacheKey);
+    return null;
+  }
+
+  return cached.data;
+}
+
+function setCache(cacheKey: string, data: any): void {
+  userCache.set(cacheKey, {
+    data,
+    timestamp: Date.now(),
+  });
+}
+
+// Clear expired entries periodically (every 5 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of userCache.entries()) {
+    if (now - value.timestamp > CACHE_TTL) {
+      userCache.delete(key);
+    }
+  }
+}, 5 * 60 * 1000);
+
 async function verifyAndExtractUserFromJWT(token: string): Promise<any | null> {
   try {
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
@@ -15,15 +54,7 @@ async function verifyAndExtractUserFromJWT(token: string): Promise<any | null> {
     // Decode the JWT token without verification to extract user info
     const payload = decodeJwt(token);
 
-    // Debug: Log available fields in the token
-    console.log('JWT payload fields:', Object.keys(payload));
-    console.log('JWT payload values:', {
-      sub: payload.sub,
-      email: payload.email,
-      username: payload.username,
-      name: payload.name,
-      picture: payload.picture,
-    });
+    // JWT payload extracted successfully
 
     // Basic validation checks without API calls
     if (!payload.sub) {
@@ -72,30 +103,21 @@ async function verifyAndExtractUserFromJWT(token: string): Promise<any | null> {
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('User gateway POST called');
-
     // Get the Cognito token from Authorization header first, then fallback to cookies
     const authHeader = request.headers.get('authorization');
-    console.log('Authorization header:', authHeader ? 'present' : 'missing');
-    console.log('Authorization header value:', authHeader);
 
     let token = null;
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.substring(7); // Remove 'Bearer ' prefix
-      console.log('Token found in Authorization header');
     } else {
       // Fallback to cookies
       const cookieStore = request.cookies;
       const cognitoToken = cookieStore.get('viral-videos-cognito-token');
       if (cognitoToken) {
         token = cognitoToken.value;
-        console.log('Token found in cookies');
       }
     }
-
-    console.log('Token found:', !!token);
-    console.log('API_GATEWAY_URL:', API_GATEWAY_URL);
 
     if (!token) {
       console.error('No authorization token found');
@@ -123,12 +145,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('JWT token verified for user:', {
-      userId: userData.sub,
-      username: userData.username,
-      email: userData.email,
-    });
-
     // Get the request body
     const requestBody: {
       userId: string;
@@ -136,10 +152,8 @@ export async function POST(request: NextRequest) {
       name: string;
       username: string;
     } = await request.json();
-    console.log('Request body received:', requestBody);
 
     // Forward the request to API Gateway
-    console.log('Attempting to call API Gateway:', `${API_GATEWAY_URL}user`);
 
     try {
       const apiGatewayResponse = await fetch(`${API_GATEWAY_URL}user`, {
@@ -230,6 +244,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Check cache first
+    const cacheKey = getCacheKey(userData.sub, userData.username);
+    const cachedData = getFromCache(cacheKey);
+
+    if (cachedData) {
+      console.log('Returning cached user data for:', userData.sub);
+      return NextResponse.json(cachedData);
+    }
+
     // Create query parameters from verified JWT token
     const queryParams = new URLSearchParams({
       userId: userData.sub,
@@ -268,6 +291,10 @@ export async function GET(request: NextRequest) {
           { status: apiGatewayResponse.status },
         );
       }
+
+      // Cache the successful response
+      setCache(cacheKey, responseData);
+      console.log('Cached user data for:', userData.sub);
 
       return NextResponse.json(responseData);
     } catch (fetchError: any) {

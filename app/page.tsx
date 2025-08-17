@@ -5,10 +5,13 @@ import React, { Fragment } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AnimatedBackground from '../components/AnimatedBackground';
+import { useAuth } from '../components/AuthContext';
+import UserDropdown from '../components/UserDropdown';
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
 
   // Handle navbar scroll animation
   useEffect(() => {
@@ -18,8 +21,6 @@ export default function Home() {
       if (navbarWrapper && navbar) {
         const scrollY = window.scrollY;
         const maxScroll = 200; // Maximum scroll distance for full animation
-
-        console.log('Scroll Y:', scrollY); // Debug scroll position
 
         if (scrollY > 0) {
           // Calculate width reduction (100% to 90%)
@@ -35,7 +36,6 @@ export default function Home() {
           // Add more styling for scrolled state
           if (scrollY > 50) {
             navbarWrapper.style.marginTop = '20px'; // Add margin to wrapper
-            console.log('Setting margin-top to 20px'); // Debug margin
             navbar.style.padding = '1.1rem 1.65rem'; // Keep increased padding
             navbar.style.backdropFilter = 'blur(15px)';
             navbar.style.backgroundColor = 'rgba(26,9,64,0.7)';
@@ -84,7 +84,10 @@ export default function Home() {
           }}
           id="navbar"
         >
-          <div className="flex items-center space-x-2">
+          <div 
+            className="flex items-center space-x-2 cursor-pointer"
+            onClick={() => router.push('/')}
+          >
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <svg
                 className="w-5 h-5 text-[#1A0033]"
@@ -103,19 +106,33 @@ export default function Home() {
             >
               Pricing
             </button>
-            <button
-              onClick={() => router.push('/signin')}
-              className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border"
-              style={{ borderColor: '#5b5bff' }}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => router.push('/signin')}
-              className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
-            >
-              Get 10 Free Credits
-            </button>
+            {!isAuthenticated ? (
+              <>
+                <button
+                  onClick={() => router.push('/signin')}
+                  className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border"
+                  style={{ borderColor: '#5b5bff' }}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => router.push('/signin')}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
+                >
+                  Get 10 Free Credits
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push('/create')}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
+                >
+                  Dashboard
+                </button>
+                <UserDropdown className="w-auto" />
+              </>
+            )}
           </div>
         </nav>
       </div>

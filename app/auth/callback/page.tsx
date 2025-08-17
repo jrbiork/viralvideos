@@ -26,13 +26,6 @@ export default function AuthCallback() {
         const state = searchParams.get('state');
         const errorParam = searchParams.get('error');
 
-        console.log('Auth callback debug:', {
-          code: code ? '***' : 'undefined',
-          state: state ? '***' : 'undefined',
-          error: errorParam,
-          savedState: localStorage.getItem('oauth_state'),
-        });
-
         // Check for OAuth errors
         if (errorParam) {
           console.error('OAuth error received:', errorParam);
@@ -56,8 +49,6 @@ export default function AuthCallback() {
           setError('No authorization code received.');
           return;
         }
-
-        console.log('Proceeding with token exchange...');
 
         // Set loading state
         setIsLoading(true);

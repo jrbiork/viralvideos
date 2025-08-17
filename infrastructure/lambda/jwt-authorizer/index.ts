@@ -40,11 +40,6 @@ class JWTValidator {
 
   async validateToken(token: string): Promise<JWTPayload | null> {
     try {
-      console.log('🔍 Validating JWT token...');
-      console.log('Token length:', token.length);
-      console.log('User Pool ID:', this.userPoolId);
-      console.log('Client ID:', this.clientId);
-
       const region = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1';
       const issuer = `https://cognito-idp.${region}.amazonaws.com/${this.userPoolId}`;
 
@@ -57,8 +52,6 @@ class JWTValidator {
       });
 
       const jwtPayload = payload as JWTPayload;
-      console.log('✅ JWT token validated successfully');
-      console.log('Token payload keys:', Object.keys(jwtPayload));
 
       // Manual audience validation for Cognito tokens
       const hasValidAudience =
@@ -93,7 +86,6 @@ class JWTValidator {
         return null;
       }
 
-      console.log('✅ Token is valid and not expired');
       return jwtPayload;
     } catch (error) {
       console.error('❌ JWT validation failed:', error);
@@ -105,20 +97,7 @@ class JWTValidator {
 export const handler = async (
   event: APIGatewayTokenAuthorizerEvent,
 ): Promise<APIGatewayAuthorizerResult> => {
-  console.log('🔐 JWT Authorizer called - START');
-  console.log('Event type:', typeof event);
-  console.log('Event keys:', Object.keys(event || {}));
-  console.log('Method ARN:', event.methodArn);
-
   try {
-    console.log('🔐 JWT Authorizer called');
-    console.log('Event summary:', {
-      methodArn: event.methodArn,
-      type: typeof event,
-      hasAuthToken: !!event.authorizationToken,
-      tokenLength: (event.authorizationToken || '').length,
-    });
-
     const token = event.authorizationToken;
 
     if (!token) {
@@ -135,18 +114,12 @@ export const handler = async (
     }
 
     // Validate the JWT token
-    console.log('🔧 Creating JWT validator...');
     const jwtValidator = new JWTValidator();
-    console.log('🔧 JWT validator created successfully');
-    console.log('🔧 Validating token...');
     const payload = await jwtValidator.validateToken(cleanToken);
 
     if (!payload) {
-      console.log('❌ JWT validation failed');
       throw new Error('Unauthorized: Invalid JWT token');
     }
-
-    console.log('✅ JWT validation successful for user:', payload.sub);
 
     // Parse the method ARN to get the correct resource pattern
     const arnParts = event.methodArn.split('/');
@@ -159,9 +132,6 @@ export const handler = async (
     const specificResource = `${apiGatewayArn}/${stage}/${resource}/${method}`;
     // Also create wildcard resource for broader access
     const wildcardResource = `${apiGatewayArn}/${stage}/*`;
-
-    console.log('Specific resource:', specificResource);
-    console.log('Wildcard resource:', wildcardResource);
 
     // Generate IAM policy with both specific and wildcard resources
     const policy: APIGatewayAuthorizerResult = {
@@ -186,8 +156,6 @@ export const handler = async (
       },
     };
 
-    console.log('📋 Generated policy:', JSON.stringify(policy, null, 2));
-    console.log('🔐 JWT Authorizer completed successfully');
     return policy;
   } catch (error) {
     console.error('💥 JWT Authorizer error:', error);

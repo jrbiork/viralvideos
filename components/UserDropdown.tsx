@@ -56,6 +56,7 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
   // Debug: Log the user picture URL
   if (user.picture) {
     console.log('User picture URL:', user.picture);
+    console.log('Processed picture URL:', getPictureUrl(user.picture));
   }
 
   return (
@@ -71,8 +72,14 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
               src={getPictureUrl(user.picture)!}
               alt={user.name || user.email}
               className="w-8 h-8 rounded-full object-cover"
-              onError={() => setImageError(true)}
-              onLoad={() => setImageError(false)}
+              onError={(e) => {
+                console.error('Image failed to load:', e);
+                setImageError(true);
+              }}
+              onLoad={() => {
+                console.log('Image loaded successfully');
+                setImageError(false);
+              }}
             />
           ) : (
             <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
@@ -119,48 +126,7 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
       </button>
 
       {showDropdown && (
-        <div className="absolute bottom-full left-0 right-0 mb-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50">
-          {/* User Header */}
-          <div className="p-4 border-b border-slate-700">
-            <div className="flex items-center space-x-3">
-              {getPictureUrl(user.picture) && !imageError ? (
-                <img
-                  src={getPictureUrl(user.picture)!}
-                  alt={user.name || user.email}
-                  className="w-10 h-10 rounded-full object-cover"
-                  onError={() => setImageError(true)}
-                  onLoad={() => setImageError(false)}
-                />
-              ) : (
-                <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-                  {(user.name || user.email || 'U').charAt(0).toUpperCase()}
-                </div>
-              )}
-              <div className="flex-1">
-                <div className="text-white font-medium">
-                  {user.name || 'User'}
-                </div>
-                <div className="text-gray-400 text-sm">{user.email}</div>
-                {/* Credits Display */}
-                <div className="flex items-center space-x-2 mt-1">
-                  <div className="flex items-center space-x-1">
-                    <svg
-                      className="w-4 h-4 text-yellow-400"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                    </svg>
-                    <span className="text-yellow-400 font-semibold text-sm">
-                      {creditsLoading ? '...' : credits?.creditsAvailable || 0}{' '}
-                      Credits
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900 border border-slate-700 rounded-lg shadow-xl z-50 min-w-48">
           {/* Menu Options */}
           <div className="py-2">
             <button
@@ -180,7 +146,7 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
                 />
               </svg>
-              <span>Sign Out</span>
+              <span>Logout</span>
             </button>
           </div>
         </div>
