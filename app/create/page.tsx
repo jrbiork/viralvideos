@@ -255,7 +255,11 @@ export default function GeneratePage() {
         <div className="relative overflow-hidden">
           <div
             className={`transition-transform duration-500 ease-in-out ${
-              currentStep === 1 ? 'translate-x-0' : '-translate-x-full'
+              currentStep === 1
+                ? 'translate-x-0'
+                : currentStep > 1
+                ? '-translate-x-full'
+                : 'translate-x-full'
             }`}
           >
             <VideoCreator
@@ -275,7 +279,11 @@ export default function GeneratePage() {
 
           <div
             className={`absolute top-0 left-0 w-full transition-transform duration-500 ease-in-out ${
-              currentStep === 2 ? 'translate-x-0' : 'translate-x-full'
+              currentStep === 2
+                ? 'translate-x-0'
+                : currentStep > 2
+                ? '-translate-x-full'
+                : 'translate-x-full'
             }`}
           >
             {/* Header */}
