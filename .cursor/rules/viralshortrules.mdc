@@ -5,5 +5,6 @@ alwaysApply: true
 ---
 
 - Always use jose lib for jwt authentication and verification
-- Never create new package.json and tsconfig.ts when creating new lambdas
+- do NOT create new tsconfig.json and package.json for this new lambda. use the ones from lambda folder
 - in the auth token there are only sub and username fields available
+- always use ./deploy.sh to deploy the application

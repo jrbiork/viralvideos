@@ -24,9 +24,13 @@
   },
   "include": [
     "video-generation/**/*.ts",
-    "queue-manager/**/*.ts",
+    "full-video-queue/**/*.ts",
     "fetch-videos/**/*.ts",
-    "jwt-authorizer/**/*.ts"
+    "jwt-authorizer/**/*.ts",
+    "generate-story-breakdown/**/*.ts",
+    "generate-audio/**/*.ts",
+    "generate-images/**/*.ts",
+    "fetch-script/**/*.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

@@ -5,12 +5,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateStoryBreakdown = generateStoryBreakdown;
 const openai_1 = __importDefault(require("openai"));
+const client_s3_1 = require("@aws-sdk/client-s3");
 const narrationHelper_1 = require("./util/narrationHelper");
+const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
 const openai = new openai_1.default({ apiKey: process.env.OPENAI_API_KEY });
-async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDuration) {
+async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDuration, userId, timestamp) {
     console.log('🤖 Calling OpenAI for story breakdown...');
     console.log(`📊 Parameters: ${sceneCount} scenes, ${totalDuration} seconds total`);
     console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
+    console.log('prompt:', prompt);
     try {
         const wordsPerSecond = 2.2;
         const wordsPerMinute = Math.round(wordsPerSecond * 60);
@@ -90,6 +93,23 @@ Strict rules:
         });
         console.log('✅ Story breakdown parsed and adjusted successfully');
         console.log('🎤 Voice tone instruction:', voiceToneInstruction);
+        const scriptKey = `${userId}/${timestamp}.script.txt`;
+        const scriptContent = JSON.stringify({
+            prompt,
+            sceneCount,
+            sceneDuration,
+            totalDuration,
+            scenes: adjustedScenes,
+            voiceToneInstruction,
+            timestamp,
+        }, null, 2);
+        await s3.send(new client_s3_1.PutObjectCommand({
+            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+            Key: scriptKey,
+            Body: scriptContent,
+            ContentType: 'text/plain',
+        }));
+        console.log(`💾 Script saved to S3: ${scriptKey}`);
         return { scenes: adjustedScenes, voiceToneInstruction };
     }
     catch (error) {

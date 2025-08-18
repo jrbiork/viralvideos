@@ -172,20 +172,24 @@ export class ViralVideosStack extends cdk.Stack {
     );
 
     // Lambda function for queue management (receives requests and puts them in SQS)
-    const queueManagerLambda = new lambda.Function(this, 'QueueManagerLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, '../dist/queue-manager'),
-      ),
-      role: lambdaRole,
-      timeout: cdk.Duration.minutes(1),
-      memorySize: 128,
-      environment: {
-        VIDEO_QUEUE_URL: videoQueue.queueUrl,
-        USERS_TABLE_NAME: usersTable.tableName,
+    const fullVideoQueueLambda = new lambda.Function(
+      this,
+      'FullVideoQueueLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/full-video-queue'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.minutes(1),
+        memorySize: 128,
+        environment: {
+          VIDEO_QUEUE_URL: videoQueue.queueUrl,
+          USERS_TABLE_NAME: usersTable.tableName,
+        },
       },
-    });
+    );
 
     // Lambda function for JWT authorization
     const jwtAuthorizerLambda = new lambda.Function(
@@ -226,6 +230,20 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    // Lambda function for fetching scripts
+    const fetchScriptLambda = new lambda.Function(this, 'FetchScriptLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/fetch-script')),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(1),
+      memorySize: 128,
+      environment: {
+        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+        USERS_TABLE_NAME: usersTable.tableName,
+      },
+    });
+
     // Lambda function for user management
     const getUserLambda = new lambda.Function(this, 'GetUserLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -251,6 +269,65 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    // Lambda function for generating story breakdowns
+    const generateStoryBreakdownLambda = new lambda.Function(
+      this,
+      'GenerateStoryBreakdownLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/generate-story-breakdown'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.minutes(2),
+        memorySize: 256,
+        environment: {
+          OPENAI_API_KEY: openaiApiKey,
+        },
+      },
+    );
+
+    // Lambda function for generating audio narration
+    const generateAudioLambda = new lambda.Function(
+      this,
+      'GenerateAudioLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/generate-audio'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.minutes(5),
+        memorySize: 512,
+        environment: {
+          OPENAI_API_KEY: openaiApiKey,
+          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+        },
+      },
+    );
+
+    // Lambda function for generating images
+    const generateImagesLambda = new lambda.Function(
+      this,
+      'GenerateImagesLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/generate-images'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.minutes(10),
+        memorySize: 1024,
+        environment: {
+          RUNWAY_API_KEY: runwayApiKey,
+          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+        },
+      },
+    );
+
     // API Gateway REST API
     const api = new apigateway.RestApi(this, 'VideoGenerationApi', {
       restApiName: 'Video Generation API',
@@ -264,7 +341,7 @@ export class ViralVideosStack extends cdk.Stack {
 
     // Lambda integration for the queue manager
     const queueManagerIntegration = new apigateway.LambdaIntegration(
-      queueManagerLambda,
+      fullVideoQueueLambda,
       {
         requestTemplates: {
           'application/json': JSON.stringify({
@@ -299,6 +376,18 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda integration for fetching scripts
+    const fetchScriptIntegration = new apigateway.LambdaIntegration(
+      fetchScriptLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
     // Lambda integration for get user
     const getUserIntegration = new apigateway.LambdaIntegration(getUserLambda, {
       requestTemplates: {
@@ -322,6 +411,42 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda integration for generating story breakdowns
+    const generateStoryBreakdownIntegration = new apigateway.LambdaIntegration(
+      generateStoryBreakdownLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
+    // Lambda integration for generating audio narration
+    const generateAudioIntegration = new apigateway.LambdaIntegration(
+      generateAudioLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
+    // Lambda integration for generating images
+    const generateImagesIntegration = new apigateway.LambdaIntegration(
+      generateImagesLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
     // Create API resources and methods with JWT authorization
     const videoResource = api.root.addResource('generate-video');
     videoResource.addMethod('POST', queueManagerIntegration, {
@@ -330,6 +455,32 @@ export class ViralVideosStack extends cdk.Stack {
 
     const fetchVideosResource = api.root.addResource('fetch-videos');
     fetchVideosResource.addMethod('GET', fetchVideosIntegration, {
+      authorizer: jwtAuthorizer,
+    });
+
+    const fetchScriptResource = api.root.addResource('fetch-script');
+    fetchScriptResource.addMethod('GET', fetchScriptIntegration, {
+      authorizer: jwtAuthorizer,
+    });
+
+    const generateStoryBreakdownResource = api.root.addResource(
+      'generate-story-breakdown',
+    );
+    generateStoryBreakdownResource.addMethod(
+      'POST',
+      generateStoryBreakdownIntegration,
+      {
+        authorizer: jwtAuthorizer,
+      },
+    );
+
+    const generateAudioResource = api.root.addResource('generate-audio');
+    generateAudioResource.addMethod('POST', generateAudioIntegration, {
+      authorizer: jwtAuthorizer,
+    });
+
+    const generateImagesResource = api.root.addResource('generate-images');
+    generateImagesResource.addMethod('POST', generateImagesIntegration, {
       authorizer: jwtAuthorizer,
     });
 
@@ -353,14 +504,20 @@ export class ViralVideosStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    new logs.LogGroup(this, 'QueueManagerLogGroup', {
-      logGroupName: `/aws/lambda/${queueManagerLambda.functionName}`,
+    new logs.LogGroup(this, 'FullVideoQueueLogGroup', {
+      logGroupName: `/aws/lambda/${fullVideoQueueLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     new logs.LogGroup(this, 'FetchVideosLogGroup', {
       logGroupName: `/aws/lambda/${fetchVideosLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'FetchScriptLogGroup', {
+      logGroupName: `/aws/lambda/${fetchScriptLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -404,8 +561,8 @@ export class ViralVideosStack extends cdk.Stack {
       description: 'Lambda function name for video generation',
     });
 
-    new cdk.CfnOutput(this, 'QueueManagerLambdaArn', {
-      value: queueManagerLambda.functionArn,
+    new cdk.CfnOutput(this, 'FullVideoQueueLambdaArn', {
+      value: fullVideoQueueLambda.functionArn,
       description: 'Lambda function ARN for queue management',
     });
 

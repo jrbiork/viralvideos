@@ -29,18 +29,22 @@ async function handleSQSEvent(event) {
 }
 async function processVideoGeneration(request, record) {
     try {
-        const timestamp = '08.07.25-14:30:45';
+        console.log('processVideoGeneration:', request);
+        const timestamp = request.timestamp;
         request.totalDuration = 30;
         request.sceneCount = 3;
         const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
-        const storyBreakdown = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration);
+        const storyBreakdown = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration, request.userId, timestamp);
         const { scenes, voiceToneInstruction } = storyBreakdown;
         if (!scenes || scenes.length === 0) {
             console.log('❌ Error: Failed to generate story breakdown');
             throw new Error('Failed to generate story breakdown');
         }
+        console.log('🎥 Story breakdown generated:', scenes);
         const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
+        console.log('🎥 Audio narration generated:', narrationResult);
         const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);
+        console.log('🎥 Subtitles generated:', subtitleKeys);
         const finalVideo = await (0, videoCombiner_1.combineVideoAndAudio)(request.userId, timestamp, scenes);
         if (!finalVideo) {
             console.log('❌ Error: Failed to combine video, audio, and subtitles');

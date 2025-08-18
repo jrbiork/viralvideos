@@ -46,7 +46,12 @@ export async function POST(request: NextRequest) {
       cognitoToken.length,
     );
 
-    const { prompt, totalDuration = 30, sceneCount = 1 } = await request.json();
+    const {
+      prompt,
+      totalDuration = 30,
+      sceneCount = 1,
+      timestamp,
+    } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -93,7 +98,7 @@ export async function POST(request: NextRequest) {
       sceneCount: numScenes,
       userId: userInfo.id, // Get from authenticated user
       userEmail: userInfo.email, // Get from authenticated user
-      timestamp: new Date().toISOString(),
+      timestamp,
     };
 
     // Call the API Gateway endpoint

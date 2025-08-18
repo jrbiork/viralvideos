@@ -1,0 +1,166 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { verifySession } from '../../../lib/session-utils';
+import { cookies } from 'next/headers';
+
+const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
+
+export async function POST(request: NextRequest) {
+  console.log('🚀 generate-audio API route called');
+
+  try {
+    // Verify session
+    console.log('🔍 Verifying session...');
+    const session = await verifySession();
+    console.log('📋 Session verification result:', {
+      hasSession: !!session,
+      userId: session?.sub,
+      email: session?.email,
+    });
+
+    if (!session) {
+      console.log('❌ No valid session found, returning 401');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Use session user info
+    const userInfo = {
+      id: session.sub,
+      email: session.email,
+    };
+
+    // Get the Cognito JWT token from the httpOnly cookie
+    const cookieStore = cookies();
+    const cognitoTokenCookie = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
+
+    if (!cognitoTokenCookie) {
+      console.log('❌ No Cognito JWT token found in cookie');
+      return NextResponse.json(
+        { error: 'Unauthorized: No valid Cognito token found' },
+        { status: 401 },
+      );
+    }
+
+    const cognitoToken = cognitoTokenCookie.value;
+    console.log(
+      '🔍 Found Cognito token in cookie, length:',
+      cognitoToken.length,
+    );
+
+    const { scenes, instructions } = await request.json();
+
+    if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
+      return NextResponse.json(
+        { error: 'Scenes array is required and must not be empty' },
+        { status: 400 },
+      );
+    }
+
+    // Validate each scene has required fields
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
+      if (!scene.narration || !scene.duration) {
+        return NextResponse.json(
+          {
+            error: `Scene ${i} is missing required fields: narration and duration`,
+          },
+          { status: 400 },
+        );
+      }
+    }
+
+    console.log('🔧 Environment check (generate-audio):', {
+      hasApiGatewayUrl: !!process.env.API_GATEWAY_URL,
+      apiGatewayUrl: process.env.API_GATEWAY_URL,
+    });
+
+    if (!process.env.API_GATEWAY_URL) {
+      return NextResponse.json(
+        { error: 'API Gateway URL not configured' },
+        { status: 500 },
+      );
+    }
+
+    // Prepare Lambda payload
+    const lambdaPayload = {
+      scenes,
+      instructions: instructions || 'Speak in a cheerful and positive tone',
+    };
+
+    // Call the API Gateway endpoint
+    const apiGatewayUrl = `${process.env.API_GATEWAY_URL}generate-audio`;
+    console.log('🔗 Calling API Gateway (generate-audio):', apiGatewayUrl);
+    console.log('🔗 Full URL breakdown (generate-audio):', {
+      baseUrl: process.env.API_GATEWAY_URL,
+      endpoint: 'generate-audio',
+      fullUrl: apiGatewayUrl,
+    });
+    console.log(
+      '🔑 Using Cognito token length (generate-audio):',
+      cognitoToken.length,
+    );
+
+    const authHeaderValue = `Bearer ${cognitoToken}`;
+
+    const lambdaResponse = await fetch(apiGatewayUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeaderValue,
+      },
+      body: JSON.stringify(lambdaPayload),
+    });
+
+    console.log('📡 API Gateway response:', {
+      status: lambdaResponse.status,
+      statusText: lambdaResponse.statusText,
+      ok: lambdaResponse.ok,
+    });
+
+    if (!lambdaResponse.ok) {
+      const errorText = await lambdaResponse.text();
+      console.error('❌ API Gateway error response:', errorText);
+      return NextResponse.json(
+        {
+          error: `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
+          details: errorText,
+        },
+        { status: lambdaResponse.status },
+      );
+    }
+
+    // Parse the response JSON
+    const responsePayload = await lambdaResponse.json();
+    console.log('✅ API Gateway success response:', responsePayload);
+
+    if (responsePayload.error) {
+      return NextResponse.json(
+        { error: responsePayload.error },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      audioKeys: responsePayload.audioKeys,
+      subtitles: responsePayload.subtitles,
+      message: responsePayload.message,
+    });
+  } catch (error) {
+    console.error('💥 Error in audio generation:', error);
+    console.error(
+      'Error stack:',
+      error instanceof Error ? error.stack : 'No stack trace',
+    );
+    console.error(
+      'Error message:',
+      error instanceof Error ? error.message : 'Unknown error',
+    );
+
+    return NextResponse.json(
+      {
+        error: 'Failed to generate audio narration',
+        details: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 },
+    );
+  }
+}

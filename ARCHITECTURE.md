@@ -21,7 +21,7 @@ The Viral Videos application has been refactored to use a decoupled, asynchronou
 
 ### 3. Queue Manager Lambda
 
-- **Location**: `infrastructure/lambda/queue-manager/`
+- **Location**: `infrastructure/lambda/full-video-queue/`
 - **Purpose**: Receives video generation requests and puts them in SQS queue
 - **Input**: Video generation parameters (prompt, duration, sceneCount, etc.)
 - **Output**: Confirmation that request has been queued

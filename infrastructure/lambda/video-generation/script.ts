@@ -1,8 +1,11 @@
 import OpenAI from 'openai';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
   estimateTextDuration,
   adjustTextForDuration,
 } from './util/narrationHelper';
+
+const s3 = new S3Client({ region: process.env.AWS_REGION });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -18,6 +21,8 @@ export async function generateStoryBreakdown(
   sceneCount: number,
   sceneDuration: number,
   totalDuration: number,
+  userId: string,
+  timestamp: string,
 ): Promise<{ scenes: Scene[]; voiceToneInstruction: string }> {
   console.log('🤖 Calling OpenAI for story breakdown...');
   console.log(
@@ -25,6 +30,8 @@ export async function generateStoryBreakdown(
   );
 
   console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
+
+  console.log('prompt:', prompt);
 
   try {
     // Guidance for narration pacing and safety caps
@@ -128,6 +135,34 @@ Strict rules:
 
     console.log('✅ Story breakdown parsed and adjusted successfully');
     console.log('🎤 Voice tone instruction:', voiceToneInstruction);
+
+    // Save script response to S3
+    const scriptKey = `${userId}/${timestamp}.script.txt`;
+    const scriptContent = JSON.stringify(
+      {
+        prompt,
+        sceneCount,
+        sceneDuration,
+        totalDuration,
+        scenes: adjustedScenes,
+        voiceToneInstruction,
+        timestamp,
+      },
+      null,
+      2,
+    );
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+        Key: scriptKey,
+        Body: scriptContent,
+        ContentType: 'text/plain',
+      }),
+    );
+
+    console.log(`💾 Script saved to S3: ${scriptKey}`);
+
     return { scenes: adjustedScenes, voiceToneInstruction };
   } catch (error) {
     console.error('❌ Error in generateStoryBreakdown:', error);

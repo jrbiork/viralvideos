@@ -8,9 +8,9 @@ cd lambda/video-generation
 npm run build
 cd ../..
 
-# Build queue-manager Lambda
-echo "📦 Building queue-manager..."
-cd lambda/queue-manager
+# Build full-video-queue Lambda
+echo "📦 Building full-video-queue..."
+cd lambda/full-video-queue
 npm run build
 cd ../..
 
@@ -35,6 +35,30 @@ cd ../..
 # Build upsert-user Lambda
 echo "📦 Building upsert-user..."
 cd lambda/upsert-user
+npm run build
+cd ../..
+
+# Build generate-story-breakdown Lambda
+echo "📦 Building generate-story-breakdown..."
+cd lambda/generate-story-breakdown
+npm run build
+cd ../..
+
+# Build generate-audio Lambda
+echo "📦 Building generate-audio..."
+cd lambda/generate-audio
+npm run build
+cd ../..
+
+# Build generate-images Lambda
+echo "📦 Building generate-images..."
+cd lambda/generate-images
+npm run build
+cd ../..
+
+# Build fetch-script Lambda
+echo "📦 Building fetch-script..."
+cd lambda/fetch-script
 npm run build
 cd ../..
 

@@ -57,12 +57,6 @@ export async function generateNarration(
 
       const originalAudioBuffer = Buffer.from(await response.arrayBuffer());
 
-      // Adjust audio duration to match target duration
-      const adjustedAudioBuffer = await adjustAudioDuration(
-        originalAudioBuffer,
-        scene.duration,
-      );
-
       // Save to S3 with timestamp prefix using scene.id
       const audioKey = `${userId}/${timestamp}.scene-${scene.id}.mp3`;
 
@@ -70,7 +64,7 @@ export async function generateNarration(
         new PutObjectCommand({
           Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
           Key: audioKey,
-          Body: adjustedAudioBuffer,
+          Body: originalAudioBuffer,
           ContentType: 'audio/mpeg',
         }),
       );
@@ -85,7 +79,7 @@ export async function generateNarration(
       const path = require('path');
 
       const tempAudioPath = path.join(os.tmpdir(), `scene-${i}.mp3`);
-      fs.writeFileSync(tempAudioPath, adjustedAudioBuffer);
+      fs.writeFileSync(tempAudioPath, originalAudioBuffer);
 
       // Create file object for OpenAI API
       const audioFile = fs.createReadStream(tempAudioPath);

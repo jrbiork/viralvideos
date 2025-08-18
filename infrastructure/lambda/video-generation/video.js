@@ -7,9 +7,8 @@ exports.generateVideoClip = generateVideoClip;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const axios_1 = __importDefault(require("axios"));
 const sdk_1 = require("@runwayml/sdk");
-const image_1 = require("./image");
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
-async function generateVideoClip(description, duration, sceneIndex, userId, timestamp, seed, sceneId) {
+async function generateVideoClip(description, duration, sceneIndex, userId, timestamp, seed, sceneId, imageUrl) {
     try {
         const runway = new sdk_1.RunwayML({
             apiKey: process.env.RUNWAY_API_KEY,
@@ -21,8 +20,10 @@ async function generateVideoClip(description, duration, sceneIndex, userId, time
         console.log('- Prompt:', description);
         console.log('- Duration:', duration, 'seconds');
         console.log('- Aspect ratio: 9:16 (vertical)');
-        console.log('🎨 Generating image from text...');
-        const imageUrl = await (0, image_1.generateImage)(description, sceneIndex, userId, timestamp, seed, sceneId);
+        if (!imageUrl) {
+            throw new Error('Image URL is required for video generation');
+        }
+        console.log('🎨 Using provided image URL for video generation:', imageUrl);
         console.log('🎬 Generating video from image...');
         let videoResult;
         let retryCount = 0;

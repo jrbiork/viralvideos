@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateNarration = generateNarration;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const openai_1 = __importDefault(require("openai"));
-const narrationHelper_1 = require("./util/narrationHelper");
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
 const openai = new openai_1.default({ apiKey: process.env.OPENAI_API_KEY });
 async function generateNarration(scenes, userId, timestamp, instructions = 'Speak in a cheerful and positive tone') {
@@ -24,12 +23,11 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
                 input: scene.narration,
             });
             const originalAudioBuffer = Buffer.from(await response.arrayBuffer());
-            const adjustedAudioBuffer = await (0, narrationHelper_1.adjustAudioDuration)(originalAudioBuffer, scene.duration);
             const audioKey = `${userId}/${timestamp}.scene-${scene.id}.mp3`;
             await s3.send(new client_s3_1.PutObjectCommand({
                 Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
                 Key: audioKey,
-                Body: adjustedAudioBuffer,
+                Body: originalAudioBuffer,
                 ContentType: 'audio/mpeg',
             }));
             audioKeys.push(audioKey);
@@ -37,7 +35,7 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
             const os = require('os');
             const path = require('path');
             const tempAudioPath = path.join(os.tmpdir(), `scene-${i}.mp3`);
-            fs.writeFileSync(tempAudioPath, adjustedAudioBuffer);
+            fs.writeFileSync(tempAudioPath, originalAudioBuffer);
             const audioFile = fs.createReadStream(tempAudioPath);
             const transcription = await openai.audio.transcriptions.create({
                 file: audioFile,

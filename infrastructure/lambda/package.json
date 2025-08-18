@@ -6,10 +6,14 @@
   "scripts": {
     "build": "tsc",
     "build:video-generation": "cd video-generation && tsc",
-    "build:queue-manager": "cd queue-manager && tsc",
+    "build:full-video-queue": "cd full-video-queue && tsc",
     "build:fetch-videos": "cd fetch-videos && tsc",
     "build:jwt-authorizer": "cd jwt-authorizer && tsc",
-    "build:all": "npm run build:video-generation && npm run build:queue-manager && npm run build:fetch-videos && npm run build:jwt-authorizer",
+    "build:generate-story-breakdown": "cd generate-story-breakdown && tsc",
+    "build:generate-audio": "cd generate-audio && tsc",
+    "build:generate-images": "cd generate-images && tsc",
+    "build:fetch-script": "cd fetch-script && tsc",
+    "build:all": "npm run build:video-generation && npm run build:full-video-queue && npm run build:fetch-videos && npm run build:jwt-authorizer && npm run build:generate-story-breakdown && npm run build:generate-audio && npm run build:generate-images && npm run build:fetch-script",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {
