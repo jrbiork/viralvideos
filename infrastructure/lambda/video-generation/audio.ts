@@ -45,13 +45,13 @@ export async function generateNarration(
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      console.log(`🎤 Generating narration for scene ${i}:`, scene.narration);
+      console.log(`🎤 Generating narration for scene ${i}:`, scene);
 
       // Generate speech with standard format
       const response = await openai.audio.speech.create({
-        model: 'gpt-4o-mini-tts',
-        voice: 'sage',
-        instructions: instructions,
+        model: 'tts-1',
+        voice: 'fable',
+        instructions: `Speak clearly and keep the total narration within ${scene.duration}s. Avoid long pauses.`,
         input: scene.narration,
       });
 

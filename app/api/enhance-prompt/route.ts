@@ -32,8 +32,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const prompt = searchParams.get('prompt');
     const rawDuration = (searchParams.get('duration') || '30').toString();
-    const durationSeconds = /60/.test(rawDuration) ? 60 : 30;
-    const durationLabel = `${durationSeconds}s`;
+    const durationLabel = `${rawDuration}s`;
     const wordLimit = 100;
 
     if (!prompt) {
@@ -44,20 +43,19 @@ export async function GET(request: NextRequest) {
     }
 
     // Create the system prompt for OpenAI
-    const systemPrompt = `You are a video brief writer. Expand a rough idea into a concise, production-ready description for a 9:16 vertical short of ${durationSeconds} seconds.
+    const systemPrompt = `You are a video brief writer. Expand a rough idea into a concise, production-ready description for a 9:16 vertical short of ${rawDuration} seconds.
   
-Rules (follow strictly):
-- Hard limit: ≤ ${wordLimit} words, one paragraph only.
-- Prefer concrete nouns and verbs; avoid flowery/poetic language.
-- Specify subject, key actions, visuals, lighting/time of day, and camera style (e.g., close-up, wide, slow push).
-- Keep it safe and brand-neutral: no logos, text overlays, or trademarks.
-- Maintain the user's intent and theme.
-- No lists, no scene numbers, no hashtags or emojis.
+                          Rules (follow strictly):
+                          - Do not exceed ≤ ${wordLimit} words.
+                          - Prefer concrete nouns and verbs; avoid flowery/poetic language.
+                          - Keep it safe and brand-neutral
+                          - Maintain the user's intent and theme.
+                          - No lists, no scene numbers, no hashtags or emojis.
 
-Return only the final paragraph.`;
+                          Return only the final paragraph.`;
 
     // Create the user prompt
-    const userPrompt = `Idea: ${prompt}\nTarget: 9:16 vertical, ${durationSeconds}s.\nWrite the final paragraph now (≤${wordLimit} words).`;
+    const userPrompt = `Idea: ${prompt}\nTarget: 9:16 vertical, ${rawDuration}s.\nWrite the final paragraph now (≤${wordLimit} words).`;
 
     // Call OpenAI
     const completion = await openai.chat.completions.create({

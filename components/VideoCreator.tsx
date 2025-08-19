@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import CreditsDisplay from './CreditsDisplay';
-import AIScriptWriterModal from './AIScriptWriterModal';
 
 interface VideoCreatorProps {
   isGenerating: boolean;
-  onGenerateVideo: (script: string) => void;
+  onGenerateVideo: (script: string, duration: number) => void;
   onGenerateScript: (prompt: string) => void;
   generationStatus: 'idle' | 'queued' | 'processing' | 'completed' | 'error';
   statusMessage: string;
@@ -21,14 +20,8 @@ export default function VideoCreator({
   showNextButton = false,
   onNextStep,
 }: VideoCreatorProps) {
-  const [script, setScript] = useState(
-    'Create a short video about a cat playing in a garden. The video should be engaging and show the cat exploring different areas of the garden, chasing butterflies, and relaxing in the sunshine.',
-  );
-  const [isScriptModalOpen, setIsScriptModalOpen] = useState(false);
+  const [script, setScript] = useState('');
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState<
-    '9:16' | '16:9' | '1:1'
-  >('9:16');
   const [selectedDuration, setSelectedDuration] = useState<
     '10s' | '30s' | '60s'
   >('30s');
@@ -38,24 +31,33 @@ export default function VideoCreator({
   const maxWords = 100;
   const isOverLimit = wordCount > maxWords;
 
-  const handleGenerateScript = async (prompt: string) => {
-    setScript(prompt);
-    setIsScriptModalOpen(false);
-    onGenerateScript(prompt);
-  };
+  const handleMagicScript = async () => {
+    if (!script.trim()) return;
 
-  const getStatusIcon = () => {
-    switch (generationStatus) {
-      case 'queued':
-        return '⏳';
-      case 'processing':
-        return '🔄';
-      case 'completed':
-        return '✅';
-      case 'error':
-        return '❌';
-      default:
-        return '📹';
+    setIsGeneratingScript(true);
+    try {
+      const response = await fetch(
+        `/api/enhance-prompt?prompt=${encodeURIComponent(
+          script.trim(),
+        )}&duration=${selectedDuration}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.enhancedPrompt) {
+          setScript(data.enhancedPrompt);
+        }
+      } else {
+        console.error('Failed to generate enhanced script');
+      }
+    } catch (error) {
+      console.error('Error generating enhanced script:', error);
+    } finally {
+      setIsGeneratingScript(false);
     }
   };
 
@@ -64,203 +66,154 @@ export default function VideoCreator({
       <div className="max-w-4xl mx-auto flex flex-col justify-start pt-4 lg:pt-8">
         {/* Header */}
         <div className="mb-6 lg:mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <h1 className="text-2xl lg:text-3xl font-bold text-white">
-              Create a new video
-            </h1>
-            <CreditsDisplay size="lg" showLabel={true} />
-          </div>
+          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
+            Let's create your viral short!
+          </h1>
           <p className="text-gray-300 text-sm lg:text-base">
-            Select a tool and pick your options to create your video.
+            Generate a short video in minutes using AI-powered captions, audio,
+            and animations.
           </p>
-        </div>
-
-        {/* Video Type Selection */}
-        <div className="mb-6 lg:mb-8">
-          <div className="flex space-x-2 overflow-x-auto pb-2">
-            <button className="bg-blue-600 text-white px-3 lg:px-4 py-2 rounded-full text-xs lg:text-sm whitespace-nowrap">
-              Faceless Video
-            </button>
-            <div className="relative group">
-              <button
-                className="bg-slate-800 text-gray-500 px-3 lg:px-4 py-2 rounded-full text-xs lg:text-sm whitespace-nowrap cursor-not-allowed opacity-50"
-                disabled
-              >
-                AI Influencer
-              </button>
-              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-black text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none whitespace-nowrap z-10">
-                Available soon
-                <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-black"></div>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Script Section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-2">
-              <div className="absolute bottom-full left-full ml-2 mt-5 px-3 py-3 bg-slate-800 border border-slate-600 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-0 pointer-events-none z-10 w-[275px]">
-                Write your video idea and use AI to improve it.
-                <br />
-                The AI will use this text to create matching visuals.
-                <div className="absolute top-2 -left-2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+        <div className="mb-8 px-2.5">
+          <div className="mb-4">
+            <label className="block text-white text-sm font-medium mb-2">
+              Start writing your script... then use Magic Script ✨
+            </label>
+            <div className="relative w-full">
+              <textarea
+                className={`w-full h-48 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 box-border ${
+                  isOverLimit
+                    ? 'border-red-500 focus:ring-red-500'
+                    : 'border-slate-700'
+                }`}
+                placeholder="Start writing your script... then use Magic Script ✨"
+                value={script}
+                onChange={(e) => {
+                  const newValue = e.target.value;
+                  const newWordCount = newValue.trim()
+                    ? newValue.trim().split(/\s+/).length
+                    : 0;
+
+                  // Only allow input if under word limit
+                  if (
+                    newWordCount <= maxWords ||
+                    newValue.length < script.length
+                  ) {
+                    setScript(newValue);
+                  }
+                }}
+                disabled={isGenerating}
+              />
+              <div
+                className={`absolute bottom-2 right-2 text-xs font-medium ${
+                  isOverLimit
+                    ? 'text-red-400'
+                    : wordCount > maxWords * 0.8
+                    ? 'text-yellow-400'
+                    : 'text-gray-400'
+                }`}
+              >
+                {wordCount}/{maxWords}
               </div>
             </div>
-            <div className="flex items-center space-x-4">
-              {/* Aspect Ratio Selection */}
+          </div>
+
+          {/* Tips and Example */}
+          <div className="mb-6">
+            <p className="text-gray-400 text-sm mb-2">
+              Tip: keep under 100 words for the best video pacing
+            </p>
+            <p className="text-gray-500 text-sm italic">
+              Example: "A breathtaking dive into the mysterious world beneath
+              the ocean, narrated with cinematic flair and uplifting music."
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+              <button
+                onClick={handleMagicScript}
+                disabled={!script.trim() || isGeneratingScript}
+                className={`px-6 py-3 rounded-lg text-base font-semibold transition-all duration-300 flex items-center space-x-2 shadow-lg ${
+                  script.trim() && !isGeneratingScript
+                    ? 'bg-gradient-to-r from-[#826eff] to-purple-600 hover:from-[#826eff] hover:to-purple-700 text-white hover:shadow-xl'
+                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                {isGeneratingScript ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span>Enhancing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    <span>Write Magic Script</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Duration Selection - Centered */}
+            <div className="flex justify-center w-full sm:w-auto">
               <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                 <button
-                  onClick={() => setSelectedAspectRatio('9:16')}
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedAspectRatio === '9:16'
-                      ? 'bg-slate-700 text-white'
+                  onClick={() => setSelectedDuration('10s')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedDuration === '10s'
+                      ? 'bg-purple-600 text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <rect
-                      x="6"
-                      y="4"
-                      width="12"
-                      height="16"
-                      rx="1"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span>9:16</span>
+                  10s
                 </button>
                 <button
-                  disabled
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-500 cursor-not-allowed opacity-50"
+                  onClick={() => setSelectedDuration('30s')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedDuration === '30s'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <rect
-                      x="4"
-                      y="6"
-                      width="16"
-                      height="12"
-                      rx="1"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span>16:9</span>
+                  30s
                 </button>
                 <button
-                  disabled
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors text-gray-500 cursor-not-allowed opacity-50"
+                  onClick={() => setSelectedDuration('60s')}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    selectedDuration === '60s'
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-400 hover:text-white'
+                  }`}
                 >
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <rect
-                      x="6"
-                      y="6"
-                      width="12"
-                      height="12"
-                      rx="1"
-                      fill="currentColor"
-                    />
-                  </svg>
-                  <span>1:1</span>
+                  60s
                 </button>
               </div>
-              <button
-                onClick={() => setIsScriptModalOpen(true)}
-                className="bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
-              >
-                <span>✨</span>
-                <span>AI script writer</span>
-              </button>
             </div>
-          </div>
-          <p className="text-gray-300 text-sm mb-4">
-            Write your video idea and use AI to improve it.
-          </p>
-          <div className="relative">
-            <textarea
-              className={`w-full h-48 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                isOverLimit
-                  ? 'border-red-500 focus:ring-red-500'
-                  : 'border-slate-700'
-              }`}
-              placeholder="Enter your video script here..."
-              value={script}
-              onChange={(e) => {
-                const newValue = e.target.value;
-                const newWordCount = newValue.trim()
-                  ? newValue.trim().split(/\s+/).length
-                  : 0;
 
-                // Only allow input if under word limit
-                if (
-                  newWordCount <= maxWords ||
-                  newValue.length < script.length
-                ) {
-                  setScript(newValue);
-                }
+            <button
+              onClick={() => {
+                const duration = parseInt(selectedDuration.replace('s', ''));
+                onGenerateVideo(script, duration);
               }}
-              disabled={isGenerating}
-            />
-            <div
-              className={`absolute bottom-2 right-2 text-xs font-medium ${
-                isOverLimit
-                  ? 'text-red-400'
-                  : wordCount > maxWords * 0.8
-                  ? 'text-yellow-400'
-                  : 'text-gray-400'
+              disabled={isGenerating || !script.trim() || wordCount < 10}
+              className={`px-6 py-3 rounded-lg text-base font-semibold flex items-center justify-center space-x-2 transition-all duration-300 shadow-lg ${
+                isGenerating || !script.trim() || wordCount < 10
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-[#826eff] to-purple-600 hover:from-[#826eff] hover:to-purple-700 text-white hover:shadow-xl'
               }`}
             >
-              {wordCount}/{maxWords}
-            </div>
-          </div>
-        </div>
-
-        {/* Duration Selection */}
-        <div className="mb-6">
-          <div className="flex justify-end">
-            <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-              <button
-                onClick={() => setSelectedDuration('10s')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedDuration === '10s'
-                    ? 'bg-slate-700 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                10s
-              </button>
-              <button
-                onClick={() => setSelectedDuration('30s')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedDuration === '30s'
-                    ? 'bg-slate-700 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                30s
-              </button>
-              <button
-                onClick={() => setSelectedDuration('60s')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  selectedDuration === '60s'
-                    ? 'bg-slate-700 text-white'
-                    : 'text-gray-400 hover:text-white'
-                }`}
-              >
-                60s
-              </button>
-            </div>
+              {isGenerating ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <span>Preview for 10 Credits</span>
+              )}
+            </button>
           </div>
         </div>
 
@@ -268,7 +221,6 @@ export default function VideoCreator({
         {generationStatus !== 'idle' && (
           <div className="mb-6 p-4 bg-slate-800 border border-slate-700 rounded-lg">
             <div className="flex items-center space-x-3">
-              <span className="text-2xl">{getStatusIcon()}</span>
               <div>
                 <div className="text-white font-medium">
                   {generationStatus === 'queued' && 'Video Queued'}
@@ -282,48 +234,18 @@ export default function VideoCreator({
           </div>
         )}
 
-        {/* Generate Button */}
-        <div className="text-center flex items-center justify-center space-x-4">
-          <button
-            onClick={() => onGenerateVideo(script)}
-            disabled={isGenerating || !script.trim()}
-            className={`px-8 py-4 rounded-xl text-lg font-semibold flex items-center justify-center space-x-2 transition-colors ${
-              isGenerating || !script.trim()
-                ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                : 'bg-gradient-to-b from-purple-900 to-purple-800 border border-purple-700 text-white hover:from-purple-800 hover:to-purple-700'
-            }`}
-          >
-            {isGenerating ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                <span>Queuing...</span>
-              </>
-            ) : (
-              <>
-                <span>Preview for 10 Credits</span>
-                <span>→</span>
-              </>
-            )}
-          </button>
-
-          {/* Test Next Button */}
-          <button
-            onClick={onNextStep}
-            className="px-6 py-4 rounded-xl text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors border border-blue-500"
-          >
-            Next (Test)
-          </button>
-        </div>
+        {/* Next Button */}
+        {showNextButton && (
+          <div className="text-center">
+            <button
+              onClick={onNextStep}
+              className="px-8 py-4 rounded-xl text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors border border-blue-500"
+            >
+              Next Step →
+            </button>
+          </div>
+        )}
       </div>
-
-      {/* AI Script Writer Modal */}
-      <AIScriptWriterModal
-        isOpen={isScriptModalOpen}
-        onClose={() => setIsScriptModalOpen(false)}
-        initialScript={script}
-        onGenerate={handleGenerateScript}
-        isGenerating={isGeneratingScript}
-      />
     </>
   );
 }

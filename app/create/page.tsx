@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 import VideoPreview from '../../components/VideoPreview';
 import VideoEditorLayout from '../../components/VideoEditorLayout';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
@@ -99,7 +100,7 @@ export default function GeneratePage() {
     };
   }, []);
 
-  const handleGenerateVideo = async (script: string) => {
+  const handleGenerateVideo = async (script: string, duration: number) => {
     if (!isAuthenticated) return;
 
     setHasStartedProcess(true);
@@ -109,12 +110,14 @@ export default function GeneratePage() {
     setStatusMessage('Queuing video generation request...');
 
     try {
-      const timestamp = '080818143045'; //format(new Date(), 'MMddyyHHmmss');
+      const timestamp = format(new Date(), 'MMddyyHHmmss');
       const data = await authenticatedFetch('/api/generate-video', {
         method: 'POST',
         body: {
           prompt: script,
           timestamp,
+          totalDuration: duration,
+          sceneCount: duration === 60 ? 6 : 3,
         },
       });
 

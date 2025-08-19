@@ -31,8 +31,6 @@ async function processVideoGeneration(request, record) {
     try {
         console.log('processVideoGeneration:', request);
         const timestamp = request.timestamp;
-        request.totalDuration = 30;
-        request.sceneCount = 3;
         const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
         const storyBreakdown = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration, request.userId, timestamp);
         const { scenes, voiceToneInstruction } = storyBreakdown;

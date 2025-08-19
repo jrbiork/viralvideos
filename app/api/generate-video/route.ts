@@ -46,12 +46,8 @@ export async function POST(request: NextRequest) {
       cognitoToken.length,
     );
 
-    const {
-      prompt,
-      totalDuration = 30,
-      sceneCount = 1,
-      timestamp,
-    } = await request.json();
+    const { prompt, totalDuration, sceneCount, timestamp } =
+      await request.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -62,9 +58,11 @@ export async function POST(request: NextRequest) {
 
     // Validate totalDuration
     const videoTotalDuration = Math.max(10, Math.min(60, totalDuration));
+    console.log('videoTotalDuration:', videoTotalDuration);
 
     // Validate scene count
     const numScenes = Math.max(1, Math.min(6, sceneCount));
+    console.log('numScenes:', numScenes);
 
     const script = (prompt ?? '').toString();
     const duration = videoTotalDuration;

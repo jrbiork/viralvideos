@@ -49,11 +49,9 @@ async function processVideoGeneration(
 ): Promise<any> {
   try {
     console.log('processVideoGeneration:', request);
+
     // Use timestamp from request body
     const timestamp = request.timestamp;
-
-    request.totalDuration = 30;
-    request.sceneCount = 3;
 
     const sceneDuration = Math.floor(
       request.totalDuration / request.sceneCount,
