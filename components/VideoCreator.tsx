@@ -23,7 +23,7 @@ export default function VideoCreator({
   const [script, setScript] = useState('');
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState<
-    '10s' | '30s' | '60s'
+    '15s' | '30s' | '60s'
   >('30s');
 
   // Word count calculation
@@ -161,14 +161,14 @@ export default function VideoCreator({
             <div className="flex justify-center w-full sm:w-auto">
               <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                 <button
-                  onClick={() => setSelectedDuration('10s')}
+                  onClick={() => setSelectedDuration('15s')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedDuration === '10s'
+                    selectedDuration === '15s'
                       ? 'bg-purple-600 text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  10s
+                  15s
                 </button>
                 <button
                   onClick={() => setSelectedDuration('30s')}

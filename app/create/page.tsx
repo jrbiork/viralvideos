@@ -110,7 +110,7 @@ export default function GeneratePage() {
     setStatusMessage('Queuing video generation request...');
 
     try {
-      const timestamp = format(new Date(), 'MMddyyHHmmss');
+      const timestamp = '081925211657'; // format(new Date(), 'MMddyyHHmmss');
       const data = await authenticatedFetch('/api/generate-video', {
         method: 'POST',
         body: {
@@ -310,7 +310,7 @@ export default function GeneratePage() {
             </div>
 
             {/* Scene Cards */}
-            <div className="space-y-4 mb-8">
+            <div className="space-y-4 mb-6 max-h-[460px] overflow-y-auto pr-2">
               {isLoadingScript
                 ? // Show skeleton placeholders while loading script
                   Array.from({ length: 3 }).map((_, index) => (
@@ -333,7 +333,7 @@ export default function GeneratePage() {
             </div>
 
             {/* Update Preview Button */}
-            <div className="text-center">
+            <div className="text-center mb-6">
               <button
                 onClick={handleUpdatePreview}
                 disabled={isLoadingScript}
@@ -348,7 +348,7 @@ export default function GeneratePage() {
             </div>
 
             {/* Back Button */}
-            <div className="absolute bottom-4 left-4">
+            <div className="absolute bottom-6 left-4">
               <button
                 onClick={() => {
                   setCurrentStep(1);

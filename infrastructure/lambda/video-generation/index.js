@@ -6,6 +6,7 @@ const narration_1 = require("./narration");
 const subtitles_1 = require("./subtitles");
 const videoCombiner_1 = require("./videoCombiner");
 const s3Uploader_1 = require("./util/s3Uploader");
+const imageUtils_1 = require("./util/imageUtils");
 const sqs = new client_sqs_1.SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const handler = async (event) => {
     return await handleSQSEvent(event);
@@ -39,6 +40,11 @@ async function processVideoGeneration(request, record) {
             throw new Error('Failed to generate story breakdown');
         }
         console.log('🎥 Story breakdown generated:', scenes);
+        const imageUrls = await (0, imageUtils_1.getImageUrls)(request.userId, timestamp);
+        if (imageUrls.length > 0) {
+            console.log('🎥 Images already generated for the timestamp:', imageUrls);
+        }
+        const seed = Math.floor(Math.random() * 1000000);
         const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
         console.log('🎥 Audio narration generated:', narrationResult);
         const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);

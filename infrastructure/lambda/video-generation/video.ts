@@ -60,7 +60,7 @@ export async function generateVideoClip(
             model: 'gen4_turbo',
             promptImage: imageUrl,
             ratio: '720:1280', // Vertical format (9:16)
-            duration: Math.min(duration, 10) as 5 | 10, // Runway supports max 10 seconds
+            duration: duration <= 5 ? 5 : 10, // Runway only supports 5 or 10 seconds
             promptText: `${description}`,
             seed,
           })

@@ -6,7 +6,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.generateStoryBreakdown = generateStoryBreakdown;
 const openai_1 = __importDefault(require("openai"));
 const client_s3_1 = require("@aws-sdk/client-s3");
-const narrationHelper_1 = require("./util/narrationHelper");
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
 const openai = new openai_1.default({ apiKey: process.env.OPENAI_API_KEY });
 async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDuration, userId, timestamp) {
@@ -77,18 +76,10 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
         const scenes = parsedResponse.videoScenes || parsedResponse;
         const voiceToneInstruction = parsedResponse.voiceToneInstruction ||
             'Speak in a cheerful and positive tone';
-        const adjustedScenes = scenes.map((scene, idx) => {
-            const adjustedNarration = (0, narrationHelper_1.adjustTextForDuration)(scene.narration, scene.duration);
-            const originalDuration = (0, narrationHelper_1.estimateTextDuration)(scene.narration);
-            const adjustedDuration = (0, narrationHelper_1.estimateTextDuration)(adjustedNarration);
-            console.log(`📝 Scene ${scene.description.substring(0, 50)}...`);
-            console.log(`   Original: ${originalDuration.toFixed(1)}s, Adjusted: ${adjustedDuration.toFixed(1)}s, Target: ${scene.duration}s`);
-            return {
-                ...scene,
-                narration: adjustedNarration,
-                id: idx,
-            };
-        });
+        const scenesWithIds = scenes.map((scene, idx) => ({
+            ...scene,
+            id: idx,
+        }));
         console.log('✅ Story breakdown parsed and adjusted successfully');
         console.log('🎤 Voice tone instruction:', voiceToneInstruction);
         const scriptKey = `${userId}/${timestamp}.script.txt`;
@@ -97,7 +88,7 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
             sceneCount,
             sceneDuration,
             totalDuration,
-            scenes: adjustedScenes,
+            scenes,
             voiceToneInstruction,
             timestamp,
         }, null, 2);
@@ -108,7 +99,7 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
             ContentType: 'text/plain',
         }));
         console.log(`💾 Script saved to S3: ${scriptKey}`);
-        return { scenes: adjustedScenes, voiceToneInstruction };
+        return { scenes: scenesWithIds, voiceToneInstruction };
     }
     catch (error) {
         console.error('❌ Error in generateStoryBreakdown:', error);

@@ -61,6 +61,7 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
             const bId = parseInt(b.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
             return aId - bId;
         });
+        console.log('videoFiles:', videoFiles);
         const audioFiles = objs
             .filter((obj) => obj.Key?.endsWith('.mp3'))
             .sort((a, b) => {
@@ -191,7 +192,10 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
             'aac',
             '-b:a',
             '128k',
-            '-shortest',
+            '-map',
+            '0:v:0',
+            '-map',
+            '1:a:0',
         ];
         if (subtitlePaths.length > 0 && fs.existsSync(concatenatedSubtitlePath)) {
             const subtitleFilter = `scale=1080:1920,ass=${concatenatedSubtitlePath}:fontsdir=/opt/fonts`;

@@ -106,30 +106,11 @@ export async function generateStoryBreakdown(
       parsedResponse.voiceToneInstruction ||
       'Speak in a cheerful and positive tone';
 
-    // Post-process scenes to ensure text fits duration
-    const adjustedScenes = scenes.map((scene: Scene, idx: number) => {
-      const adjustedNarration = adjustTextForDuration(
-        scene.narration,
-        scene.duration,
-      );
-      const originalDuration = estimateTextDuration(scene.narration);
-      const adjustedDuration = estimateTextDuration(adjustedNarration);
-
-      console.log(`📝 Scene ${scene.description.substring(0, 50)}...`);
-      console.log(
-        `   Original: ${originalDuration.toFixed(
-          1,
-        )}s, Adjusted: ${adjustedDuration.toFixed(1)}s, Target: ${
-          scene.duration
-        }s`,
-      );
-
-      return {
-        ...scene,
-        narration: adjustedNarration,
-        id: idx,
-      };
-    });
+    // Add scene IDs to each scene
+    const scenesWithIds = scenes.map((scene: any, idx: number) => ({
+      ...scene,
+      id: idx,
+    }));
 
     console.log('✅ Story breakdown parsed and adjusted successfully');
     console.log('🎤 Voice tone instruction:', voiceToneInstruction);
@@ -142,7 +123,7 @@ export async function generateStoryBreakdown(
         sceneCount,
         sceneDuration,
         totalDuration,
-        scenes: adjustedScenes,
+        scenes,
         voiceToneInstruction,
         timestamp,
       },
@@ -161,7 +142,7 @@ export async function generateStoryBreakdown(
 
     console.log(`💾 Script saved to S3: ${scriptKey}`);
 
-    return { scenes: adjustedScenes, voiceToneInstruction };
+    return { scenes: scenesWithIds, voiceToneInstruction };
   } catch (error) {
     console.error('❌ Error in generateStoryBreakdown:', error);
     throw error;

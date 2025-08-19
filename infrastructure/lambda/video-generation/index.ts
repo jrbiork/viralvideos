@@ -1,12 +1,18 @@
 import { SQSEvent, SQSRecord, SQSBatchResponse } from 'aws-lambda';
 import { format } from 'date-fns';
 import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
+import {
+  S3Client,
+  ListObjectsV2Command,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
 import { generateVideoClip } from './video';
 import { generateImage } from './image';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
 import { generateSubtitles } from './subtitles';
 import { combineVideoAndAudio } from './videoCombiner';
 import { uploadToS3 } from './util/s3Uploader';
+import { getImageUrls } from './util/imageUtils';
 
 interface VideoGenerationRequest {
   prompt: string;
@@ -75,11 +81,19 @@ async function processVideoGeneration(
 
     console.log('🎥 Story breakdown generated:', scenes);
 
+    // Check if there are already images generated in the s3 bucket for the timestamp
+    const imageUrls = await getImageUrls(request.userId, timestamp);
+
+    if (imageUrls.length > 0) {
+      console.log('🎥 Images already generated for the timestamp:', imageUrls);
+    }
+
+    const seed = Math.floor(Math.random() * 1000000);
+
     // Step 2: Generate images for each scene
     // Do not remove this code below, it is used for prod
     // console.log('🎨 Generating images for each scene...');
     // const imageUrls: string[] = [];
-    // const seed = Math.floor(Math.random() * 1000000);
 
     // for (let i = 0; i < scenes.length; i++) {
     //   const scene = scenes[i];
@@ -109,44 +123,6 @@ async function processVideoGeneration(
     // }
 
     // console.log('🎥 Images generated:', imageUrls);
-
-    // Step 3: Generate video clips (includes image generation)
-    // Do not remove this code below, it is used for prod
-    // console.log('🎥 Generating video clips from images...');
-    // const videoClips: string[] = [];
-
-    // for (let i = 0; i < scenes.length; i++) {
-    //   const scene = scenes[i];
-    //   const imageUrl = imageUrls[i];
-    //   console.log(
-    //     `🎬 Generating video for scene ${i + 1} from image:`,
-    //     scene.description,
-    //   );
-    //   try {
-    //     const videoClip = await generateVideoClip(
-    //       scene.description,
-    //       scene.duration,
-    //       i,
-    //       request.userId,
-    //       timestamp,
-    //       seed,
-    //       scene.id,
-    //       imageUrl,
-    //     );
-    //     videoClips.push(videoClip);
-    //     console.log(`✅ Scene ${i + 1} video generated:`, videoClip);
-    //   } catch (error) {
-    //     console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-    //     throw new Error(
-    //       `Failed to generate video for scene ${i + 1}: ${error}`,
-    //     );
-    //   }
-    // }
-
-    // if (videoClips.length === 0) {
-    //   console.log('❌ Error: No video clips were generated');
-    //   throw new Error('No video clips were generated');
-    // }
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 

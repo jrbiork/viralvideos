@@ -36,7 +36,7 @@ async function generateVideoClip(description, duration, sceneIndex, userId, time
                     model: 'gen4_turbo',
                     promptImage: imageUrl,
                     ratio: '720:1280',
-                    duration: Math.min(duration, 10),
+                    duration: duration <= 5 ? 5 : 10,
                     promptText: `${description}`,
                     seed,
                 })

@@ -58,6 +58,7 @@ export async function combineVideoAndAudio(
         return aId - bId;
       });
 
+    console.log('videoFiles:', videoFiles);
     // Filter and sort audio files by scene id
     const audioFiles = objs
       .filter((obj) => obj.Key?.endsWith('.mp3'))
@@ -261,7 +262,10 @@ export async function combineVideoAndAudio(
       'aac', // Audio codec
       '-b:a',
       '128k', // Audio bitrate
-      '-shortest', // End when shortest input ends
+      '-map',
+      '0:v:0', // Map video from first input
+      '-map',
+      '1:a:0', // Map audio from second input
     ];
 
     // Add subtitle overlay if subtitle file is available
