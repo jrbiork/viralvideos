@@ -51,7 +51,7 @@ export async function generateNarration(
       const response = await openai.audio.speech.create({
         model: 'tts-1',
         voice: 'fable',
-        instructions: `Speak clearly and keep the total narration within ${scene.duration}s. Avoid long pauses.`,
+        instructions: `Speak clearly and keep duration around or less than ${scene.duration}s. Avoid long pauses.`,
         input: scene.narration,
       });
 

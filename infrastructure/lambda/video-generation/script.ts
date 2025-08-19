@@ -35,30 +35,28 @@ export async function generateStoryBreakdown(
 
   try {
     // Guidance for narration pacing and safety caps
-    const wordsPerSecond = 2.2; // ~132 wpm, natural VO pace
-    const wordsPerMinute = Math.round(wordsPerSecond * 60);
+    const WPS = 4; // ~138 wpm
+    const BREATH_MARGIN = 0.9; // 10% headroom
     const maxWordsPerScene = Math.max(
-      8,
-      Math.round(sceneDuration * wordsPerSecond),
+      6,
+      Math.floor(sceneDuration * WPS * BREATH_MARGIN),
     );
-    const maxTotalWords = Math.round(totalDuration * wordsPerSecond);
+    console.log('maxWordsPerScene:', maxWordsPerScene);
+    const maxTotalWords = Math.floor(totalDuration * WPS * BREATH_MARGIN);
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
           content: `You are a short-form video scriptwriter for TikTok/Reels/Shorts.
-Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
-
-Strict rules:
-- Output **JSON only** matching the provided schema; no prose, no backticks.
-- Language: **use the same language as the user's input**.
-- **Scene 1 must include a strong curiosity hook** in the narration (one sentence).
-- Each **description**: what viewers see (subject, action, framing/camera, motion, lighting). No dialogue.
-- Each **narration**: spoken VO, conversational, **no hashtags, emojis, or scene labels**.
-- **Timing**: narration per scene ≤ ${maxWordsPerScene} words; total narration must fit ${totalDuration}s at ~${wordsPerMinute} wpm.
-- Tone: energetic and clear; keep actions **safe and realistic**; brand-neutral (no logos, trademarks, or celebrity names).
-- End with a satisfying visual beat (rest, reveal, or resolution), not a hard sales CTA unless implied by the idea.
+                Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
+                Strict rules:
+                - Output **JSON only** matching the provided schema; no prose, no backticks.
+                - Language: **use the same language as the user's input**.
+                - Each **description**: what viewers see. No dialogue. Keep it short and concise.
+                - Narration per scene should be around ${maxWordsPerScene} or little less words (hard cap).
+                - Avoid filler and long pauses: max 1 comma per sentence, no parentheses, no ellipses.
+                - Prefer active voice and simple clauses.
   `,
         },
         {
