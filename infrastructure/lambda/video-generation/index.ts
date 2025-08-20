@@ -104,47 +104,51 @@ async function processVideoGeneration(
     console.log('🎥 Story breakdown generated:', scenes);
 
     // Check if there are already images generated in the s3 bucket for the timestamp
-    const imageUrls = await getImageUrls(request.userId, timestamp);
+    let imageUrls = await getImageUrls(request.userId, timestamp);
 
     if (imageUrls.length > 0) {
       console.log('🎥 Images already generated for the timestamp:', imageUrls);
+    } else {
+      const seed = Math.floor(Math.random() * 1000000);
+
+      // Step 2: Generate images for each scene
+      console.log('🎨 Generating images for each scene...');
+
+      for (let i = 0; i < scenes.length; i++) {
+        const scene = scenes[i];
+        console.log(
+          `🎨 Generating image for scene ${i + 1}:`,
+          scene.description,
+        );
+        try {
+          const imageUrl = await generateImage(
+            scene.description,
+            i,
+            request.userId,
+            timestamp,
+            seed,
+            scene.id,
+          );
+          imageUrls.push(imageUrl);
+          console.log(`✅ Scene ${i + 1} image generated:`, imageUrl);
+        } catch (error) {
+          console.error(
+            `❌ Failed to generate image for scene ${i + 1}:`,
+            error,
+          );
+          throw new Error(
+            `Failed to generate image for scene ${i + 1}: ${error}`,
+          );
+        }
+      }
+
+      if (imageUrls.length === 0) {
+        console.log('❌ Error: No images were generated');
+        throw new Error('No images were generated');
+      }
+
+      console.log('🎥 Images generated:', imageUrls);
     }
-
-    const seed = Math.floor(Math.random() * 1000000);
-
-    // Step 2: Generate images for each scene
-    // Do not remove this code below, it is used for prod
-    // console.log('🎨 Generating images for each scene...');
-    // const imageUrls: string[] = [];
-
-    // for (let i = 0; i < scenes.length; i++) {
-    //   const scene = scenes[i];
-    //   console.log(`🎨 Generating image for scene ${i + 1}:`, scene.description);
-    //   try {
-    //     const imageUrl = await generateImage(
-    //       scene.description,
-    //       i,
-    //       request.userId,
-    //       timestamp,
-    //       seed,
-    //       scene.id,
-    //     );
-    //     imageUrls.push(imageUrl);
-    //     console.log(`✅ Scene ${i + 1} image generated:`, imageUrl);
-    //   } catch (error) {
-    //     console.error(`❌ Failed to generate image for scene ${i + 1}:`, error);
-    //     throw new Error(
-    //       `Failed to generate image for scene ${i + 1}: ${error}`,
-    //     );
-    //   }
-    // }
-
-    // if (imageUrls.length === 0) {
-    //   console.log('❌ Error: No images were generated');
-    //   throw new Error('No images were generated');
-    // }
-
-    // console.log('🎥 Images generated:', imageUrls);
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 

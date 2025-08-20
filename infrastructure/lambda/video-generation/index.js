@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.handler = void 0;
 const client_sqs_1 = require("@aws-sdk/client-sqs");
+const image_1 = require("./image");
 const narration_1 = require("./narration");
 const subtitles_1 = require("./subtitles");
 const videoCombiner_1 = require("./videoCombiner");
@@ -55,11 +56,32 @@ async function processVideoGeneration(request, record) {
             throw new Error('Failed to get or generate story breakdown');
         }
         console.log('🎥 Story breakdown generated:', scenes);
-        const imageUrls = await (0, imageUtils_1.getImageUrls)(request.userId, timestamp);
+        let imageUrls = await (0, imageUtils_1.getImageUrls)(request.userId, timestamp);
         if (imageUrls.length > 0) {
             console.log('🎥 Images already generated for the timestamp:', imageUrls);
         }
-        const seed = Math.floor(Math.random() * 1000000);
+        else {
+            const seed = Math.floor(Math.random() * 1000000);
+            console.log('🎨 Generating images for each scene...');
+            for (let i = 0; i < scenes.length; i++) {
+                const scene = scenes[i];
+                console.log(`🎨 Generating image for scene ${i + 1}:`, scene.description);
+                try {
+                    const imageUrl = await (0, image_1.generateImage)(scene.description, i, request.userId, timestamp, seed, scene.id);
+                    imageUrls.push(imageUrl);
+                    console.log(`✅ Scene ${i + 1} image generated:`, imageUrl);
+                }
+                catch (error) {
+                    console.error(`❌ Failed to generate image for scene ${i + 1}:`, error);
+                    throw new Error(`Failed to generate image for scene ${i + 1}: ${error}`);
+                }
+            }
+            if (imageUrls.length === 0) {
+                console.log('❌ Error: No images were generated');
+                throw new Error('No images were generated');
+            }
+            console.log('🎥 Images generated:', imageUrls);
+        }
         const existingAudioResult = await (0, audioUtils_1.fetchAudioFilesForTimestamp)(request.userId, timestamp);
         let narrationResult;
         if (existingAudioResult.audioKeys.length === scenes.length) {

@@ -115,7 +115,7 @@ async function getImageSignedUrl(imageKey: string): Promise<string | null> {
       Key: imageKey,
     });
 
-    return await getSignedUrl(s3, command, { expiresIn: 3600 });
+    return await getSignedUrl(s3, command, { expiresIn: 36000 });
   } catch (error) {
     console.error(`❌ Error getting signed URL for ${imageKey}:`, error);
     return null;
@@ -146,22 +146,12 @@ async function generateSceneVideo(
     fs.writeFileSync(inputImagePath, imageBuffer);
 
     const frames = Math.floor(scene.duration * 25);
+    const blurInDuration = 0.2;
 
     const filterComplex =
-      `[0:v]scale=720:1280:force_original_aspect_ratio=decrease,` +
-      `pad=720:1280:(ow-iw)/2:(oh-ih)/2,` +
-      // subtle, capped push-in; snap center to whole px
-      `zoompan=z='min(1+0.0018*on\\,1.06)':d=${frames}:` +
-      `x='floor(iw/2-(iw/zoom/2))':y='floor(ih/2-(ih/zoom/2))':s=720x1280,` +
-      // stabilize sampling
-      `fps=25,scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none,` +
-      // soft blur only at the very start
-      `boxblur=16:1:enable='lt(t\\,0.2)',` +
-      // light color pop & clarity
-      `eq=contrast=1.05:saturation=1.08:brightness=0.02,` +
-      `unsharp=5:5:0.3:5:5:0.0,` +
-      // faint temporal grain
-      `noise=alls=5:allf=t[v]`;
+      `[0:v]split[b0][b1];` +
+      `[b1]boxblur=8:1[bb];` +
+      `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[v]`;
 
     const ffmpegPath = resolveFfmpegPath();
 

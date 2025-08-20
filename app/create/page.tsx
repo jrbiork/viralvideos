@@ -110,14 +110,14 @@ export default function GeneratePage() {
     setStatusMessage('Queuing video generation request...');
 
     try {
-      const timestamp = '081925211658'; // format(new Date(), 'MMddyyHHmmss');
+      const timestamp = '081925211659'; // format(new Date(), 'MMddyyHHmmss');
       const data = await authenticatedFetch('/api/generate-video', {
         method: 'POST',
         body: {
           prompt: script,
           timestamp,
           totalDuration: duration,
-          sceneCount: duration === 60 ? 6 : 3,
+          sceneCount: duration === 60 || duration === 30 ? 6 : 3,
         },
       });
 
