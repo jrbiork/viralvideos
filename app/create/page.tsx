@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import VideoPreview from '../../components/VideoPreview';
-import VideoEditorLayout from '../../components/VideoEditorLayout';
+import MainLayout from '../../components/MainLayout';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
 import ProgressSteps from '../../components/ProgressSteps';
 import VideoCreator from '../../components/VideoCreator';
@@ -110,7 +110,7 @@ export default function GeneratePage() {
     setStatusMessage('Queuing video generation request...');
 
     try {
-      const timestamp = '081925211657'; // format(new Date(), 'MMddyyHHmmss');
+      const timestamp = '081925211658'; // format(new Date(), 'MMddyyHHmmss');
       const data = await authenticatedFetch('/api/generate-video', {
         method: 'POST',
         body: {
@@ -248,9 +248,9 @@ export default function GeneratePage() {
   );
 
   return (
-    <VideoEditorLayout
-      rightSidebarContent={rightSidebarContent}
+    <MainLayout
       showCreditsUpgrade={true}
+      rightSidebarContent={rightSidebarContent}
     >
       <div className="w-full max-w-4xl mx-auto flex flex-col justify-start pt-4 lg:pt-8">
         <ProgressSteps currentStep={currentStep} />
@@ -375,6 +375,6 @@ export default function GeneratePage() {
           </div>
         </div>
       </div>
-    </VideoEditorLayout>
+    </MainLayout>
   );
 }

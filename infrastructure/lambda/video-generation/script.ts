@@ -16,6 +16,14 @@ export interface Scene {
   id: number;
 }
 
+// Utility function to add IDs to scenes
+export function addSceneIds(scenes: any[]): Scene[] {
+  return scenes.map((scene: any, idx: number) => ({
+    ...scene,
+    id: idx,
+  }));
+}
+
 export async function generateStoryBreakdown(
   prompt: string,
   sceneCount: number,
@@ -35,8 +43,8 @@ export async function generateStoryBreakdown(
 
   try {
     // Guidance for narration pacing and safety caps
-    const WPS = 4; // ~138 wpm
-    const BREATH_MARGIN = 0.9; // 10% headroom
+    const WPS = 2.5;
+    const BREATH_MARGIN = 0.9;
     const maxWordsPerScene = Math.max(
       6,
       Math.floor(sceneDuration * WPS * BREATH_MARGIN),
@@ -107,10 +115,7 @@ export async function generateStoryBreakdown(
       'Speak in a cheerful and positive tone';
 
     // Add scene IDs to each scene
-    const scenesWithIds = scenes.map((scene: any, idx: number) => ({
-      ...scene,
-      id: idx,
-    }));
+    const scenesWithIds = addSceneIds(scenes);
 
     console.log('✅ Story breakdown parsed and adjusted successfully');
     console.log('🎤 Voice tone instruction:', voiceToneInstruction);

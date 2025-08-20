@@ -7,6 +7,8 @@ const subtitles_1 = require("./subtitles");
 const videoCombiner_1 = require("./videoCombiner");
 const s3Uploader_1 = require("./util/s3Uploader");
 const imageUtils_1 = require("./util/imageUtils");
+const videoBlurInOut_1 = require("./util/videoBlurInOut");
+const script_1 = require("./script");
 const sqs = new client_sqs_1.SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const handler = async (event) => {
     return await handleSQSEvent(event);
@@ -33,11 +35,23 @@ async function processVideoGeneration(request, record) {
         console.log('processVideoGeneration:', request);
         const timestamp = request.timestamp;
         const sceneDuration = Math.floor(request.totalDuration / request.sceneCount);
-        const storyBreakdown = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration, request.userId, timestamp);
-        const { scenes, voiceToneInstruction } = storyBreakdown;
+        const scriptKey = `${request.userId}/${timestamp}.script.txt`;
+        const existingScript = await (0, s3Uploader_1.getObjectFromS3)(scriptKey);
+        let scenes, voiceToneInstruction;
+        if (existingScript) {
+            console.log('🎥 Script already generated for the timestamp, using existing script');
+            scenes = (0, script_1.addSceneIds)(existingScript.scenes);
+            voiceToneInstruction = existingScript.voiceToneInstruction;
+        }
+        else {
+            console.log('🎥 No existing script found, generating new story breakdown');
+            const storyBreakdown = await (0, narration_1.generateStoryBreakdown)(request.prompt, request.sceneCount, sceneDuration, request.totalDuration, request.userId, timestamp);
+            scenes = storyBreakdown.scenes;
+            voiceToneInstruction = storyBreakdown.voiceToneInstruction;
+        }
         if (!scenes || scenes.length === 0) {
-            console.log('❌ Error: Failed to generate story breakdown');
-            throw new Error('Failed to generate story breakdown');
+            console.log('❌ Error: Failed to get or generate story breakdown');
+            throw new Error('Failed to get or generate story breakdown');
         }
         console.log('🎥 Story breakdown generated:', scenes);
         const imageUrls = await (0, imageUtils_1.getImageUrls)(request.userId, timestamp);
@@ -45,8 +59,11 @@ async function processVideoGeneration(request, record) {
             console.log('🎥 Images already generated for the timestamp:', imageUrls);
         }
         const seed = Math.floor(Math.random() * 1000000);
+        console.log('🎥 No existing audio files found, generating new narration');
         const narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
         console.log('🎥 Audio narration generated:', narrationResult);
+        const videoBlurInOutKeys = await (0, videoBlurInOut_1.generateVideoBlurInOut)(scenes, request.userId, timestamp);
+        console.log('videoBlurInOutKeys:', videoBlurInOutKeys);
         const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);
         console.log('🎥 Subtitles generated:', subtitleKeys);
         const finalVideo = await (0, videoCombiner_1.combineVideoAndAudio)(request.userId, timestamp, scenes);

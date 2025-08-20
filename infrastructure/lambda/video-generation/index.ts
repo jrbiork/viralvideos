@@ -11,8 +11,11 @@ import { generateImage } from './image';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
 import { generateSubtitles } from './subtitles';
 import { combineVideoAndAudio } from './videoCombiner';
-import { uploadToS3 } from './util/s3Uploader';
+import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { getImageUrls } from './util/imageUtils';
+import { generateVideoBlurInOut } from './util/videoBlurInOut';
+import { fetchAudioFilesForTimestamp } from './util/audioUtils';
+import { addSceneIds } from './script';
 
 interface VideoGenerationRequest {
   prompt: string;
@@ -63,20 +66,39 @@ async function processVideoGeneration(
       request.totalDuration / request.sceneCount,
     );
 
-    // Step 1: Generate script/story breakdown using GPT-4
-    const storyBreakdown = await generateStoryBreakdown(
-      request.prompt,
-      request.sceneCount,
-      sceneDuration,
-      request.totalDuration,
-      request.userId,
-      timestamp,
-    );
-    const { scenes, voiceToneInstruction } = storyBreakdown;
+    // Check if there is already script generated in the s3 bucket for the timestamp
+    const scriptKey = `${request.userId}/${timestamp}.script.txt`;
+    const existingScript = await getObjectFromS3(scriptKey);
+
+    let scenes, voiceToneInstruction;
+
+    if (existingScript) {
+      console.log(
+        '🎥 Script already generated for the timestamp, using existing script',
+      );
+      scenes = addSceneIds(existingScript.scenes);
+      voiceToneInstruction = existingScript.voiceToneInstruction;
+    } else {
+      console.log(
+        '🎥 No existing script found, generating new story breakdown',
+      );
+
+      // Step 1: Generate script/story breakdown using GPT-4
+      const storyBreakdown = await generateStoryBreakdown(
+        request.prompt,
+        request.sceneCount,
+        sceneDuration,
+        request.totalDuration,
+        request.userId,
+        timestamp,
+      );
+      scenes = storyBreakdown.scenes;
+      voiceToneInstruction = storyBreakdown.voiceToneInstruction;
+    }
 
     if (!scenes || scenes.length === 0) {
-      console.log('❌ Error: Failed to generate story breakdown');
-      throw new Error('Failed to generate story breakdown');
+      console.log('❌ Error: Failed to get or generate story breakdown');
+      throw new Error('Failed to get or generate story breakdown');
     }
 
     console.log('🎥 Story breakdown generated:', scenes);
@@ -126,6 +148,21 @@ async function processVideoGeneration(
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 
+    // Check if there are already audio files generated in the s3 bucket for the timestamp
+    // const existingAudioResult = await fetchAudioFilesForTimestamp(
+    //   request.userId,
+    //   timestamp,
+    // );
+
+    // let narrationResult;
+    // if (existingAudioResult.audioKeys.length === scenes.length) {
+    //   console.log(
+    //     '🎥 Audio files already generated for the timestamp, using existing audio',
+    //   );
+    //   narrationResult = existingAudioResult;
+    // } else {
+    console.log('🎥 No existing audio files found, generating new narration');
+
     // Step 3: Generate audio narration with word-level timestamps
     const narrationResult = await generateNarration(
       scenes,
@@ -133,6 +170,7 @@ async function processVideoGeneration(
       timestamp,
       voiceToneInstruction,
     );
+    // }
 
     console.log('🎥 Audio narration generated:', narrationResult);
 
@@ -174,6 +212,14 @@ async function processVideoGeneration(
     // }
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
+
+    // Step 4: Generate video blur in/out and camera movement effects using the images
+    const videoBlurInOutKeys = await generateVideoBlurInOut(
+      scenes,
+      request.userId,
+      timestamp,
+    );
+    console.log('videoBlurInOutKeys:', videoBlurInOutKeys);
 
     // Step 5: Generate subtitles based on word-level timestamps
     const subtitleKeys = await generateSubtitles(

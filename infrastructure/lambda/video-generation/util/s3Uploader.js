@@ -34,6 +34,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.uploadToS3 = uploadToS3;
+exports.getObjectFromS3 = getObjectFromS3;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const fs = __importStar(require("fs"));
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
@@ -52,5 +53,39 @@ async function uploadToS3(filePath, userId, timestamp) {
     catch (error) {
         console.error('❌ Error uploading to S3:', error);
         throw error;
+    }
+}
+async function getObjectFromS3(key, bucketName) {
+    try {
+        const bucket = bucketName || process.env.VIDEO_PARTS_BUCKET_NAME;
+        if (!bucket) {
+            throw new Error('Bucket name not provided and VIDEO_PARTS_BUCKET_NAME not set');
+        }
+        const command = new client_s3_1.GetObjectCommand({
+            Bucket: bucket,
+            Key: key,
+        });
+        const response = await s3.send(command);
+        if (!response.Body) {
+            return null;
+        }
+        const streamReader = response.Body.transformToString();
+        const content = await streamReader;
+        try {
+            return JSON.parse(content);
+        }
+        catch {
+            return content;
+        }
+    }
+    catch (error) {
+        if (error &&
+            typeof error === 'object' &&
+            'name' in error &&
+            error.name === 'NoSuchKey') {
+            return null;
+        }
+        console.error(`❌ Error getting object from S3 (${key}):`, error);
+        return null;
     }
 }

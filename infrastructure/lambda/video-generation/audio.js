@@ -19,7 +19,7 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
             const response = await openai.audio.speech.create({
                 model: 'tts-1',
                 voice: 'fable',
-                instructions: `Speak clearly and keep duration around or less than ${scene.duration}s. Avoid long pauses.`,
+                instructions: `Speak clearly and keep duration less or equal to ${scene.duration}s. Avoid long pauses.`,
                 input: scene.narration,
             });
             const originalAudioBuffer = Buffer.from(await response.arrayBuffer());

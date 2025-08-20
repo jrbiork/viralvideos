@@ -3,18 +3,25 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.addSceneIds = addSceneIds;
 exports.generateStoryBreakdown = generateStoryBreakdown;
 const openai_1 = __importDefault(require("openai"));
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
 const openai = new openai_1.default({ apiKey: process.env.OPENAI_API_KEY });
+function addSceneIds(scenes) {
+    return scenes.map((scene, idx) => ({
+        ...scene,
+        id: idx,
+    }));
+}
 async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDuration, userId, timestamp) {
     console.log('🤖 Calling OpenAI for story breakdown...');
     console.log(`📊 Parameters: ${sceneCount} scenes, ${totalDuration} seconds total`);
     console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
     console.log('prompt:', prompt);
     try {
-        const WPS = 4;
+        const WPS = 2.5;
         const BREATH_MARGIN = 0.9;
         const maxWordsPerScene = Math.max(6, Math.floor(sceneDuration * WPS * BREATH_MARGIN));
         console.log('maxWordsPerScene:', maxWordsPerScene);
@@ -76,10 +83,7 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
         const scenes = parsedResponse.videoScenes || parsedResponse;
         const voiceToneInstruction = parsedResponse.voiceToneInstruction ||
             'Speak in a cheerful and positive tone';
-        const scenesWithIds = scenes.map((scene, idx) => ({
-            ...scene,
-            id: idx,
-        }));
+        const scenesWithIds = addSceneIds(scenes);
         console.log('✅ Story breakdown parsed and adjusted successfully');
         console.log('🎤 Voice tone instruction:', voiceToneInstruction);
         const scriptKey = `${userId}/${timestamp}.script.txt`;
