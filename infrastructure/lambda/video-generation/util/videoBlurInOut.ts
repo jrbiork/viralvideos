@@ -146,20 +146,22 @@ async function generateSceneVideo(
     fs.writeFileSync(inputImagePath, imageBuffer);
 
     const frames = Math.floor(scene.duration * 25);
-    const blurInDuration = 0.4;
-    console.log('blurInDuration3:', blurInDuration);
 
     const filterComplex =
       `[0:v]scale=720:1280:force_original_aspect_ratio=decrease,` +
       `pad=720:1280:(ow-iw)/2:(oh-ih)/2,` +
-      // smooth zoom; cap at ~1.08 to reduce shimmer on long scenes
-      `zoompan=z='min(1+0.002*on\\,1.08)':d=${frames}:` +
-      // keep perfectly centered but snap to whole pixels
+      // subtle, capped push-in; snap center to whole px
+      `zoompan=z='min(1+0.0018*on\\,1.06)':d=${frames}:` +
       `x='floor(iw/2-(iw/zoom/2))':y='floor(ih/2-(ih/zoom/2))':s=720x1280,` +
-      // lock framerate & use stable resampling
+      // stabilize sampling
       `fps=25,scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none,` +
-      // blur only at the start
-      `boxblur=20:1:enable='lt(t\\,${blurInDuration})'[v]`;
+      // soft blur only at the very start
+      `boxblur=16:1:enable='lt(t\\,0.2)',` +
+      // light color pop & clarity
+      `eq=contrast=1.05:saturation=1.08:brightness=0.02,` +
+      `unsharp=5:5:0.3:5:5:0.0,` +
+      // faint temporal grain
+      `noise=alls=5:allf=t[v]`;
 
     const ffmpegPath = resolveFfmpegPath();
 

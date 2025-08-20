@@ -75,7 +75,7 @@ export async function fetchAudioFilesForTimestamp(
       const sceneIndex = sceneMatch ? parseInt(sceneMatch[1]) : 0;
 
       // Try to fetch subtitle data if it exists
-      const subtitleKey = audioKey.replace('.mp3', '.subtitles.json');
+      const subtitleKey = audioKey.replace('.mp3', '.transcription.json');
 
       try {
         const subtitleCommand = new GetObjectCommand({
