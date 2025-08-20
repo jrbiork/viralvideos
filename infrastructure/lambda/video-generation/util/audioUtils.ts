@@ -1,4 +1,8 @@
-import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  ListObjectsV2Command,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
@@ -25,7 +29,9 @@ export async function fetchAudioFilesForTimestamp(
   timestamp: string,
 ): Promise<NarrationResult> {
   try {
-    console.log(`🔍 Fetching audio files for user: ${userId}, timestamp: ${timestamp}`);
+    console.log(
+      `🔍 Fetching audio files for user: ${userId}, timestamp: ${timestamp}`,
+    );
 
     // List all audio files for this timestamp
     const listCommand = new ListObjectsV2Command({
@@ -41,15 +47,18 @@ export async function fetchAudioFilesForTimestamp(
     }
 
     // Filter for audio files and sort by scene number
-    const audioObjects = response.Contents
-      .filter((obj) => obj.Key?.endsWith('.mp3'))
-      .sort((a, b) => {
-        const sceneA = parseInt(a.Key?.split('scene-')[1]?.split('.')[0] || '0');
-        const sceneB = parseInt(b.Key?.split('scene-')[1]?.split('.')[0] || '0');
-        return sceneA - sceneB;
-      });
+    const audioObjects = response.Contents.filter((obj) =>
+      obj.Key?.endsWith('.mp3'),
+    ).sort((a, b) => {
+      const sceneA = parseInt(a.Key?.split('scene-')[1]?.split('.')[0] || '0');
+      const sceneB = parseInt(b.Key?.split('scene-')[1]?.split('.')[0] || '0');
+      return sceneA - sceneB;
+    });
 
-    console.log(`✅ Found ${audioObjects.length} audio files:`, audioObjects.map(obj => obj.Key));
+    console.log(
+      `✅ Found ${audioObjects.length} audio files:`,
+      audioObjects.map((obj) => obj.Key),
+    );
 
     const audioKeys: string[] = [];
     const subtitles: SubtitleData[] = [];
@@ -67,7 +76,7 @@ export async function fetchAudioFilesForTimestamp(
 
       // Try to fetch subtitle data if it exists
       const subtitleKey = audioKey.replace('.mp3', '.subtitles.json');
-      
+
       try {
         const subtitleCommand = new GetObjectCommand({
           Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -75,22 +84,25 @@ export async function fetchAudioFilesForTimestamp(
         });
 
         const subtitleResponse = await s3.send(subtitleCommand);
-        
+
         if (subtitleResponse.Body) {
-          const subtitleContent = await subtitleResponse.Body.transformToString();
+          const subtitleContent =
+            await subtitleResponse.Body.transformToString();
           const subtitleData = JSON.parse(subtitleContent);
-          
+
           subtitles.push({
             sceneIndex,
             words: subtitleData.words || [],
             fullText: subtitleData.fullText || '',
           });
-          
+
           console.log(`✅ Found subtitle data for scene ${sceneIndex}`);
         }
       } catch (error) {
-        console.log(`⚠️ No subtitle data found for scene ${sceneIndex}, creating fallback`);
-        
+        console.log(
+          `⚠️ No subtitle data found for scene ${sceneIndex}, creating fallback`,
+        );
+
         // Create fallback subtitle data
         subtitles.push({
           sceneIndex,
@@ -100,8 +112,10 @@ export async function fetchAudioFilesForTimestamp(
       }
     }
 
-    console.log(`✅ Fetched ${audioKeys.length} audio files and ${subtitles.length} subtitle sets`);
-    
+    console.log(
+      `✅ Fetched ${audioKeys.length} audio files and ${subtitles.length} subtitle sets`,
+    );
+
     return { audioKeys, subtitles };
   } catch (error) {
     console.error('❌ Error fetching audio files from S3:', error);
@@ -109,13 +123,15 @@ export async function fetchAudioFilesForTimestamp(
   }
 }
 
-export async function getAudioSignedUrl(audioKey: string): Promise<string | null> {
+export async function getAudioSignedUrl(
+  audioKey: string,
+): Promise<string | null> {
   try {
     const command = new GetObjectCommand({
       Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
       Key: audioKey,
     });
-    
+
     return await getSignedUrl(s3, command, { expiresIn: 3600 });
   } catch (error) {
     console.error(`❌ Error getting signed URL for ${audioKey}:`, error);

@@ -17,14 +17,12 @@ async function fetchAudioFilesForTimestamp(userId, timestamp) {
             console.log('📭 No audio files found for the given timestamp');
             return { audioKeys: [], subtitles: [] };
         }
-        const audioObjects = response.Contents
-            .filter((obj) => obj.Key?.endsWith('.mp3'))
-            .sort((a, b) => {
+        const audioObjects = response.Contents.filter((obj) => obj.Key?.endsWith('.mp3')).sort((a, b) => {
             const sceneA = parseInt(a.Key?.split('scene-')[1]?.split('.')[0] || '0');
             const sceneB = parseInt(b.Key?.split('scene-')[1]?.split('.')[0] || '0');
             return sceneA - sceneB;
         });
-        console.log(`✅ Found ${audioObjects.length} audio files:`, audioObjects.map(obj => obj.Key));
+        console.log(`✅ Found ${audioObjects.length} audio files:`, audioObjects.map((obj) => obj.Key));
         const audioKeys = [];
         const subtitles = [];
         for (const audioObj of audioObjects) {

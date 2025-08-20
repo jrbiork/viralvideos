@@ -132,11 +132,13 @@ async function generateSceneVideo(imageUrl, scene, sceneIndex, userId, timestamp
         const outputVideoPath = path.join(tempDir, `output-${sceneIndex}.mp4`);
         fs.writeFileSync(inputImagePath, imageBuffer);
         const frames = Math.floor(scene.duration * 25);
-        const blurInDuration = 1.0;
-        console.log('blurInDuration211:', blurInDuration);
+        const blurInDuration = 0.4;
+        console.log('blurInDuration3:', blurInDuration);
         const filterComplex = `[0:v]scale=720:1280:force_original_aspect_ratio=decrease,` +
             `pad=720:1280:(ow-iw)/2:(oh-ih)/2,` +
-            `zoompan=z=1+0.002*on:d=${frames}:x=iw/2-(iw/zoom/2):y=ih/2-(ih/zoom/2):s=720x1280,` +
+            `zoompan=z='min(1+0.002*on\\,1.08)':d=${frames}:` +
+            `x='floor(iw/2-(iw/zoom/2))':y='floor(ih/2-(ih/zoom/2))':s=720x1280,` +
+            `fps=25,scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none,` +
             `boxblur=20:1:enable='lt(t\\,${blurInDuration})'[v]`;
         const ffmpegPath = resolveFfmpegPath();
         const ffmpegArgs = [

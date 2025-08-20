@@ -92,6 +92,16 @@ export async function generateNarration(
         language: 'en',
       });
 
+      // Save transcription to S3
+      const transcriptionKey = `${userId}/${timestamp}.scene-${scene.id}.transcription.json`;
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: transcriptionKey,
+          Body: JSON.stringify(transcription),
+        }),
+      );
+
       // Clean up temporary file
       fs.unlinkSync(tempAudioPath);
 

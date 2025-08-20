@@ -44,6 +44,12 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
                 timestamp_granularities: ['word'],
                 language: 'en',
             });
+            const transcriptionKey = `${userId}/${timestamp}.scene-${scene.id}.transcription.json`;
+            await s3.send(new client_s3_1.PutObjectCommand({
+                Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+                Key: transcriptionKey,
+                Body: JSON.stringify(transcription),
+            }));
             fs.unlinkSync(tempAudioPath);
             const subtitleData = {
                 sceneIndex: i,
