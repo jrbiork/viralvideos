@@ -71,27 +71,33 @@ export function createWordTimedKaraokeASSSubtitle(
   const assContent = createASSStyleHeader();
   let dialogueLines = '';
 
-  // Create dialogue lines for individual words with highlighting
+  // Create dialogue lines for individual words with highlighting (max 3 words visible)
   for (let i = 0; i < words.length; i++) {
     const currentWord = words[i];
     const wordStart = sceneStartTime + currentWord.start;
     const wordEnd = sceneStartTime + currentWord.end;
 
-    // Build the full text with current word highlighted
+    // Calculate the range of words to show (current word + up to 2 more)
+    const startIndex = Math.max(0, i);
+    const endIndex = Math.min(words.length, i + 3);
+    const visibleWords = words.slice(startIndex, endIndex);
+
+    // Build the text with only visible words, current word highlighted
     let fullText = '';
-    for (let j = 0; j < words.length; j++) {
-      if (j === i) {
+    for (let j = 0; j < visibleWords.length; j++) {
+      const wordIndex = startIndex + j;
+      if (wordIndex === i) {
         // Current word in yellow (highlighted)
-        fullText += `{\\c&H00FFFF&}${words[
+        fullText += `{\\c&H00FFFF&}${visibleWords[
           j
         ].word.toUpperCase()}{\\c&H00FFFFFF&}`;
       } else {
-        // Other words in white
-        fullText += words[j].word.toUpperCase();
+        // Other visible words in white
+        fullText += visibleWords[j].word.toUpperCase();
       }
 
       // Add space between words (except for the last word)
-      if (j < words.length - 1) {
+      if (j < visibleWords.length - 1) {
         fullText += ' ';
       }
     }

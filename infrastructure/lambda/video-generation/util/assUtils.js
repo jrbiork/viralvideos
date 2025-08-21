@@ -57,15 +57,19 @@ function createWordTimedKaraokeASSSubtitle(words, sceneStartTime) {
         const currentWord = words[i];
         const wordStart = sceneStartTime + currentWord.start;
         const wordEnd = sceneStartTime + currentWord.end;
+        const startIndex = Math.max(0, i);
+        const endIndex = Math.min(words.length, i + 3);
+        const visibleWords = words.slice(startIndex, endIndex);
         let fullText = '';
-        for (let j = 0; j < words.length; j++) {
-            if (j === i) {
-                fullText += `{\\c&H00FFFF&}${words[j].word.toUpperCase()}{\\c&H00FFFFFF&}`;
+        for (let j = 0; j < visibleWords.length; j++) {
+            const wordIndex = startIndex + j;
+            if (wordIndex === i) {
+                fullText += `{\\c&H00FFFF&}${visibleWords[j].word.toUpperCase()}{\\c&H00FFFFFF&}`;
             }
             else {
-                fullText += words[j].word.toUpperCase();
+                fullText += visibleWords[j].word.toUpperCase();
             }
-            if (j < words.length - 1) {
+            if (j < visibleWords.length - 1) {
                 fullText += ' ';
             }
         }
