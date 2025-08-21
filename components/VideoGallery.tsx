@@ -363,22 +363,6 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
                 </video>
               </div>
             </div>
-
-            {/* Video Info */}
-            <div className="p-6 border-t border-slate-700">
-              <div className="space-y-3">
-                <div className="flex items-center text-sm text-slate-400">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  {formatDate(selectedVideo.lastModified)}
-                </div>
-                <div className="text-xs text-slate-500">
-                  {formatFileSize(selectedVideo.size)}
-                </div>
-                <div className="text-sm text-slate-300">
-                  Video ID: {selectedVideo.key}
-                </div>
-              </div>
-            </div>
           </div>
         )}
       </div>

@@ -20,12 +20,6 @@ export default function VideosPage() {
                 { label: 'Videos', href: '/videos' },
               ]}
             />
-            <h1 className="text-3xl font-bold text-white mb-2 mt-4">
-              Your Video Library
-            </h1>
-            <p className="text-gray-300">
-              Browse and manage all your generated videos.
-            </p>
           </div>
 
           {/* Video Gallery */}
