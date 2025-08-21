@@ -176,7 +176,10 @@ async function processVideoGeneration(
     );
     // }
 
-    console.log('🎥 Audio narration generated:', narrationResult);
+    console.log(
+      '🎥 Audio narration generated:',
+      JSON.stringify(narrationResult, null, 2),
+    );
 
     // Step 4: Generate video clips from images
     // console.log('🎥 Generating video clips from images...');

@@ -50,6 +50,7 @@ function createASSStyleHeader() {
     return header;
 }
 function createWordTimedKaraokeASSSubtitle(words, sceneStartTime) {
+    console.log(`🔍 Creating karaoke subtitle with sceneStartTime: ${sceneStartTime}, words count: ${words.length}`);
     const assContent = createASSStyleHeader();
     let dialogueLines = '';
     for (let i = 0; i < words.length; i += 2) {
@@ -58,6 +59,9 @@ function createWordTimedKaraokeASSSubtitle(words, sceneStartTime) {
         if (nextWord) {
             const firstStart = sceneStartTime + currentWord.start;
             const firstEnd = sceneStartTime + currentWord.end;
+            if (i === 0) {
+                console.log(`🔍 First word timing: sceneStartTime=${sceneStartTime}, word.start=${currentWord.start}, word.end=${currentWord.end}, firstStart=${firstStart}, firstEnd=${firstEnd}`);
+            }
             const firstText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}{\\c&H00FFFFFF&} ${nextWord.word.toUpperCase()}`;
             dialogueLines += `Dialogue: 0,${formatASSTime(firstStart)},${formatASSTime(firstEnd)},Default,,,,,,${firstText}\n`;
             const secondStart = sceneStartTime + currentWord.end;

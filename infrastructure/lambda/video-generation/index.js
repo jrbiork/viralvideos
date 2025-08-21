@@ -83,7 +83,7 @@ async function processVideoGeneration(request, record) {
         }
         console.log('🎥 No existing audio files found, generating new narration');
         let narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
-        console.log('🎥 Audio narration generated:', narrationResult);
+        console.log('🎥 Audio narration generated:', JSON.stringify(narrationResult, null, 2));
         const videoBlurInOutKeys = await (0, videoBlurInOut_1.generateVideoBlurInOut)(scenes, request.userId, timestamp);
         console.log('videoBlurInOutKeys:', videoBlurInOutKeys);
         const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);

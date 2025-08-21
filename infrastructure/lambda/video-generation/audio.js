@@ -62,8 +62,10 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
                     start: word.start,
                     end: word.end,
                 }));
+                console.log('🔍 Word timestamps extracted successfully');
             }
             else {
+                console.log('🔍 No word timestamps found, using fallback');
                 const words = scene.narration
                     .split(' ')
                     .filter((word) => word.length > 0);

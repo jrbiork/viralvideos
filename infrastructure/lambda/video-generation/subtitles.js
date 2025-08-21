@@ -12,9 +12,14 @@ async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
         for (let i = 0; i < scenes.length; i++) {
             const scene = scenes[i];
             let assContent;
+            console.log(`🔍 Looking for subtitle data for scene ${i}, available data:`, subtitleData?.map((d) => ({
+                sceneIndex: d.sceneIndex,
+                wordsCount: d.words.length,
+            })));
             const sceneSubtitleData = subtitleData?.find((data) => data.sceneIndex === i);
             if (sceneSubtitleData && sceneSubtitleData.words.length > 0) {
                 console.log(`🎤 Creating word-timed karaoke subtitle for scene ${i} with ${sceneSubtitleData.words.length} words`);
+                console.log(`🎤 Scene ${i} (ID: ${scene.id}) - currentTime: ${currentTime}, duration: ${scene.duration}`);
                 assContent = (0, assUtils_1.createWordTimedKaraokeASSSubtitle)(sceneSubtitleData.words, currentTime);
             }
             else {
@@ -30,7 +35,9 @@ async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
                 ContentType: 'text/plain',
             }));
             subtitleKeys.push(assSubtitleKey);
+            console.log(`🔍 Scene ${i} completed. Duration: ${scene.duration}s, currentTime before increment: ${currentTime}`);
             currentTime += scene.duration;
+            console.log(`🔍 Scene ${i} completed. currentTime after increment: ${currentTime}`);
         }
         return subtitleKeys;
     }

@@ -118,8 +118,10 @@ export async function generateNarration(
           start: word.start,
           end: word.end,
         }));
+        console.log('🔍 Word timestamps extracted successfully');
         // Word timestamps extracted successfully
       } else {
+        console.log('🔍 No word timestamps found, using fallback');
         // Using fallback word timestamps
         // Fallback: create a simple word-level breakdown without precise timestamps
         const words = scene.narration

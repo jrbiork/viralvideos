@@ -149,9 +149,23 @@ async function generateSceneVideo(
     const blurInDuration = 0.2;
     const zoomOutFrames = Math.max(1, Math.floor(blurInDuration * 25));
 
+    // add near your other params
+    const moveRadius = 8; // px (visible but subtle)
+    const movePeriod = 240; // frames (~9.6s @25fps)
+
+    // replace your filterComplex with:
     const filterComplex =
-      `[0:v]zoompan=z='if(lte(on\\,${zoomOutFrames})\\,1.06-(0.06*on/${zoomOutFrames})\\,1.0)':d=${frames}:` +
-      `x='floor(iw/2-(iw/zoom/2))':y='floor(ih/2-(ih/zoom/2))':s=720x1280,` +
+      `[0:v]zoompan=z='if(lte(on\\,${zoomOutFrames})\\,1.06-(0.02*on/${zoomOutFrames})\\,1.04)':d=${frames}:` +
+      // smooth circular drift (fractional; no floor)
+      `x='iw/2-(iw/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*cos(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)':` +
+      `y='ih/2-(ih/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*sin(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)':` +
+      // supersample @ 3× to hide sub-pixel steps
+      `s=2160x3840,` +
+      // tiny temporal blend to smooth micro-jitter
+      `tmix=frames=3:weights='1 2 1',` +
+      // resample down cleanly
+      `scale=720:1280:flags=spline+accurate_rnd:sws_dither=none,` +
+      // blur fade (unchanged)
       `split[b0][b1];` +
       `[b1]boxblur=8:1[bb];` +
       `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[v]`;
@@ -182,6 +196,7 @@ async function generateSceneVideo(
     ];
 
     console.log(`🎬 Running FFmpeg command for scene ${sceneIndex + 1}:`);
+    console.log(`🎬 Scene duration: ${scene.duration}s`);
     console.log(ffmpegPath, ffmpegArgs.join(' '));
 
     const { stdout, stderr } = await execFileAsync(ffmpegPath, ffmpegArgs, {
