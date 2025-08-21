@@ -20,11 +20,11 @@ async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
             if (sceneSubtitleData && sceneSubtitleData.words.length > 0) {
                 console.log(`🎤 Creating word-timed karaoke subtitle for scene ${i} with ${sceneSubtitleData.words.length} words`);
                 console.log(`🎤 Scene ${i} (ID: ${scene.id}) - currentTime: ${currentTime}, duration: ${scene.duration}`);
-                assContent = (0, assUtils_1.createWordTimedKaraokeASSSubtitle)(sceneSubtitleData.words, currentTime);
+                assContent = (0, assUtils_1.createWordTimedKaraokeASSSubtitle)(sceneSubtitleData.words, 0);
             }
             else {
                 console.log(`📝 Creating simple subtitle for scene ${i} (no word data available)`);
-                assContent = createSimpleASSSubtitle(i + 1, currentTime, scene.duration, scene.narration);
+                assContent = createSimpleASSSubtitle(i + 1, 0, scene.duration, scene.narration);
             }
             const assSubtitleBuffer = Buffer.from(assContent, 'utf-8');
             const assSubtitleKey = `${userId}/${timestamp}.scene-${scene.id}.ass`;

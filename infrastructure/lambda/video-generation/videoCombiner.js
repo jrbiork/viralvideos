@@ -54,12 +54,13 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
         }));
         const objs = listResponse.Contents || [];
         const videoFiles = objs
-            .filter((obj) => obj.Key?.endsWith('.mp4'))
+            .filter((obj) => obj.Key?.endsWith('.mp4') && !obj.Key?.includes('-combined'))
             .sort((a, b) => {
             const aId = parseInt(a.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
             const bId = parseInt(b.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
             return aId - bId;
         });
+        console.log('🔍 Found video files:', videoFiles.map((f) => f.Key));
         const audioFiles = objs
             .filter((obj) => obj.Key?.endsWith('.mp3'))
             .sort((a, b) => {
@@ -114,41 +115,6 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
                 fs.writeFileSync(subtitlePath, subtitleBuffer);
             }
             const combinedScenePath = path.join(os.tmpdir(), `scene-${i}-combined.mp4`);
-            console.log(`🔍 Scene ${i} - Video: ${videoFile.Key}, Audio: ${audioFile?.Key}, Subtitle: ${subtitleFile?.Key}`);
-            if (scenes && scenes[i]) {
-                console.log(`🔍 Scene ${i} expected duration: ${scenes[i].duration}s`);
-            }
-            try {
-                const { stdout: videoDuration } = await new Promise((resolve, reject) => {
-                    ffmpeg.ffprobe(videoPath, (err, metadata) => {
-                        if (err)
-                            reject(err);
-                        else
-                            resolve({
-                                stdout: metadata.format.duration?.toString() || '0',
-                                stderr: '',
-                            });
-                    });
-                });
-                console.log(`🔍 Scene ${i} actual video duration: ${videoDuration}s`);
-                if (audioPath) {
-                    const { stdout: audioDuration } = await new Promise((resolve, reject) => {
-                        ffmpeg.ffprobe(audioPath, (err, metadata) => {
-                            if (err)
-                                reject(err);
-                            else
-                                resolve({
-                                    stdout: metadata.format.duration?.toString() || '0',
-                                    stderr: '',
-                                });
-                        });
-                    });
-                    console.log(`🔍 Scene ${i} actual audio duration: ${audioDuration}s`);
-                }
-            }
-            catch (error) {
-                console.warn(`⚠️ Could not check file durations for scene ${i}:`, error);
-            }
             const ffmpegCommand = ffmpeg().input(videoPath);
             if (audioPath) {
                 ffmpegCommand.input(audioPath);

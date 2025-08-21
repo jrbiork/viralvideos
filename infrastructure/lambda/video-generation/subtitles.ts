@@ -55,9 +55,10 @@ export async function generateSubtitles(
         console.log(
           `📝 Creating simple subtitle for scene ${i} (no word data available)`,
         );
+        // For scene-by-scene combination, we need scene-relative timings
         assContent = createSimpleASSSubtitle(
           i + 1,
-          currentTime,
+          0, // Start from 0 for each scene
           scene.duration,
           scene.narration,
         );

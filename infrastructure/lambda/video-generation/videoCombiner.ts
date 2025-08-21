@@ -54,12 +54,19 @@ export async function combineVideoAndAudio(
 
     // Filter and sort files by scene id
     const videoFiles = objs
-      .filter((obj) => obj.Key?.endsWith('.mp4'))
+      .filter(
+        (obj) => obj.Key?.endsWith('.mp4') && !obj.Key?.includes('-combined'),
+      )
       .sort((a, b) => {
         const aId = parseInt(a.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
         const bId = parseInt(b.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
         return aId - bId;
       });
+
+    console.log(
+      '🔍 Found video files:',
+      videoFiles.map((f) => f.Key),
+    );
 
     const audioFiles = objs
       .filter((obj) => obj.Key?.endsWith('.mp3'))
@@ -149,54 +156,6 @@ export async function combineVideoAndAudio(
         os.tmpdir(),
         `scene-${i}-combined.mp4`,
       );
-
-      // Log scene information for debugging
-      console.log(
-        `🔍 Scene ${i} - Video: ${videoFile.Key}, Audio: ${audioFile?.Key}, Subtitle: ${subtitleFile?.Key}`,
-      );
-      if (scenes && scenes[i]) {
-        console.log(`🔍 Scene ${i} expected duration: ${scenes[i].duration}s`);
-      }
-
-      // Check actual file durations using ffprobe
-      try {
-        const { stdout: videoDuration } = await new Promise<{
-          stdout: string;
-          stderr: string;
-        }>((resolve, reject) => {
-          ffmpeg.ffprobe(videoPath, (err: any, metadata: any) => {
-            if (err) reject(err);
-            else
-              resolve({
-                stdout: metadata.format.duration?.toString() || '0',
-                stderr: '',
-              });
-          });
-        });
-        console.log(`🔍 Scene ${i} actual video duration: ${videoDuration}s`);
-
-        if (audioPath) {
-          const { stdout: audioDuration } = await new Promise<{
-            stdout: string;
-            stderr: string;
-          }>((resolve, reject) => {
-            ffmpeg.ffprobe(audioPath, (err: any, metadata: any) => {
-              if (err) reject(err);
-              else
-                resolve({
-                  stdout: metadata.format.duration?.toString() || '0',
-                  stderr: '',
-                });
-            });
-          });
-          console.log(`🔍 Scene ${i} actual audio duration: ${audioDuration}s`);
-        }
-      } catch (error) {
-        console.warn(
-          `⚠️ Could not check file durations for scene ${i}:`,
-          error,
-        );
-      }
 
       const ffmpegCommand = ffmpeg().input(videoPath);
 
