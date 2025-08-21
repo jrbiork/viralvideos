@@ -11,10 +11,7 @@ const openai = new openai_1.default({ apiKey: process.env.OPENAI_API_KEY });
 async function generateNarration(scenes, userId, timestamp, instructions = 'Speak in a cheerful and positive tone') {
     console.log('🎤 Generating narration from scenes with word-level timestamps...');
     try {
-        const audioKeys = [];
-        const subtitles = [];
-        for (let i = 0; i < scenes.length; i++) {
-            const scene = scenes[i];
+        const scenePromises = scenes.map(async (scene, i) => {
             console.log(`🎤 Generating narration for scene ${i}:`, scene);
             const response = await openai.audio.speech.create({
                 model: 'tts-1',
@@ -30,11 +27,10 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
                 Body: originalAudioBuffer,
                 ContentType: 'audio/mpeg',
             }));
-            audioKeys.push(audioKey);
             const fs = require('fs');
             const os = require('os');
             const path = require('path');
-            const tempAudioPath = path.join(os.tmpdir(), `scene-${i}.mp3`);
+            const tempAudioPath = path.join(os.tmpdir(), `scene-${i}-${timestamp}.mp3`);
             fs.writeFileSync(tempAudioPath, originalAudioBuffer);
             const audioFile = fs.createReadStream(tempAudioPath);
             const transcription = await openai.audio.transcriptions.create({
@@ -62,10 +58,10 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
                     start: word.start,
                     end: word.end,
                 }));
-                console.log('🔍 Word timestamps extracted successfully');
+                console.log(`🔍 Scene ${i}: Word timestamps extracted successfully`);
             }
             else {
-                console.log('🔍 No word timestamps found, using fallback');
+                console.log(`🔍 Scene ${i}: No word timestamps found, using fallback`);
                 const words = scene.narration
                     .split(' ')
                     .filter((word) => word.length > 0);
@@ -83,8 +79,15 @@ async function generateNarration(scenes, userId, timestamp, instructions = 'Spea
                 Key: subtitleKey,
                 Body: JSON.stringify(subtitleData),
             }));
-            subtitles.push(subtitleData);
-        }
+            return {
+                audioKey,
+                subtitleData,
+            };
+        });
+        const results = await Promise.all(scenePromises);
+        const audioKeys = results.map((result) => result.audioKey);
+        const subtitles = results.map((result) => result.subtitleData);
+        console.log(`✅ Generated narration for ${results.length} scenes in parallel`);
         return { audioKeys, subtitles };
     }
     catch (error) {

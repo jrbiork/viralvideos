@@ -40,11 +40,8 @@ export async function generateNarration(
     '🎤 Generating narration from scenes with word-level timestamps...',
   );
   try {
-    const audioKeys: string[] = [];
-    const subtitles: SubtitleData[] = [];
-
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
+    // Process all scenes in parallel
+    const scenePromises = scenes.map(async (scene, i) => {
       console.log(`🎤 Generating narration for scene ${i}:`, scene);
 
       // Generate speech with standard format
@@ -69,8 +66,6 @@ export async function generateNarration(
         }),
       );
 
-      audioKeys.push(audioKey);
-
       // Get word-level timestamps using transcription
 
       // Write adjusted audio buffer to temporary file for transcription
@@ -78,7 +73,10 @@ export async function generateNarration(
       const os = require('os');
       const path = require('path');
 
-      const tempAudioPath = path.join(os.tmpdir(), `scene-${i}.mp3`);
+      const tempAudioPath = path.join(
+        os.tmpdir(),
+        `scene-${i}-${timestamp}.mp3`,
+      );
       fs.writeFileSync(tempAudioPath, originalAudioBuffer);
 
       // Create file object for OpenAI API
@@ -118,10 +116,10 @@ export async function generateNarration(
           start: word.start,
           end: word.end,
         }));
-        console.log('🔍 Word timestamps extracted successfully');
+        console.log(`🔍 Scene ${i}: Word timestamps extracted successfully`);
         // Word timestamps extracted successfully
       } else {
-        console.log('🔍 No word timestamps found, using fallback');
+        console.log(`🔍 Scene ${i}: No word timestamps found, using fallback`);
         // Using fallback word timestamps
         // Fallback: create a simple word-level breakdown without precise timestamps
         const words = scene.narration
@@ -147,9 +145,22 @@ export async function generateNarration(
         }),
       );
 
-      subtitles.push(subtitleData);
-    }
+      return {
+        audioKey,
+        subtitleData,
+      };
+    });
 
+    // Wait for all scenes to complete
+    const results = await Promise.all(scenePromises);
+
+    // Extract results in the correct order
+    const audioKeys = results.map((result) => result.audioKey);
+    const subtitles = results.map((result) => result.subtitleData);
+
+    console.log(
+      `✅ Generated narration for ${results.length} scenes in parallel`,
+    );
     return { audioKeys, subtitles };
   } catch (error) {
     console.error('❌ Error in generateNarration:', error);

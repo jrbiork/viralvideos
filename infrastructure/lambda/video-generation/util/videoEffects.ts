@@ -58,10 +58,8 @@ export async function generateVideoEffects(
   try {
     console.log('🎬 Generating video effects for scenes...');
 
-    const videoKeys: string[] = [];
-
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
+    // Process all scenes in parallel
+    const videoPromises = scenes.map(async (scene, i) => {
       console.log(`🎬 Processing scene ${i + 1}: ${scene.description}`);
 
       try {
@@ -71,7 +69,7 @@ export async function generateVideoEffects(
 
         if (!imageUrl) {
           console.error(`❌ No image found for scene ${scene.id}`);
-          continue;
+          return null;
         }
 
         // Generate video with blur in/out and camera movement
@@ -83,15 +81,19 @@ export async function generateVideoEffects(
           timestamp,
         );
 
-        videoKeys.push(videoKey);
         console.log(`✅ Scene ${i + 1} video generated: ${videoKey}`);
+        return videoKey;
       } catch (error) {
         console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
         throw new Error(
           `Failed to generate video for scene ${i + 1}: ${error}`,
         );
       }
-    }
+    });
+
+    const videoKeys = (await Promise.all(videoPromises)).filter(
+      (key): key is string => key !== null,
+    );
 
     if (videoKeys.length === 0) {
       console.log('❌ Error: No videos were generated');
@@ -162,9 +164,9 @@ async function generateSceneVideo(
         zoom: `if(lte(on\\,${zoomOutFrames})\\,1.15-(0.08*on/${zoomOutFrames})\\,1.08)`,
         x: `iw/2-(iw/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*cos(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
         y: `ih/2-(ih/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*sin(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
-        supersample: '2160x3840',
-        tmix: "frames=3:weights='1 2 1'",
-        scale: 'scale=720:1280:flags=spline+accurate_rnd:sws_dither=none',
+        supersample: '1440x2560',
+        tmix: "frames=2:weights='1 1'",
+        scale: 'scale=720:1280:flags=spline:sws_dither=none',
       },
       1: {
         // Variant 1: strong continuous zoom-in (Ken Burns) + pronounced circular drift
@@ -173,7 +175,7 @@ async function generateSceneVideo(
         y: `ih/2-(ih/zoom/2) + ${moveRadius}*sin(2*PI*on/${movePeriod})`,
         supersample: '1440x2560',
         tmix: "frames=2:weights='1 1'",
-        scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+        scale: 'scale=720:1280:flags=lanczos:sws_dither=none',
       },
       2: {
         // Variant 2: strong continuous zoom-out + pronounced elliptical drift
@@ -182,7 +184,7 @@ async function generateSceneVideo(
         y: `ih/2-(ih/zoom/2) + (${moveRadius}/1.2)*sin(2*PI*on/${movePeriod})`,
         supersample: '1440x2560',
         tmix: "frames=2:weights='1 1'",
-        scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+        scale: 'scale=720:1280:flags=lanczos:sws_dither=none',
       },
     };
 
@@ -214,11 +216,13 @@ async function generateSceneVideo(
       '-c:v',
       'libx264',
       '-preset',
-      'medium',
+      'veryfast',
       '-crf',
       '23',
       '-pix_fmt',
       'yuv420p',
+      '-threads',
+      '0',
       '-t',
       scene.duration.toString(),
       '-y',

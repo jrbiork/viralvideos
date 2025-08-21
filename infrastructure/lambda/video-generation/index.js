@@ -61,25 +61,25 @@ async function processVideoGeneration(request, record) {
         }
         else {
             const seed = Math.floor(Math.random() * 1000000);
-            console.log('🎨 Generating images for each scene...');
-            for (let i = 0; i < scenes.length; i++) {
-                const scene = scenes[i];
-                console.log(`🎨 Generating image for scene ${i + 1}:`, scene.description);
-                try {
+            console.log('🎨 Generating images for each scene in parallel...');
+            try {
+                const imagePromises = scenes.map(async (scene, i) => {
+                    console.log(`🎨 Generating image for scene ${i + 1}:`, scene.description);
                     const imageUrl = await (0, image_1.generateImage)(scene.description, i, request.userId, timestamp, seed, scene.id);
-                    imageUrls.push(imageUrl);
                     console.log(`✅ Scene ${i + 1} image generated:`, imageUrl);
+                    return imageUrl;
+                });
+                imageUrls = await Promise.all(imagePromises);
+                if (imageUrls.length === 0) {
+                    console.log('❌ Error: No images were generated');
+                    throw new Error('No images were generated');
                 }
-                catch (error) {
-                    console.error(`❌ Failed to generate image for scene ${i + 1}:`, error);
-                    throw new Error(`Failed to generate image for scene ${i + 1}: ${error}`);
-                }
+                console.log(`🎥 Generated ${imageUrls.length} images in parallel:`, imageUrls);
             }
-            if (imageUrls.length === 0) {
-                console.log('❌ Error: No images were generated');
-                throw new Error('No images were generated');
+            catch (error) {
+                console.error('❌ Failed to generate images:', error);
+                throw new Error(`Failed to generate images: ${error}`);
             }
-            console.log('🎥 Images generated:', imageUrls);
         }
         console.log('🎥 No existing audio files found, generating new narration');
         let narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);

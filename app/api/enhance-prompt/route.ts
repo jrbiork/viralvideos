@@ -43,12 +43,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Create the system prompt for OpenAI
-    const systemPrompt = `You are a video brief writer. Expand a rough idea into a concise, production-ready description for a 9:16 vertical short of ${rawDuration} seconds.
+    const systemPrompt = `Elaborate on a rough idea into a objective, precise and concise description for a short video of ${rawDuration} seconds.
   
                           Rules (follow strictly):
                           - Do not exceed ≤ ${wordLimit} words.
-                          - Prefer concrete nouns and verbs; avoid flowery/poetic language.
-                          - Keep it safe and brand-neutral
+                          - Keep the language simple and concise; no flowery/poetic language.
                           - Maintain the user's intent and theme.
                           - No lists, no scene numbers, no hashtags or emojis.
 

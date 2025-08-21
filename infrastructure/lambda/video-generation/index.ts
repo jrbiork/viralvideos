@@ -111,16 +111,16 @@ async function processVideoGeneration(
     } else {
       const seed = Math.floor(Math.random() * 1000000);
 
-      // Step 2: Generate images for each scene
-      console.log('🎨 Generating images for each scene...');
+      // Step 2: Generate images for each scene in parallel
+      console.log('🎨 Generating images for each scene in parallel...');
 
-      for (let i = 0; i < scenes.length; i++) {
-        const scene = scenes[i];
-        console.log(
-          `🎨 Generating image for scene ${i + 1}:`,
-          scene.description,
-        );
-        try {
+      try {
+        const imagePromises = scenes.map(async (scene, i) => {
+          console.log(
+            `🎨 Generating image for scene ${i + 1}:`,
+            scene.description,
+          );
+
           const imageUrl = await generateImage(
             scene.description,
             i,
@@ -129,25 +129,27 @@ async function processVideoGeneration(
             seed,
             scene.id,
           );
-          imageUrls.push(imageUrl);
+
           console.log(`✅ Scene ${i + 1} image generated:`, imageUrl);
-        } catch (error) {
-          console.error(
-            `❌ Failed to generate image for scene ${i + 1}:`,
-            error,
-          );
-          throw new Error(
-            `Failed to generate image for scene ${i + 1}: ${error}`,
-          );
+          return imageUrl;
+        });
+
+        // Wait for all images to be generated
+        imageUrls = await Promise.all(imagePromises);
+
+        if (imageUrls.length === 0) {
+          console.log('❌ Error: No images were generated');
+          throw new Error('No images were generated');
         }
-      }
 
-      if (imageUrls.length === 0) {
-        console.log('❌ Error: No images were generated');
-        throw new Error('No images were generated');
+        console.log(
+          `🎥 Generated ${imageUrls.length} images in parallel:`,
+          imageUrls,
+        );
+      } catch (error) {
+        console.error('❌ Failed to generate images:', error);
+        throw new Error(`Failed to generate images: ${error}`);
       }
-
-      console.log('🎥 Images generated:', imageUrls);
     }
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
@@ -261,6 +263,7 @@ async function processVideoGeneration(
       });
       await sqs.send(deleteCommand);
     }
+
     return {
       videoKey,
       message: 'Video generated successfully',

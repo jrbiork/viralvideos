@@ -75,26 +75,25 @@ function resolveFfmpegPath() {
 async function generateVideoEffects(scenes, userId, timestamp) {
     try {
         console.log('🎬 Generating video effects for scenes...');
-        const videoKeys = [];
-        for (let i = 0; i < scenes.length; i++) {
-            const scene = scenes[i];
+        const videoPromises = scenes.map(async (scene, i) => {
             console.log(`🎬 Processing scene ${i + 1}: ${scene.description}`);
             try {
                 const imageKey = `${userId}/${timestamp}.scene-${scene.id}.jpg`;
                 const imageUrl = await getImageSignedUrl(imageKey);
                 if (!imageUrl) {
                     console.error(`❌ No image found for scene ${scene.id}`);
-                    continue;
+                    return null;
                 }
                 const videoKey = await generateSceneVideo(imageUrl, scene, i, userId, timestamp);
-                videoKeys.push(videoKey);
                 console.log(`✅ Scene ${i + 1} video generated: ${videoKey}`);
+                return videoKey;
             }
             catch (error) {
                 console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
                 throw new Error(`Failed to generate video for scene ${i + 1}: ${error}`);
             }
-        }
+        });
+        const videoKeys = (await Promise.all(videoPromises)).filter((key) => key !== null);
         if (videoKeys.length === 0) {
             console.log('❌ Error: No videos were generated');
             throw new Error('No videos were generated');
@@ -143,9 +142,9 @@ async function generateSceneVideo(imageUrl, scene, sceneIndex, userId, timestamp
                 zoom: `if(lte(on\\,${zoomOutFrames})\\,1.15-(0.08*on/${zoomOutFrames})\\,1.08)`,
                 x: `iw/2-(iw/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*cos(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
                 y: `ih/2-(ih/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*sin(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
-                supersample: '2160x3840',
-                tmix: "frames=3:weights='1 2 1'",
-                scale: 'scale=720:1280:flags=spline+accurate_rnd:sws_dither=none',
+                supersample: '1440x2560',
+                tmix: "frames=2:weights='1 1'",
+                scale: 'scale=720:1280:flags=spline:sws_dither=none',
             },
             1: {
                 zoom: 'min(pow(1.0012\\,on)\\,1.15)',
@@ -153,7 +152,7 @@ async function generateSceneVideo(imageUrl, scene, sceneIndex, userId, timestamp
                 y: `ih/2-(ih/zoom/2) + ${moveRadius}*sin(2*PI*on/${movePeriod})`,
                 supersample: '1440x2560',
                 tmix: "frames=2:weights='1 1'",
-                scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+                scale: 'scale=720:1280:flags=lanczos:sws_dither=none',
             },
             2: {
                 zoom: `max(1.05\\, 1.12 - 0.07*on/${frames})`,
@@ -161,7 +160,7 @@ async function generateSceneVideo(imageUrl, scene, sceneIndex, userId, timestamp
                 y: `ih/2-(ih/zoom/2) + (${moveRadius}/1.2)*sin(2*PI*on/${movePeriod})`,
                 supersample: '1440x2560',
                 tmix: "frames=2:weights='1 1'",
-                scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+                scale: 'scale=720:1280:flags=lanczos:sws_dither=none',
             },
         };
         const config = motionVariants[variant];
@@ -188,11 +187,13 @@ async function generateSceneVideo(imageUrl, scene, sceneIndex, userId, timestamp
             '-c:v',
             'libx264',
             '-preset',
-            'medium',
+            'veryfast',
             '-crf',
             '23',
             '-pix_fmt',
             'yuv420p',
+            '-threads',
+            '0',
             '-t',
             scene.duration.toString(),
             '-y',
