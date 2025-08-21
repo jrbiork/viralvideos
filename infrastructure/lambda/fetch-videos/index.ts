@@ -49,6 +49,68 @@ export const handler = async (
       };
     }
 
+    // List thumbnail images from video parts bucket
+    console.log('🖼️ Fetching thumbnails for user:', userId);
+
+    if (!process.env.VIDEO_PARTS_BUCKET_NAME) {
+      console.log('❌ Error: VIDEO_PARTS_BUCKET_NAME is not set');
+      return {
+        statusCode: 500,
+        body: JSON.stringify({
+          error: 'Video parts bucket name not configured',
+        }),
+      };
+    }
+
+    const thumbnailListCommand = new ListObjectsV2Command({
+      Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+      Prefix: `${userId}/`,
+    });
+
+    const thumbnailListResponse = await s3.send(thumbnailListCommand);
+    console.log(
+      '✅ Listed thumbnail objects:',
+      thumbnailListResponse.Contents?.length || 0,
+    );
+
+    // Create a map of timestamp to thumbnail URL
+    const thumbnailMap = new Map<string, string>();
+    console.log(
+      '🖼️ Available thumbnail keys:',
+      thumbnailListResponse.Contents?.map((obj) => obj.Key).filter((key) =>
+        key?.endsWith('.scene-0.jpg'),
+      ) || [],
+    );
+
+    if (thumbnailListResponse.Contents) {
+      await Promise.all(
+        thumbnailListResponse.Contents.filter((object) =>
+          object.Key?.endsWith('.scene-0.jpg'),
+        ).map(async (object) => {
+          if (!object.Key) return;
+
+          // Extract timestamp from thumbnail key: user123/1703123456789.scene-0.jpg -> 1703123456789
+          const timestamp = object.Key.split('/').pop()?.split('.')[0] || '';
+          console.log('🖼️ Generating thumbnail URL for timestamp:', timestamp);
+
+          const getThumbnailCommand = new GetObjectCommand({
+            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+            Key: object.Key,
+          });
+
+          const thumbnailUrl = await getSignedUrl(
+            s3 as any,
+            getThumbnailCommand as any,
+            {
+              expiresIn: 36000, // 1 hour
+            },
+          );
+
+          thumbnailMap.set(timestamp, thumbnailUrl);
+        }),
+      );
+    }
+
     // List objects in the S3 bucket for this user
     console.log('📋 Listing videos for user:', userId);
     const listCommand = new ListObjectsV2Command({
@@ -58,6 +120,12 @@ export const handler = async (
 
     const listResponse = await s3.send(listCommand);
     console.log('✅ Listed objects:', listResponse.Contents?.length || 0);
+    console.log(
+      '🎬 Available video keys:',
+      listResponse.Contents?.map((obj) => obj.Key).filter((key) =>
+        key?.endsWith('.mp4'),
+      ) || [],
+    );
 
     if (!listResponse.Contents || listResponse.Contents.length === 0) {
       console.log('📭 No videos found for user:', userId);
@@ -87,16 +155,34 @@ export const handler = async (
           s3 as any,
           getObjectCommand as any,
           {
-            expiresIn: 3600, // 1 hour
+            expiresIn: 36000, // 1 hour
           },
+        );
+
+        // Extract timestamp from video key: user123/1703123456789-final-video.mp4 -> 1703123456789
+        const timestamp =
+          object.Key.split('/').pop()?.split('-final-video')[0] || '';
+        console.log(
+          '🎬 Video timestamp extracted:',
+          timestamp,
+          'from key:',
+          object.Key,
+        );
+        const thumbnailUrl = thumbnailMap.get(timestamp) || null;
+        console.log(
+          '🖼️ Thumbnail URL found:',
+          thumbnailUrl ? 'YES' : 'NO',
+          'for timestamp:',
+          timestamp,
         );
 
         return {
           key: object.Key,
           url: videoUrl,
+          thumbnailUrl: thumbnailUrl,
           size: object.Size,
           lastModified: object.LastModified,
-          timestamp: object.Key.split('/').pop()?.split('.')[0] || '',
+          timestamp: timestamp,
         };
       }),
     );

@@ -226,6 +226,7 @@ export class ViralVideosStack extends cdk.Stack {
       memorySize: 128,
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
+        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
         USERS_TABLE_NAME: usersTable.tableName,
       },
     });

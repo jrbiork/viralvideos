@@ -30,7 +30,7 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
   ];
 
   return (
-    <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-800 p-4 lg:p-6 flex flex-col h-screen lg:h-full">
+    <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-800 p-4 lg:p-6 flex flex-col max-h-screen overflow-y-auto">
       {/* Navigation Links */}
       <div className="mb-8">
         <div className="space-y-2">
@@ -49,12 +49,6 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Videos Section */}
-      <div className="mb-8">
-        <h3 className="text-white text-lg font-semibold mb-4">Videos</h3>
-        {/* This can be expanded with recent videos or video stats */}
       </div>
 
       {/* Spacer to push bottom content down */}
@@ -84,13 +78,6 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
             >
               Buy Credits
             </button>
-          </div>
-        )}
-
-        {/* User Section */}
-        {isAuthenticated && (
-          <div className="pt-4 border-t border-slate-700">
-            <UserDropdown />
           </div>
         )}
       </div>

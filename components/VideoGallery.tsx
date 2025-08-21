@@ -1,15 +1,24 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Play, Download, Calendar, FileVideo } from 'lucide-react';
+import {
+  Play,
+  Download,
+  Calendar,
+  FileVideo,
+  MoreHorizontal,
+  Trash2,
+} from 'lucide-react';
 import VideoPreview from './VideoPreview';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 
 interface Video {
   key: string;
   url: string;
+  thumbnailUrl: string | null;
   timestamp: number;
   createdAt: string;
+  lastModified: string;
   size: number;
 }
 
@@ -23,6 +32,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [playingVideos, setPlayingVideos] = useState<Set<string>>(new Set());
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
   useEffect(() => {
@@ -31,18 +41,22 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     }
   }, [isAuthenticated]);
 
-  // Auto-select the latest video when videos are loaded
   useEffect(() => {
-    if (videos.length > 0 && !selectedVideo) {
-      // Sort videos by timestamp (newest first) and select the first one
-      const sortedVideos = [...videos].sort(
-        (a, b) => b.timestamp - a.timestamp,
-      );
-      const latestVideo = sortedVideos[0];
-      setSelectedVideo(latestVideo);
-      onVideoSelect?.(latestVideo);
-    }
-  }, [videos, selectedVideo, onVideoSelect]);
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (
+        !target.closest('.video-menu-button') &&
+        !target.closest('.video-menu-dropdown')
+      ) {
+        setOpenMenu(null);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, []);
 
   const fetchVideos = async () => {
     try {
@@ -64,32 +78,66 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     onVideoSelect?.(video);
   };
 
-  const handleVideoClick = (
-    videoKey: string,
-    videoElement: HTMLVideoElement,
-  ) => {
-    if (videoElement.paused) {
-      // Pause all other videos first and mute them
-      const allVideos = document.querySelectorAll('video');
-      allVideos.forEach((v) => {
-        if (v !== videoElement) {
-          v.pause();
-          v.muted = true;
-        }
-      });
+  const handleMenuToggle = (videoKey: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenu(openMenu === videoKey ? null : videoKey);
+  };
 
-      // Unmute and play this video
-      videoElement.muted = false;
-      videoElement.play();
-      setPlayingVideos((prev) => new Set([...prev, videoKey]));
-    } else {
-      // Pause this video
-      videoElement.pause();
-      setPlayingVideos((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(videoKey);
-        return newSet;
-      });
+  const handleExport = async (video: Video, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenu(null);
+
+    try {
+      // Use our proxy API endpoint - authentication is handled via cookies
+      const response = await fetch(
+        `/api/download-video?url=${encodeURIComponent(
+          video.url,
+        )}&filename=video-${video.timestamp}.mp4`,
+        {
+          method: 'GET',
+          credentials: 'include', // Include cookies for authentication
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to download video: ${response.status}`);
+      }
+
+      // Get the video as blob and download
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `video-${video.timestamp}.mp4`;
+      document.body.appendChild(a);
+      a.click();
+
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error exporting video:', error);
+      alert('Failed to export video. Please try again.');
+    }
+  };
+
+  const handleDelete = async (video: Video, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenu(null);
+
+    if (confirm('Are you sure you want to delete this video?')) {
+      try {
+        await authenticatedFetch(`/api/delete-video?key=${video.key}`, {
+          method: 'DELETE',
+        });
+        setVideos(videos.filter((v) => v.key !== video.key));
+        if (selectedVideo?.key === video.key) {
+          setSelectedVideo(null);
+        }
+      } catch (error) {
+        console.error('Error deleting video:', error);
+      }
     }
   };
 
@@ -183,10 +231,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
           <h3 className="text-2xl font-bold text-white mb-3">
             No Videos Found
           </h3>
-          <p className="text-slate-300 text-lg">
-            You haven't generated any videos yet. Create your first video to get
-            started!
-          </p>
+          <p className="text-slate-300 text-lg">Start creating now!</p>
         </div>
       </div>
     );
@@ -194,92 +239,61 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
 
   return (
     <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
-      <div className="flex items-center mb-8">
-        <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl flex items-center justify-center mr-4">
-          <FileVideo className="w-6 h-6 text-white" />
-        </div>
-        <h2 className="text-3xl font-bold text-white">Your Video Library</h2>
-      </div>
-
-      {selectedVideo && (
-        <div className="mb-8">
-          <VideoPreview videoUrl={selectedVideo.url} />
-          <div className="mt-4 flex justify-center">
-            <a
-              href={selectedVideo.url}
-              download={`video-${selectedVideo.timestamp}.mp4`}
-              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white font-bold rounded-xl hover:from-green-600 hover:to-emerald-600 transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl"
-            >
-              <Download className="w-5 h-5 mr-3" />
-              Download Video
-            </a>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="flex flex-wrap gap-7 pb-4">
         {videos.map((video) => (
           <div
             key={video.key}
-            className={`glass-effect rounded-xl p-6 cursor-pointer transition-all duration-300 hover:transform hover:scale-105 ${
+            className={`w-[247px] h-[382px] glass-effect rounded-xl p-4 cursor-pointer transition-all duration-300 hover:transform hover:scale-105 ${
               selectedVideo?.key === video.key
                 ? 'ring-2 ring-blue-500 bg-blue-500/10'
                 : 'hover:bg-slate-700/50'
             }`}
             onClick={() => handleVideoSelect(video)}
           >
-            <div className="relative mb-4">
-              <video
-                className="aspect-[9/16] w-full rounded-lg object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
-                src={video.url}
-                preload="metadata"
-                muted={!playingVideos.has(video.key)}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleVideoClick(video.key, e.currentTarget);
-                }}
-                onLoadedData={(e) => {
-                  // Auto-pause at the first frame
-                  const video = e.target as HTMLVideoElement;
-                  video.currentTime = 0;
-                  video.pause();
-                }}
-                onPlay={() =>
-                  setPlayingVideos((prev) => new Set([...prev, video.key]))
-                }
-                onPause={() => {
-                  setPlayingVideos((prev) => {
-                    const newSet = new Set(prev);
-                    newSet.delete(video.key);
-                    return newSet;
-                  });
-                }}
-                onError={(e) => {
-                  // Fallback to placeholder if video fails to load
-                  const video = e.target as HTMLVideoElement;
-                  video.style.display = 'none';
-                  const parent = video.parentElement;
-                  if (parent) {
-                    const placeholder = document.createElement('div');
-                    placeholder.className =
-                      'aspect-[9/16] bg-gradient-to-br from-slate-700 to-slate-800 rounded-lg flex items-center justify-center';
-                    placeholder.innerHTML =
-                      '<svg class="w-12 h-12 text-slate-400" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
-                    parent.appendChild(placeholder);
-                  }
-                }}
-              />
-              {!playingVideos.has(video.key) && (
-                <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1">
-                  <Play className="w-4 h-4 text-white" />
+            <div className="relative mb-4 h-72 overflow-hidden rounded-xl">
+              {video.thumbnailUrl ? (
+                <img
+                  className="w-full h-full object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
+                  src={video.thumbnailUrl}
+                  alt={`Video thumbnail for ${video.timestamp}`}
+                />
+              ) : (
+                <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                  <svg
+                    className="w-12 h-12 text-slate-400"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M8 5v14l11-7z" />
+                  </svg>
                 </div>
               )}
-              {playingVideos.has(video.key) && (
-                <div className="absolute top-2 right-2 bg-black/50 rounded-full p-1">
-                  <div className="w-4 h-4 flex items-center justify-center">
-                    <div className="w-1 h-4 bg-white rounded-sm mx-0.5"></div>
-                    <div className="w-1 h-4 bg-white rounded-sm mx-0.5"></div>
-                  </div>
+
+              {/* Menu Button */}
+              <button
+                onClick={(e) => handleMenuToggle(video.key, e)}
+                className="video-menu-button absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 z-10"
+              >
+                <MoreHorizontal className="w-4 h-4 text-white" />
+              </button>
+
+              {/* Dropdown Menu */}
+              {openMenu === video.key && (
+                <div className="video-menu-dropdown absolute top-10 right-2 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 min-w-[120px]">
+                  <button
+                    onClick={(e) => handleExport(video, e)}
+                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export
+                  </button>
+                  <button
+                    onClick={(e) => handleDelete(video, e)}
+                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Delete
+                  </button>
                 </div>
               )}
             </div>
@@ -287,7 +301,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
             <div className="space-y-2">
               <div className="flex items-center text-sm text-slate-400">
                 <Calendar className="w-4 h-4 mr-2" />
-                {formatDate(video.createdAt)}
+                {formatDate(video.lastModified)}
               </div>
               <div className="text-xs text-slate-500">
                 {formatFileSize(video.size)}
@@ -295,15 +309,6 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
             </div>
           </div>
         ))}
-      </div>
-
-      <div className="mt-8 text-center">
-        <button
-          onClick={fetchVideos}
-          className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-slate-600 to-slate-700 text-white font-bold rounded-xl hover:from-slate-700 hover:to-slate-800 transition-all duration-200 transform hover:scale-105"
-        >
-          Refresh Videos
-        </button>
       </div>
     </div>
   );
