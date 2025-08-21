@@ -13,7 +13,7 @@ import { generateSubtitles } from './subtitles';
 import { combineVideoAndAudio } from './videoCombiner';
 import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { getImageUrls } from './util/imageUtils';
-import { generateVideoBlurInOut } from './util/videoBlurInOut';
+import { generateVideoEffects } from './util/videoEffects';
 import { fetchAudioFilesForTimestamp } from './util/audioUtils';
 import { addSceneIds } from './script';
 
@@ -220,13 +220,13 @@ async function processVideoGeneration(
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 
-    // Step 4: Generate video blur in/out and camera movement effects using the images
-    const videoBlurInOutKeys = await generateVideoBlurInOut(
+    // Step 4: Generate video effects and camera movement using the images
+    const videoEffectsKeys = await generateVideoEffects(
       scenes,
       request.userId,
       timestamp,
     );
-    console.log('videoBlurInOutKeys:', videoBlurInOutKeys);
+    console.log('videoEffectsKeys:', videoEffectsKeys);
 
     // Step 5: Generate subtitles based on word-level timestamps
     const subtitleKeys = await generateSubtitles(

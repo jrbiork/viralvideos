@@ -65,51 +65,38 @@ export function createWordTimedKaraokeASSSubtitle(
   words: SubtitleWord[],
   sceneStartTime: number,
 ): string {
-  console.log(
-    `🔍 Creating karaoke subtitle with sceneStartTime: ${sceneStartTime}, words count: ${words.length}`,
-  );
   const assContent = createASSStyleHeader();
   let dialogueLines = '';
 
-  // Create dialogue lines for individual words with highlighting (max 3 words visible)
-  for (let i = 0; i < words.length; i++) {
+  // Create dialogue lines for word pairs with progressive highlighting
+  for (let i = 0; i < words.length; i += 2) {
     const currentWord = words[i];
-    const wordStart = sceneStartTime + currentWord.start;
-    const wordEnd = sceneStartTime + currentWord.end;
+    const nextWord = words[i + 1];
 
-    // Calculate the range of words to show (current word + up to 2 more)
-    const startIndex = Math.max(0, i);
-    const endIndex = Math.min(words.length, i + 3);
-    const visibleWords = words.slice(startIndex, endIndex);
+    if (nextWord) {
+      // First dialogue line: first word yellow, second word white
+      const firstStart = sceneStartTime + currentWord.start;
+      const firstEnd = sceneStartTime + currentWord.end;
+      const firstText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}{\\c&H00FFFFFF&} ${nextWord.word.toUpperCase()}`;
+      dialogueLines += `Dialogue: 0,${formatASSTime(
+        firstStart,
+      )},${formatASSTime(firstEnd)},Default,,,,,,${firstText}\n`;
 
-    // Build the text with only the current word highlighted in yellow
-    let fullText = '';
-    for (let j = 0; j < visibleWords.length; j++) {
-      const wordIndex = startIndex + j;
-      if (wordIndex === i) {
-        // Only the current word in yellow (highlighted)
-        fullText += `{\\c&H00FFFF&}${visibleWords[
-          j
-        ].word.toUpperCase()}{\\c&H00FFFFFF&}`;
-      } else {
-        // All other words in white
-        fullText += visibleWords[j].word.toUpperCase();
-      }
-
-      // Add space between words (except for the last word)
-      if (j < visibleWords.length - 1) {
-        fullText += ' ';
-      }
-    }
-
-    dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(
-      wordEnd,
-    )},Default,,,,,,${fullText}\n`;
-
-    if (i === 0) {
-      console.log(
-        `🔍 First word timing: sceneStartTime=${sceneStartTime}, word.start=${currentWord.start}, word.end=${currentWord.end}, wordStart=${wordStart}, wordEnd=${wordEnd}`,
-      );
+      // Second dialogue line: first word white, second word yellow
+      const secondStart = sceneStartTime + currentWord.end;
+      const secondEnd = sceneStartTime + nextWord.end;
+      const secondText = `{\\c&H00FFFFFF&}${currentWord.word.toUpperCase()} {\\c&H00FFFF&}${nextWord.word.toUpperCase()}`;
+      dialogueLines += `Dialogue: 0,${formatASSTime(
+        secondStart,
+      )},${formatASSTime(secondEnd)},Default,,,,,,${secondText}\n`;
+    } else {
+      // Single word in yellow
+      const wordStart = sceneStartTime + currentWord.start;
+      const wordEnd = sceneStartTime + currentWord.end;
+      const singleText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}`;
+      dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(
+        wordEnd,
+      )},Default,,,,,,${singleText}\n`;
     }
   }
 

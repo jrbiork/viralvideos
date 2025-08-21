@@ -8,7 +8,7 @@ const subtitles_1 = require("./subtitles");
 const videoCombiner_1 = require("./videoCombiner");
 const s3Uploader_1 = require("./util/s3Uploader");
 const imageUtils_1 = require("./util/imageUtils");
-const videoBlurInOut_1 = require("./util/videoBlurInOut");
+const videoEffects_1 = require("./util/videoEffects");
 const script_1 = require("./script");
 const sqs = new client_sqs_1.SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const handler = async (event) => {
@@ -84,8 +84,8 @@ async function processVideoGeneration(request, record) {
         console.log('🎥 No existing audio files found, generating new narration');
         let narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
         console.log('🎥 Audio narration generated:', JSON.stringify(narrationResult, null, 2));
-        const videoBlurInOutKeys = await (0, videoBlurInOut_1.generateVideoBlurInOut)(scenes, request.userId, timestamp);
-        console.log('videoBlurInOutKeys:', videoBlurInOutKeys);
+        const videoEffectsKeys = await (0, videoEffects_1.generateVideoEffects)(scenes, request.userId, timestamp);
+        console.log('videoEffectsKeys:', videoEffectsKeys);
         const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);
         console.log('🎥 Subtitles generated:', subtitleKeys);
         const finalVideo = await (0, videoCombiner_1.combineVideoAndAudio)(request.userId, timestamp, scenes);

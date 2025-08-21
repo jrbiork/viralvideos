@@ -36,7 +36,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.generateVideoBlurInOut = generateVideoBlurInOut;
+exports.generateVideoEffects = generateVideoEffects;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const axios_1 = __importDefault(require("axios"));
@@ -72,9 +72,9 @@ function resolveFfmpegPath() {
         candidates.join(', ') +
         '. Ensure your Lambda layer provides ffmpeg (common path: /opt/bin/ffmpeg) or set FFMPEG_PATH.');
 }
-async function generateVideoBlurInOut(scenes, userId, timestamp) {
+async function generateVideoEffects(scenes, userId, timestamp) {
     try {
-        console.log('🎬 Generating video blur in/out effects for scenes...');
+        console.log('🎬 Generating video effects for scenes...');
         const videoKeys = [];
         for (let i = 0; i < scenes.length; i++) {
             const scene = scenes[i];
@@ -99,11 +99,11 @@ async function generateVideoBlurInOut(scenes, userId, timestamp) {
             console.log('❌ Error: No videos were generated');
             throw new Error('No videos were generated');
         }
-        console.log(`✅ Generated ${videoKeys.length} video clips with blur effects`);
+        console.log(`✅ Generated ${videoKeys.length} video clips with effects`);
         return videoKeys;
     }
     catch (error) {
-        console.error('❌ Error in generateVideoBlurInOut:', error);
+        console.error('❌ Error in generateVideoEffects:', error);
         throw error;
     }
 }
@@ -134,14 +134,44 @@ async function generateSceneVideo(imageUrl, scene, sceneIndex, userId, timestamp
         const frames = Math.floor(scene.duration * 25);
         const blurInDuration = 0.2;
         const zoomOutFrames = Math.max(1, Math.floor(blurInDuration * 25));
-        const moveRadius = 8;
-        const movePeriod = 240;
-        const filterComplex = `[0:v]zoompan=z='if(lte(on\\,${zoomOutFrames})\\,1.06-(0.02*on/${zoomOutFrames})\\,1.04)':d=${frames}:` +
-            `x='iw/2-(iw/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*cos(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)':` +
-            `y='ih/2-(ih/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*sin(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)':` +
-            `s=2160x3840,` +
-            `tmix=frames=3:weights='1 2 1',` +
-            `scale=720:1280:flags=spline+accurate_rnd:sws_dither=none,` +
+        const moveRadius = 25;
+        const movePeriod = 180;
+        const variant = sceneIndex % 3;
+        console.log(`🎨 Motion variant selected (index-based): ${variant}`);
+        const motionVariants = {
+            0: {
+                zoom: `if(lte(on\\,${zoomOutFrames})\\,1.15-(0.08*on/${zoomOutFrames})\\,1.08)`,
+                x: `iw/2-(iw/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*cos(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
+                y: `ih/2-(ih/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*sin(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
+                supersample: '2160x3840',
+                tmix: "frames=3:weights='1 2 1'",
+                scale: 'scale=720:1280:flags=spline+accurate_rnd:sws_dither=none',
+            },
+            1: {
+                zoom: 'min(pow(1.0012\\,on)\\,1.15)',
+                x: `iw/2-(iw/zoom/2) + ${moveRadius}*cos(2*PI*on/${movePeriod})`,
+                y: `ih/2-(ih/zoom/2) + ${moveRadius}*sin(2*PI*on/${movePeriod})`,
+                supersample: '1440x2560',
+                tmix: "frames=2:weights='1 1'",
+                scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+            },
+            2: {
+                zoom: `max(1.05\\, 1.12 - 0.07*on/${frames})`,
+                x: `iw/2-(iw/zoom/2) + ${moveRadius}*cos(2*PI*on/${movePeriod})`,
+                y: `ih/2-(ih/zoom/2) + (${moveRadius}/1.2)*sin(2*PI*on/${movePeriod})`,
+                supersample: '1440x2560',
+                tmix: "frames=2:weights='1 1'",
+                scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+            },
+        };
+        const config = motionVariants[variant];
+        const filterComplex = `[0:v]zoompan=z='${config.zoom}':d=${frames}:` +
+            `x='${config.x}':` +
+            `y='${config.y}':` +
+            `s=${config.supersample},` +
+            `tmix=${config.tmix},` +
+            `fps=25,` +
+            `${config.scale},` +
             `split[b0][b1];` +
             `[b1]boxblur=8:1[bb];` +
             `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[v]`;

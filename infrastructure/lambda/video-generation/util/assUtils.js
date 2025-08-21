@@ -50,32 +50,26 @@ function createASSStyleHeader() {
     return header;
 }
 function createWordTimedKaraokeASSSubtitle(words, sceneStartTime) {
-    console.log(`🔍 Creating karaoke subtitle with sceneStartTime: ${sceneStartTime}, words count: ${words.length}`);
     const assContent = createASSStyleHeader();
     let dialogueLines = '';
-    for (let i = 0; i < words.length; i++) {
+    for (let i = 0; i < words.length; i += 2) {
         const currentWord = words[i];
-        const wordStart = sceneStartTime + currentWord.start;
-        const wordEnd = sceneStartTime + currentWord.end;
-        const startIndex = Math.max(0, i);
-        const endIndex = Math.min(words.length, i + 3);
-        const visibleWords = words.slice(startIndex, endIndex);
-        let fullText = '';
-        for (let j = 0; j < visibleWords.length; j++) {
-            const wordIndex = startIndex + j;
-            if (wordIndex === i) {
-                fullText += `{\\c&H00FFFF&}${visibleWords[j].word.toUpperCase()}{\\c&H00FFFFFF&}`;
-            }
-            else {
-                fullText += visibleWords[j].word.toUpperCase();
-            }
-            if (j < visibleWords.length - 1) {
-                fullText += ' ';
-            }
+        const nextWord = words[i + 1];
+        if (nextWord) {
+            const firstStart = sceneStartTime + currentWord.start;
+            const firstEnd = sceneStartTime + currentWord.end;
+            const firstText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}{\\c&H00FFFFFF&} ${nextWord.word.toUpperCase()}`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(firstStart)},${formatASSTime(firstEnd)},Default,,,,,,${firstText}\n`;
+            const secondStart = sceneStartTime + currentWord.end;
+            const secondEnd = sceneStartTime + nextWord.end;
+            const secondText = `{\\c&H00FFFFFF&}${currentWord.word.toUpperCase()} {\\c&H00FFFF&}${nextWord.word.toUpperCase()}`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(secondStart)},${formatASSTime(secondEnd)},Default,,,,,,${secondText}\n`;
         }
-        dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(wordEnd)},Default,,,,,,${fullText}\n`;
-        if (i === 0) {
-            console.log(`🔍 First word timing: sceneStartTime=${sceneStartTime}, word.start=${currentWord.start}, word.end=${currentWord.end}, wordStart=${wordStart}, wordEnd=${wordEnd}`);
+        else {
+            const wordStart = sceneStartTime + currentWord.start;
+            const wordEnd = sceneStartTime + currentWord.end;
+            const singleText = `{\\c&H00FFFF&}${currentWord.word.toUpperCase()}`;
+            dialogueLines += `Dialogue: 0,${formatASSTime(wordStart)},${formatASSTime(wordEnd)},Default,,,,,,${singleText}\n`;
         }
     }
     return assContent + dialogueLines;

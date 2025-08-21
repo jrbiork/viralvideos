@@ -90,7 +90,7 @@ async function generateStoryBreakdown(prompt, sceneCount, sceneDuration, totalDu
             sceneCount,
             sceneDuration,
             totalDuration,
-            scenes,
+            scenes: scenesWithIds,
             voiceToneInstruction,
             timestamp,
         }, null, 2);

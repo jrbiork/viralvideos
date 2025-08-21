@@ -50,13 +50,13 @@ function resolveFfmpegPath(): string {
   );
 }
 
-export async function generateVideoBlurInOut(
+export async function generateVideoEffects(
   scenes: Scene[],
   userId: string,
   timestamp: string,
 ): Promise<string[]> {
   try {
-    console.log('🎬 Generating video blur in/out effects for scenes...');
+    console.log('🎬 Generating video effects for scenes...');
 
     const videoKeys: string[] = [];
 
@@ -98,12 +98,10 @@ export async function generateVideoBlurInOut(
       throw new Error('No videos were generated');
     }
 
-    console.log(
-      `✅ Generated ${videoKeys.length} video clips with blur effects`,
-    );
+    console.log(`✅ Generated ${videoKeys.length} video clips with effects`);
     return videoKeys;
   } catch (error) {
-    console.error('❌ Error in generateVideoBlurInOut:', error);
+    console.error('❌ Error in generateVideoEffects:', error);
     throw error;
   }
 }
@@ -150,22 +148,54 @@ async function generateSceneVideo(
     const zoomOutFrames = Math.max(1, Math.floor(blurInDuration * 25));
 
     // add near your other params
-    const moveRadius = 8; // px (visible but subtle)
-    const movePeriod = 240; // frames (~9.6s @25fps)
+    const moveRadius = 25; // px (more intentional and visible)
+    const movePeriod = 180; // frames (~7.2s @25fps) - faster movement
 
-    // replace your filterComplex with:
+    // deterministically choose one of three motion variants per scene (index-based)
+    const variant = sceneIndex % 3; // 0: dramatic pop-out+drift, 1: strong zoom-in, 2: strong zoom-out
+    console.log(`🎨 Motion variant selected (index-based): ${variant}`);
+
+    // Motion variant configurations
+    const motionVariants = {
+      0: {
+        // Variant 0: dramatic zoom-out pop then hold zoom + pronounced circular drift
+        zoom: `if(lte(on\\,${zoomOutFrames})\\,1.15-(0.08*on/${zoomOutFrames})\\,1.08)`,
+        x: `iw/2-(iw/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*cos(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
+        y: `ih/2-(ih/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*sin(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)`,
+        supersample: '2160x3840',
+        tmix: "frames=3:weights='1 2 1'",
+        scale: 'scale=720:1280:flags=spline+accurate_rnd:sws_dither=none',
+      },
+      1: {
+        // Variant 1: strong continuous zoom-in (Ken Burns) + pronounced circular drift
+        zoom: 'min(pow(1.0012\\,on)\\,1.15)',
+        x: `iw/2-(iw/zoom/2) + ${moveRadius}*cos(2*PI*on/${movePeriod})`,
+        y: `ih/2-(ih/zoom/2) + ${moveRadius}*sin(2*PI*on/${movePeriod})`,
+        supersample: '1440x2560',
+        tmix: "frames=2:weights='1 1'",
+        scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+      },
+      2: {
+        // Variant 2: strong continuous zoom-out + pronounced elliptical drift
+        zoom: `max(1.05\\, 1.12 - 0.07*on/${frames})`,
+        x: `iw/2-(iw/zoom/2) + ${moveRadius}*cos(2*PI*on/${movePeriod})`,
+        y: `ih/2-(ih/zoom/2) + (${moveRadius}/1.2)*sin(2*PI*on/${movePeriod})`,
+        supersample: '1440x2560',
+        tmix: "frames=2:weights='1 1'",
+        scale: 'scale=720:1280:flags=lanczos+accurate_rnd:sws_dither=none',
+      },
+    };
+
+    const config = motionVariants[variant as keyof typeof motionVariants];
+
     const filterComplex =
-      `[0:v]zoompan=z='if(lte(on\\,${zoomOutFrames})\\,1.06-(0.02*on/${zoomOutFrames})\\,1.04)':d=${frames}:` +
-      // smooth circular drift (fractional; no floor)
-      `x='iw/2-(iw/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*cos(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)':` +
-      `y='ih/2-(ih/zoom/2) + if(gte(on\\,${zoomOutFrames})\\, ${moveRadius}*sin(2*PI*(on-${zoomOutFrames})/${movePeriod})\\, 0)':` +
-      // supersample @ 3× to hide sub-pixel steps
-      `s=2160x3840,` +
-      // tiny temporal blend to smooth micro-jitter
-      `tmix=frames=3:weights='1 2 1',` +
-      // resample down cleanly
-      `scale=720:1280:flags=spline+accurate_rnd:sws_dither=none,` +
-      // blur fade (unchanged)
+      `[0:v]zoompan=z='${config.zoom}':d=${frames}:` +
+      `x='${config.x}':` +
+      `y='${config.y}':` +
+      `s=${config.supersample},` +
+      `tmix=${config.tmix},` +
+      `fps=25,` +
+      `${config.scale},` +
       `split[b0][b1];` +
       `[b1]boxblur=8:1[bb];` +
       `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[v]`;
