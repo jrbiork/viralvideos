@@ -32,7 +32,7 @@ async function fetchAudioFilesForTimestamp(userId, timestamp) {
             audioKeys.push(audioKey);
             const sceneMatch = audioKey.match(/scene-(\d+)\.mp3$/);
             const sceneIndex = sceneMatch ? parseInt(sceneMatch[1]) : 0;
-            const subtitleKey = audioKey.replace('.mp3', '.transcription.json');
+            const subtitleKey = audioKey.replace('.mp3', '.subtitle.json');
             try {
                 const subtitleCommand = new client_s3_1.GetObjectCommand({
                     Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -45,7 +45,7 @@ async function fetchAudioFilesForTimestamp(userId, timestamp) {
                     subtitles.push({
                         sceneIndex,
                         words: subtitleData.words || [],
-                        fullText: subtitleData.fullText || '',
+                        fullText: subtitleData.text || '',
                     });
                     console.log(`✅ Found subtitle data for scene ${sceneIndex}`);
                 }

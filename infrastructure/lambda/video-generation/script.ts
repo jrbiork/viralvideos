@@ -43,14 +43,11 @@ export async function generateStoryBreakdown(
 
   try {
     // Guidance for narration pacing and safety caps
-    const WPS = 2.5;
-    const BREATH_MARGIN = 0.9;
-    const maxWordsPerScene = Math.max(
-      6,
-      Math.floor(sceneDuration * WPS * BREATH_MARGIN),
-    );
+    const WPS = 2.2;
+
+    const maxWordsPerScene = Math.floor(sceneDuration * WPS);
     console.log('maxWordsPerScene:', maxWordsPerScene);
-    const maxTotalWords = Math.floor(totalDuration * WPS * BREATH_MARGIN);
+    const maxTotalWords = Math.floor(totalDuration * WPS);
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
@@ -59,10 +56,9 @@ export async function generateStoryBreakdown(
           content: `You are a short-form video scriptwriter for TikTok/Reels/Shorts.
                 Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
                 Strict rules:
-                - Output **JSON only** matching the provided schema; no prose, no backticks.
+                - Narration per scene should have ${maxWordsPerScene} words (hard cap) and total words should be less than ${maxTotalWords}.
                 - Language: **use the same language as the user's input**.
                 - Each **description**: what viewers see. No dialogue. Keep it short and concise.
-                - Narration per scene should be around ${maxWordsPerScene} or little less words (hard cap).
                 - Avoid filler and long pauses: max 1 comma per sentence, no parentheses, no ellipses.
                 - Prefer active voice and simple clauses.
   `,

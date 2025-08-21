@@ -153,28 +153,28 @@ async function processVideoGeneration(
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 
     // Check if there are already audio files generated in the s3 bucket for the timestamp
-    const existingAudioResult = await fetchAudioFilesForTimestamp(
+    // const existingAudioResult = await fetchAudioFilesForTimestamp(
+    //   request.userId,
+    //   timestamp,
+    // );
+
+    // let narrationResult;
+    // if (existingAudioResult.audioKeys.length === scenes.length) {
+    //   console.log(
+    //     '🎥 Audio files already generated for the timestamp, using existing audio',
+    //   );
+    //   narrationResult = existingAudioResult;
+    // } else {
+    console.log('🎥 No existing audio files found, generating new narration');
+
+    // Step 3: Generate audio narration with word-level timestamps
+    let narrationResult = await generateNarration(
+      scenes,
       request.userId,
       timestamp,
+      voiceToneInstruction,
     );
-
-    let narrationResult;
-    if (existingAudioResult.audioKeys.length === scenes.length) {
-      console.log(
-        '🎥 Audio files already generated for the timestamp, using existing audio',
-      );
-      narrationResult = existingAudioResult;
-    } else {
-      console.log('🎥 No existing audio files found, generating new narration');
-
-      // Step 3: Generate audio narration with word-level timestamps
-      narrationResult = await generateNarration(
-        scenes,
-        request.userId,
-        timestamp,
-        voiceToneInstruction,
-      );
-    }
+    // }
 
     console.log('🎥 Audio narration generated:', narrationResult);
 

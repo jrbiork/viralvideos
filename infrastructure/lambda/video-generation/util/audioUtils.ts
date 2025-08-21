@@ -75,7 +75,7 @@ export async function fetchAudioFilesForTimestamp(
       const sceneIndex = sceneMatch ? parseInt(sceneMatch[1]) : 0;
 
       // Try to fetch subtitle data if it exists
-      const subtitleKey = audioKey.replace('.mp3', '.transcription.json');
+      const subtitleKey = audioKey.replace('.mp3', '.subtitle.json');
 
       try {
         const subtitleCommand = new GetObjectCommand({
@@ -93,7 +93,7 @@ export async function fetchAudioFilesForTimestamp(
           subtitles.push({
             sceneIndex,
             words: subtitleData.words || [],
-            fullText: subtitleData.fullText || '',
+            fullText: subtitleData.text || '', // Use 'text' field from Whisper transcription
           });
 
           console.log(`✅ Found subtitle data for scene ${sceneIndex}`);

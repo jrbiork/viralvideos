@@ -133,7 +133,10 @@ async function generateSceneVideo(imageUrl, scene, sceneIndex, userId, timestamp
         fs.writeFileSync(inputImagePath, imageBuffer);
         const frames = Math.floor(scene.duration * 25);
         const blurInDuration = 0.2;
-        const filterComplex = `[0:v]split[b0][b1];` +
+        const zoomOutFrames = Math.max(1, Math.floor(blurInDuration * 25));
+        const filterComplex = `[0:v]zoompan=z='if(lte(on\\,${zoomOutFrames})\\,1.06-(0.06*on/${zoomOutFrames})\\,1.0)':d=${frames}:` +
+            `x='floor(iw/2-(iw/zoom/2))':y='floor(ih/2-(ih/zoom/2))':s=720x1280,` +
+            `split[b0][b1];` +
             `[b1]boxblur=8:1[bb];` +
             `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[v]`;
         const ffmpegPath = resolveFfmpegPath();

@@ -51,7 +51,7 @@ export async function generateNarration(
       const response = await openai.audio.speech.create({
         model: 'tts-1',
         voice: 'fable',
-        instructions: `Speak clearly and keep duration less or equal to ${scene.duration}s. Avoid long pauses.`,
+        instructions: `Speak clearly and keep duration in ${scene.duration}s hard cap. Avoid long pauses.`,
         input: scene.narration,
       });
 
@@ -134,6 +134,16 @@ export async function generateNarration(
           end: (index + 1) * timePerWord,
         }));
       }
+
+      // Save complete subtitle data to S3 (including fullText)
+      const subtitleKey = `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`;
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: subtitleKey,
+          Body: JSON.stringify(subtitleData),
+        }),
+      );
 
       subtitles.push(subtitleData);
     }

@@ -9,7 +9,6 @@ const videoCombiner_1 = require("./videoCombiner");
 const s3Uploader_1 = require("./util/s3Uploader");
 const imageUtils_1 = require("./util/imageUtils");
 const videoBlurInOut_1 = require("./util/videoBlurInOut");
-const audioUtils_1 = require("./util/audioUtils");
 const script_1 = require("./script");
 const sqs = new client_sqs_1.SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const handler = async (event) => {
@@ -82,16 +81,8 @@ async function processVideoGeneration(request, record) {
             }
             console.log('🎥 Images generated:', imageUrls);
         }
-        const existingAudioResult = await (0, audioUtils_1.fetchAudioFilesForTimestamp)(request.userId, timestamp);
-        let narrationResult;
-        if (existingAudioResult.audioKeys.length === scenes.length) {
-            console.log('🎥 Audio files already generated for the timestamp, using existing audio');
-            narrationResult = existingAudioResult;
-        }
-        else {
-            console.log('🎥 No existing audio files found, generating new narration');
-            narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
-        }
+        console.log('🎥 No existing audio files found, generating new narration');
+        let narrationResult = await (0, narration_1.generateNarration)(scenes, request.userId, timestamp, voiceToneInstruction);
         console.log('🎥 Audio narration generated:', narrationResult);
         const videoBlurInOutKeys = await (0, videoBlurInOut_1.generateVideoBlurInOut)(scenes, request.userId, timestamp);
         console.log('videoBlurInOutKeys:', videoBlurInOutKeys);
