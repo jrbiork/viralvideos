@@ -238,77 +238,149 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   }
 
   return (
-    <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
-      <div className="flex flex-wrap gap-7 pb-4">
-        {videos.map((video) => (
-          <div
-            key={video.key}
-            className={`w-[247px] h-[382px] glass-effect rounded-xl p-4 cursor-pointer transition-all duration-300 hover:transform hover:scale-105 ${
-              selectedVideo?.key === video.key
-                ? 'ring-2 ring-blue-500 bg-blue-500/10'
-                : 'hover:bg-slate-700/50'
-            }`}
-            onClick={() => handleVideoSelect(video)}
-          >
-            <div className="relative mb-4 h-72 overflow-hidden rounded-xl">
-              {video.thumbnailUrl ? (
-                <img
-                  className="w-full h-full object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
-                  src={video.thumbnailUrl}
-                  alt={`Video thumbnail for ${video.timestamp}`}
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
-                  <svg
-                    className="w-12 h-12 text-slate-400"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-              )}
+    <div className="relative flex h-full">
+      {/* Main Gallery */}
+      <div
+        className={`glass-effect rounded-2xl p-8 animate-fade-in-up transition-all duration-500 ${
+          selectedVideo ? 'w-3/4' : 'w-full'
+        }`}
+      >
+        <div className="flex flex-wrap gap-7 pb-4">
+          {videos.map((video) => (
+            <div
+              key={video.key}
+              className={`w-[247px] h-[382px] glass-effect rounded-xl p-4 cursor-pointer transition-all duration-300 hover:transform hover:scale-105 ${
+                selectedVideo?.key === video.key
+                  ? 'ring-2 ring-blue-500 bg-blue-500/10'
+                  : 'hover:bg-slate-700/50'
+              }`}
+              onClick={() => handleVideoSelect(video)}
+            >
+              <div className="relative mb-4 h-72 overflow-hidden rounded-xl">
+                {video.thumbnailUrl ? (
+                  <img
+                    className="w-full h-full object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
+                    src={video.thumbnailUrl}
+                    alt={`Video thumbnail for ${video.timestamp}`}
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-slate-700 to-slate-800 flex items-center justify-center">
+                    <svg
+                      className="w-12 h-12 text-slate-400"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  </div>
+                )}
 
-              {/* Menu Button */}
+                {/* Menu Button */}
+                <button
+                  onClick={(e) => handleMenuToggle(video.key, e)}
+                  className="video-menu-button absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 z-10"
+                >
+                  <MoreHorizontal className="w-4 h-4 text-white" />
+                </button>
+
+                {/* Dropdown Menu */}
+                {openMenu === video.key && (
+                  <div className="video-menu-dropdown absolute top-10 right-2 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 min-w-[120px]">
+                    <button
+                      onClick={(e) => handleExport(video, e)}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
+                    >
+                      <Download className="w-4 h-4" />
+                      Export
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(video, e)}
+                      className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                      Delete
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-slate-400">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  {formatDate(video.lastModified)}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {formatFileSize(video.size)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Video Player Sidebar */}
+      <div
+        className={`fixed inset-y-0 right-0 w-1/4 bg-slate-900/95 backdrop-blur-sm border-l border-slate-700 transform transition-transform duration-500 ease-in-out z-50 ${
+          selectedVideo ? 'translate-x-0' : 'translate-x-full'
+        }`}
+      >
+        {selectedVideo && (
+          <div className="h-full flex flex-col">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-slate-700">
+              <h3 className="text-xl font-bold text-white">Video Player</h3>
               <button
-                onClick={(e) => handleMenuToggle(video.key, e)}
-                className="video-menu-button absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 z-10"
+                onClick={() => setSelectedVideo(null)}
+                className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-full flex items-center justify-center transition-colors duration-200"
               >
-                <MoreHorizontal className="w-4 h-4 text-white" />
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
               </button>
-
-              {/* Dropdown Menu */}
-              {openMenu === video.key && (
-                <div className="video-menu-dropdown absolute top-10 right-2 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 min-w-[120px]">
-                  <button
-                    onClick={(e) => handleExport(video, e)}
-                    className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
-                  >
-                    <Download className="w-4 h-4" />
-                    Export
-                  </button>
-                  <button
-                    onClick={(e) => handleDelete(video, e)}
-                    className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    Delete
-                  </button>
-                </div>
-              )}
             </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center text-sm text-slate-400">
-                <Calendar className="w-4 h-4 mr-2" />
-                {formatDate(video.lastModified)}
+            {/* Video Player */}
+            <div className="flex-1 p-4">
+              <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
+                <video
+                  className="w-full h-full object-contain"
+                  controls
+                  autoPlay
+                  muted
+                  src={selectedVideo.url}
+                >
+                  Your browser does not support the video tag.
+                </video>
               </div>
-              <div className="text-xs text-slate-500">
-                {formatFileSize(video.size)}
+            </div>
+
+            {/* Video Info */}
+            <div className="p-6 border-t border-slate-700">
+              <div className="space-y-3">
+                <div className="flex items-center text-sm text-slate-400">
+                  <Calendar className="w-4 h-4 mr-2" />
+                  {formatDate(selectedVideo.lastModified)}
+                </div>
+                <div className="text-xs text-slate-500">
+                  {formatFileSize(selectedVideo.size)}
+                </div>
+                <div className="text-sm text-slate-300">
+                  Video ID: {selectedVideo.key}
+                </div>
               </div>
             </div>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
