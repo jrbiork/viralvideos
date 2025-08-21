@@ -124,7 +124,7 @@ export async function generateStoryBreakdown(
         sceneCount,
         sceneDuration,
         totalDuration,
-        scenes,
+        scenes: scenesWithIds,
         voiceToneInstruction,
         timestamp,
       },

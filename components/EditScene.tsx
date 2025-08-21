@@ -24,6 +24,7 @@ export default function EditScene({
   onCancelEdit,
   onEditedNarrationChange,
 }: EditSceneProps) {
+  console.log('scene:', scene);
   const isEditing = editingScene === scene.id;
 
   return (

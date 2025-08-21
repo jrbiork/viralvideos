@@ -50,7 +50,7 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
         const listResponse = await s3.send(new client_s3_1.ListObjectsV2Command({
             Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
             Prefix: `${userId}/${timestamp}.scene-`,
-            MaxKeys: 30,
+            MaxKeys: 100,
         }));
         const objs = listResponse.Contents || [];
         const videoFiles = objs
@@ -86,7 +86,9 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
             const subtitleFile = subtitleFiles[i];
             if (!videoFile.Key)
                 continue;
-            console.log(`🎬 Processing scene ${i}: combining video + audio + subtitle`);
+            const sceneIdMatch = videoFile.Key.match(/scene-(\d+)\.mp4/);
+            const sceneId = sceneIdMatch ? parseInt(sceneIdMatch[1]) : i;
+            console.log(`🎬 Processing scene ${i} (ID: ${sceneId}): combining video + audio + subtitle`);
             const videoPath = path.join(os.tmpdir(), `scene-${i}-video.mp4`);
             const videoObject = await s3.send(new client_s3_1.GetObjectCommand({
                 Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -165,10 +167,10 @@ async function combineVideoAndAudio(userId, timestamp, scenes) {
                     Body: combinedSceneBuffer,
                     ContentType: 'video/mp4',
                 }));
-                console.log(`💾 Scene ${i} combined file saved to S3: ${combinedSceneKey}`);
+                console.log(`💾 Scene ${i} (ID: ${sceneId}) combined file saved to S3: ${combinedSceneKey}`);
             }
             catch (error) {
-                console.warn(`⚠️ Could not save combined scene ${i} to S3:`, error);
+                console.warn(`⚠️ Could not save combined scene ${i} (ID: ${sceneId}) to S3:`, error);
             }
             combinedScenePaths.push(combinedScenePath);
             if (fs.existsSync(videoPath))

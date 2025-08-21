@@ -46,7 +46,7 @@ export async function combineVideoAndAudio(
       new ListObjectsV2Command({
         Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
         Prefix: `${userId}/${timestamp}.scene-`,
-        MaxKeys: 30,
+        MaxKeys: 100,
       }),
     );
 
@@ -102,8 +102,12 @@ export async function combineVideoAndAudio(
 
       if (!videoFile.Key) continue;
 
+      // Extract the actual scene ID from the filename
+      const sceneIdMatch = videoFile.Key.match(/scene-(\d+)\.mp4/);
+      const sceneId = sceneIdMatch ? parseInt(sceneIdMatch[1]) : i;
+
       console.log(
-        `🎬 Processing scene ${i}: combining video + audio + subtitle`,
+        `🎬 Processing scene ${i} (ID: ${sceneId}): combining video + audio + subtitle`,
       );
 
       // Download video file
@@ -223,10 +227,13 @@ export async function combineVideoAndAudio(
         );
 
         console.log(
-          `💾 Scene ${i} combined file saved to S3: ${combinedSceneKey}`,
+          `💾 Scene ${i} (ID: ${sceneId}) combined file saved to S3: ${combinedSceneKey}`,
         );
       } catch (error) {
-        console.warn(`⚠️ Could not save combined scene ${i} to S3:`, error);
+        console.warn(
+          `⚠️ Could not save combined scene ${i} (ID: ${sceneId}) to S3:`,
+          error,
+        );
       }
 
       combinedScenePaths.push(combinedScenePath);

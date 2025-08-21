@@ -82,17 +82,17 @@ export function createWordTimedKaraokeASSSubtitle(
     const endIndex = Math.min(words.length, i + 3);
     const visibleWords = words.slice(startIndex, endIndex);
 
-    // Build the text with only visible words, current word highlighted
+    // Build the text with only the current word highlighted in yellow
     let fullText = '';
     for (let j = 0; j < visibleWords.length; j++) {
       const wordIndex = startIndex + j;
       if (wordIndex === i) {
-        // Current word in yellow (highlighted)
+        // Only the current word in yellow (highlighted)
         fullText += `{\\c&H00FFFF&}${visibleWords[
           j
         ].word.toUpperCase()}{\\c&H00FFFFFF&}`;
       } else {
-        // Other visible words in white
+        // All other words in white
         fullText += visibleWords[j].word.toUpperCase();
       }
 
