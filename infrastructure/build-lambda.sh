@@ -56,9 +56,9 @@ cd lambda/generate-images
 npm run build
 cd ../..
 
-# Build fetch-script Lambda
-echo "📦 Building fetch-script..."
-cd lambda/fetch-script
+# Build fetch-data-preview Lambda
+echo "📦 Building fetch-data-preview..."
+cd lambda/fetch-data-preview
 npm run build
 cd ../..
 

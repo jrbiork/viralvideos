@@ -32,12 +32,60 @@ export default function GeneratePage() {
   const [hasStartedProcess, setHasStartedProcess] = useState(false);
   const [pollingCount, setPollingCount] = useState(0);
   const [currentTimestamp, setCurrentTimestamp] = useState<string>('');
+  const [mediaFiles, setMediaFiles] = useState<{ [key: string]: string }>({});
+  const [assFiles, setAssFiles] = useState<{ [key: string]: string }>({});
+  const [selectedSceneId, setSelectedSceneId] = useState<number | null>(null);
+  const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
   const { authenticatedFetch, isAuthenticated, user } = useAuthenticatedFetch();
+
+  // Parse ASS subtitle file
+  const parseAssFile = (assContent: string) => {
+    const lines = assContent.split('\n');
+    const events: Array<{ start: number; end: number; text: string }> = [];
+
+    let inEvents = false;
+    for (const line of lines) {
+      if (line.startsWith('[Events]')) {
+        inEvents = true;
+        continue;
+      }
+      if (inEvents && line.startsWith('Format:')) {
+        continue;
+      }
+      if (inEvents && line.startsWith('Dialogue:')) {
+        const parts = line.split(',');
+        if (parts.length >= 10) {
+          const startTime = parseTime(parts[1]);
+          const endTime = parseTime(parts[2]);
+          const text = parts
+            .slice(9)
+            .join(',')
+            .replace(/\\N/g, ' ')
+            .replace(/\{[^}]*\}/g, '');
+          events.push({ start: startTime, end: endTime, text: text.trim() });
+        }
+      }
+    }
+    return events;
+  };
+
+  // Parse ASS time format (H:MM:SS.cc) to seconds
+  const parseTime = (timeStr: string): number => {
+    const match = timeStr.match(/(\d+):(\d{2}):(\d{2})\.(\d{2})/);
+    if (match) {
+      const hours = parseInt(match[1]);
+      const minutes = parseInt(match[2]);
+      const seconds = parseInt(match[3]);
+      const centiseconds = parseInt(match[4]);
+      return hours * 3600 + minutes * 60 + seconds + centiseconds / 100;
+    }
+    return 0;
+  };
 
   // Example video URL
   const exampleVideoUrl = '/assets/example.mp4';
 
-  const fetchScriptData = async (timestamp?: string) => {
+  const fetchPreviewData = async (timestamp?: string): Promise<boolean> => {
     // Only set loading true on the first fetch
     if (pollingCount === 0) {
       setIsLoadingScript(true);
@@ -51,21 +99,55 @@ export default function GeneratePage() {
       }
 
       const data = await authenticatedFetch(
-        `/api/fetch-script?${params.toString()}`,
+        `/api/fetch-data-preview?${params.toString()}`,
       );
 
+      // Check if we have script data
       if (data.script) {
         setScriptData(data.script);
-        setIsLoadingScript(false); // Stop loading and polling when we get data
-        return true; // Indicate success
+
+        // Store media files
+        if (data.mediaFiles) {
+          setMediaFiles(data.mediaFiles);
+        }
+
+        // Store ASS files
+        if (data.assFiles) {
+          setAssFiles(data.assFiles);
+        }
+
+        // Check if we have all MP4 scenes with signed URLs
+        const expectedScenes = data.script.scenes?.length || 0;
+        const mp4Files = Object.keys(data.mediaFiles || {}).filter((key) =>
+          key.endsWith('.mp4'),
+        );
+
+        console.log(
+          `Found ${mp4Files.length} MP4 files out of ${expectedScenes} expected scenes`,
+        );
+        console.log('Script data received:', data.script);
+        console.log('Media files received:', data.mediaFiles);
+
+        if (mp4Files.length >= expectedScenes && expectedScenes > 0) {
+          // All MP4 scenes are ready
+          setIsLoadingScript(false);
+          console.log('✅ All MP4 scenes have signed URLs, stopping polling');
+          return true; // Indicate success
+        } else {
+          // Still waiting for MP4 files
+          console.log(
+            `Waiting for MP4 files. Polling attempt ${pollingCount + 1}`,
+          );
+          return false; // Continue polling
+        }
       } else {
-        // Don't stop loading - let polling continue
+        // No script found yet
         console.log(`No script found yet. Polling attempt ${pollingCount + 1}`);
         return false; // Indicate no data yet
       }
     } catch (error) {
-      console.error('Error fetching script:', error);
-      // Only set error and stop loading on actual errors, not when script is not ready
+      console.error('Error fetching preview data:', error);
+      // Only set error and stop loading on actual errors, not when data is not ready
       if (pollingCount === 0) {
         setIsLoadingScript(false);
       }
@@ -81,7 +163,7 @@ export default function GeneratePage() {
 
     const pollInterval = setInterval(async () => {
       setPollingCount((prev) => prev + 1);
-      const success = await fetchScriptData(timestamp);
+      const success = await fetchPreviewData(timestamp);
 
       if (success) {
         clearInterval(pollInterval);
@@ -95,10 +177,27 @@ export default function GeneratePage() {
 
   // Cleanup polling on component unmount
   useEffect(() => {
+    // Check if there's a timestamp in the URL query parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const timestampFromUrl = urlParams.get('timestamp');
+
+    if (timestampFromUrl && !currentTimestamp) {
+      setCurrentTimestamp(timestampFromUrl);
+      // If we're on step 2 and have a timestamp, start polling
+      if (currentStep === 2) {
+        startPolling(timestampFromUrl);
+      }
+    }
+
     return () => {
       // Any cleanup needed for polling
     };
-  }, []);
+  }, [currentStep, currentTimestamp]);
+
+  // Reset subtitle when selected scene changes
+  useEffect(() => {
+    setCurrentSubtitle('');
+  }, [selectedSceneId]);
 
   const handleGenerateVideo = async (script: string, duration: number) => {
     if (!isAuthenticated) return;
@@ -111,15 +210,15 @@ export default function GeneratePage() {
 
     try {
       const timestamp = '1003'; // format(new Date(), 'MMddyyHHmmss');
-      const data = await authenticatedFetch('/api/generate-video', {
-        method: 'POST',
-        body: {
-          prompt: script,
-          timestamp,
-          totalDuration: duration,
-          sceneCount: duration === 60 || duration === 30 ? 6 : 3,
-        },
-      });
+      // const data = await authenticatedFetch('/api/generate-video', {
+      //   method: 'POST',
+      //   body: {
+      //     prompt: script,
+      //     timestamp,
+      //     totalDuration: duration,
+      //     sceneCount: duration === 60 || duration === 30 ? 6 : 3,
+      //   },
+      // });
 
       setGenerationStatus('processing');
       setStatusMessage(
@@ -130,10 +229,15 @@ export default function GeneratePage() {
 
       setGenerationStatus('completed');
       setStatusMessage('Video generated successfully!');
+
+      // Update URL with timestamp query parameter
+      const url = new URL(window.location.href);
+      url.searchParams.set('timestamp', timestamp);
+      window.history.replaceState({}, '', url.toString());
+
       setCurrentStep(2);
 
       // Start polling for the specific script file
-
       await startPolling(timestamp);
     } catch (error) {
       console.error('Error queuing video generation:', error);
@@ -198,7 +302,7 @@ export default function GeneratePage() {
         startPolling(currentTimestamp);
       } else {
         // Fallback: try to fetch without timestamp
-        fetchScriptData().then(() => {
+        fetchPreviewData().then(() => {
           setCurrentStep(2);
         });
       }
@@ -208,42 +312,157 @@ export default function GeneratePage() {
   // Right sidebar content
   const rightSidebarContent = (
     <div className="sticky top-4">
-      <div className="rounded-lg border-slate-800 border bg-slate-900 text-white p-4 border-none shadow-none">
-        <div className="flex flex-col space-y-1.5 p-6">
-          <h3 className="font-semibold tracking-tight text-md font-mono">
-            Output Example
-          </h3>
-        </div>
-        <div className="p-6 pt-0">
-          {/* Video Preview */}
-          {generatedVideoUrl && (
-            <video
-              className="w-full rounded-lg shadow-lg border border-slate-800 group"
-              controls
-              src={generatedVideoUrl}
-            />
+      {currentStep === 1 && !generatedVideoUrl && !selectedGalleryVideo && (
+        <video
+          className="w-[180%] h-[101.25%] rounded-xl shadow-lg group -ml-[60%] mt-16"
+          controls
+          autoPlay
+          muted
+          loop
+          src={exampleVideoUrl}
+        />
+      )}
+
+      {currentStep === 2 && selectedSceneId !== null && (
+        <div className="space-y-4">
+          {/* Scene Video with Subtitles */}
+          {mediaFiles[`${currentTimestamp}.scene-${selectedSceneId}.mp4`] && (
+            <div>
+              <div className="relative w-[126%] -ml-[33%] mt-16">
+                <video
+                  ref={(videoRef) => {
+                    if (videoRef) {
+                      // Parse subtitles for this scene
+                      const assContent =
+                        assFiles[
+                          `${currentTimestamp}.scene-${selectedSceneId}.ass`
+                        ];
+                      const subtitles = assContent
+                        ? parseAssFile(assContent)
+                        : [];
+
+                      const updateSubtitle = () => {
+                        const currentTime = videoRef.currentTime;
+                        const currentSub = subtitles.find(
+                          (sub) =>
+                            currentTime >= sub.start && currentTime <= sub.end,
+                        );
+                        setCurrentSubtitle(currentSub ? currentSub.text : '');
+                      };
+
+                      videoRef.addEventListener('play', () => {
+                        const audioElement = document.getElementById(
+                          `audio-${selectedSceneId}`,
+                        ) as HTMLAudioElement;
+                        if (audioElement) {
+                          audioElement.currentTime = videoRef.currentTime;
+                          audioElement.play();
+                        }
+                      });
+                      videoRef.addEventListener('pause', () => {
+                        const audioElement = document.getElementById(
+                          `audio-${selectedSceneId}`,
+                        ) as HTMLAudioElement;
+                        if (audioElement) {
+                          audioElement.pause();
+                        }
+                      });
+                      videoRef.addEventListener('seeked', () => {
+                        const audioElement = document.getElementById(
+                          `audio-${selectedSceneId}`,
+                        ) as HTMLAudioElement;
+                        if (audioElement) {
+                          audioElement.currentTime = videoRef.currentTime;
+                        }
+                        updateSubtitle();
+                      });
+                      videoRef.addEventListener('timeupdate', updateSubtitle);
+                      videoRef.addEventListener('ended', () => {
+                        const audioElement = document.getElementById(
+                          `audio-${selectedSceneId}`,
+                        ) as HTMLAudioElement;
+                        if (audioElement) {
+                          audioElement.pause();
+                          audioElement.currentTime = 0;
+                        }
+                        setCurrentSubtitle('');
+
+                        // Auto-select next scene if available
+                        if (scriptData && scriptData.scenes) {
+                          const currentSceneIndex = scriptData.scenes.findIndex(
+                            (scene: any) => scene.id === selectedSceneId,
+                          );
+                          const nextSceneIndex = currentSceneIndex + 1;
+
+                          if (nextSceneIndex < scriptData.scenes.length) {
+                            const nextScene = scriptData.scenes[nextSceneIndex];
+                            setSelectedSceneId(nextScene.id);
+
+                            // Auto-play the next scene video after a short delay
+                            setTimeout(() => {
+                              const nextVideoElement = document.querySelector(
+                                `video[src*="scene-${nextSceneIndex}.mp4"]`,
+                              ) as HTMLVideoElement;
+                              if (nextVideoElement) {
+                                nextVideoElement.play();
+                              }
+                            }, 500);
+                          }
+                        }
+                      });
+                    }
+                  }}
+                  className="w-full h-[70.875%] rounded-xl shadow-lg"
+                  controls
+                  src={
+                    mediaFiles[
+                      `${currentTimestamp}.scene-${selectedSceneId}.mp4`
+                    ]
+                  }
+                />
+
+                {/* Subtitles Overlay */}
+                {currentSubtitle && (
+                  <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-4/5">
+                    <div className="bg-black/70 backdrop-blur-sm rounded-lg p-3 text-center">
+                      <p className="text-white text-sm font-medium leading-relaxed">
+                        {currentSubtitle}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           )}
 
-          {selectedGalleryVideo && !generatedVideoUrl && (
-            <video
-              className="w-full rounded-lg shadow-lg border border-slate-800 group"
-              controls
-              src={selectedGalleryVideo.url}
-            />
-          )}
-
-          {!generatedVideoUrl && !selectedGalleryVideo && (
-            <video
-              className="w-4/5 mx-auto rounded-lg shadow-lg border border-slate-800 group"
-              controls
-              autoPlay
-              muted
-              loop
-              src={exampleVideoUrl}
+          {/* Scene Audio - Hidden Controls */}
+          {mediaFiles[`${currentTimestamp}.scene-${selectedSceneId}.mp3`] && (
+            <audio
+              id={`audio-${selectedSceneId}`}
+              className="hidden"
+              src={
+                mediaFiles[`${currentTimestamp}.scene-${selectedSceneId}.mp3`]
+              }
             />
           )}
         </div>
-      </div>
+      )}
+
+      {generatedVideoUrl && (
+        <video
+          className="w-[180%] h-[101.25%] rounded-xl shadow-lg group -ml-[40%]"
+          controls
+          src={generatedVideoUrl}
+        />
+      )}
+
+      {selectedGalleryVideo && !generatedVideoUrl && (
+        <video
+          className="w-[180%] h-[101.25%] rounded-xl shadow-lg group -ml-[40%]"
+          controls
+          src={selectedGalleryVideo.url}
+        />
+      )}
     </div>
   );
 
@@ -281,7 +500,7 @@ export default function GeneratePage() {
           </div>
 
           <div
-            className={`absolute top-0 left-0 w-full transition-transform duration-500 ease-in-out ${
+            className={`absolute top-0 left-0 w-full h-[120%] transition-transform duration-500 ease-in-out ${
               currentStep === 2
                 ? 'translate-x-0'
                 : currentStep > 2
@@ -289,28 +508,29 @@ export default function GeneratePage() {
                 : 'translate-x-full'
             }`}
           >
-            {/* Header */}
-            <div className="mb-6 lg:mb-8">
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                Review the scenes of your video
-              </h1>
-              <p className="text-gray-300 text-sm lg:text-base">
-                Edit the text and add new or delete scenes.
-              </p>
-              {isLoadingScript && (
-                <div className="mt-4 bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 border border-purple-700 rounded-xl p-3 lg:p-4 shadow-lg">
-                  <div className="text-white text-sm">
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Loading video information...</span>
+            {/* Scene Cards Container */}
+            <div className="space-y-4 mb-6 max-h-[598px] overflow-y-auto pr-2">
+              {/* Header */}
+              <div className="mb-6 lg:mb-8">
+                <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
+                  Review the scenes of your video
+                </h1>
+                <p className="text-gray-300 text-sm lg:text-base">
+                  Edit the text and add new or delete scenes.
+                </p>
+                {isLoadingScript && (
+                  <div className="mt-4 bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 border border-purple-700 rounded-xl p-3 lg:p-4 shadow-lg">
+                    <div className="text-white text-sm">
+                      <div className="flex items-center space-x-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <span>Loading video information...</span>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* Scene Cards */}
-            <div className="space-y-4 mb-6 max-h-[460px] overflow-y-auto pr-2">
+              {/* Scene Cards */}
               {isLoadingScript
                 ? // Show skeleton placeholders while loading script
                   Array.from({ length: 3 }).map((_, index) => (
@@ -318,49 +538,59 @@ export default function GeneratePage() {
                   ))
                 : scriptData &&
                   scriptData.scenes &&
-                  scriptData.scenes.map((scene: any, index: number) => (
-                    <EditScene
-                      key={scene.id}
-                      scene={scene}
-                      editingScene={editingScene}
-                      editedNarration={editedNarration}
-                      onEditScene={handleEditScene}
-                      onSaveEdit={handleSaveEdit}
-                      onCancelEdit={handleCancelEdit}
-                      onEditedNarrationChange={setEditedNarration}
-                    />
-                  ))}
-            </div>
+                  scriptData.scenes.map((scene: any, index: number) => {
+                    // Get the image URL for this scene
+                    const imageKey = `${currentTimestamp}.scene-${index}.jpg`;
+                    const imageUrl = mediaFiles[imageKey];
+                    console.log('mediaFiles:', mediaFiles);
+                    console.log('imageUrl:', imageUrl);
 
-            {/* Update Preview Button */}
-            <div className="text-center mb-6">
-              <button
-                onClick={handleUpdatePreview}
-                disabled={isLoadingScript}
-                className={`px-8 py-4 rounded-lg text-lg font-semibold transition-colors ${
-                  isLoadingScript
-                    ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-700 text-white'
-                }`}
-              >
-                {isLoadingScript ? 'Loading...' : 'Update Preview 3 Credits'}
-              </button>
-            </div>
-
-            {/* Back Button */}
-            <div className="absolute bottom-6 left-4">
-              <button
-                onClick={() => {
-                  setCurrentStep(1);
-                  // Keep the hasStartedProcess flag when going back
-                }}
-                className="px-4 py-2 border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
-              >
-                ← Back
-              </button>
+                    return (
+                      <EditScene
+                        key={scene.id}
+                        scene={scene}
+                        editingScene={editingScene}
+                        editedNarration={editedNarration}
+                        onEditScene={handleEditScene}
+                        onSaveEdit={handleSaveEdit}
+                        onCancelEdit={handleCancelEdit}
+                        onEditedNarrationChange={setEditedNarration}
+                        imageUrl={imageUrl}
+                        isSelected={selectedSceneId === scene.id}
+                        onSelect={setSelectedSceneId}
+                      />
+                    );
+                  })}
             </div>
           </div>
 
+          {/* Update Preview Button - Outside scrollable container */}
+          <div className="text-center mb-6">
+            <button
+              onClick={handleUpdatePreview}
+              disabled={isLoadingScript}
+              className={`px-8 py-4 rounded-lg text-lg font-semibold transition-colors ${
+                isLoadingScript
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+              }`}
+            >
+              {isLoadingScript ? 'Loading...' : 'Update Preview 3 Credits'}
+            </button>
+          </div>
+
+          {/* Back Button */}
+          <div className="absolute bottom-6 left-4">
+            <button
+              onClick={() => {
+                setCurrentStep(1);
+                // Keep the hasStartedProcess flag when going back
+              }}
+              className="px-4 py-2 border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
+            >
+              ← Back
+            </button>
+          </div>
           {/* Step 3: Export Video */}
           <div
             className={`absolute top-0 left-0 w-full transition-transform duration-500 ease-in-out ${

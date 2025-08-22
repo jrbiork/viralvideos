@@ -1,10 +1,10 @@
 'use client';
 
 import { ReactNode, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Sidebar from './Sidebar';
 import UserDropdown from './UserDropdown';
-import CreditsDisplay from './CreditsDisplay';
+import Breadcrumb from './Breadcrumb';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -20,6 +20,23 @@ export default function MainLayout({
   rightSidebarContent,
 }: MainLayoutProps) {
   const router = useRouter();
+  const pathname = usePathname();
+
+  // Define breadcrumb items based on current path
+  const getBreadcrumbItems = () => {
+    if (pathname === '/create') {
+      return [
+        { label: 'Dashboard', href: '/create' },
+        { label: 'Create Video', href: '/create' },
+      ];
+    } else if (pathname === '/videos') {
+      return [
+        { label: 'Dashboard', href: '/create' },
+        { label: 'Videos', href: '/videos' },
+      ];
+    }
+    return [];
+  };
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#0F0A1E' }}>
@@ -38,25 +55,33 @@ export default function MainLayout({
           }}
           id="navbar"
         >
-          <div
-            className="flex items-center space-x-2 cursor-pointer"
-            onClick={() => router.push('/')}
-          >
-            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
-              <svg
-                className="w-5 h-5 text-[#1A0033]"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M8 5v14l11-7z" />
-              </svg>
+          <div className="flex items-center space-x-4">
+            <div
+              className="flex items-center space-x-2 cursor-pointer"
+              onClick={() => router.push('/')}
+            >
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
+                <svg
+                  className="w-5 h-5 text-[#1A0033]"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              </div>
+              <span className="text-white text-xl font-bold">Viral Shorts</span>
             </div>
-            <span className="text-white text-xl font-bold">Viral Shorts</span>
+
+            {/* Breadcrumb */}
+            {getBreadcrumbItems().length > 0 && (
+              <div className="ml-8">
+                <Breadcrumb items={getBreadcrumbItems()} />
+              </div>
+            )}
           </div>
 
           {/* Desktop Navigation */}
           <div className="hidden lg:flex items-center space-x-6">
-            <CreditsDisplay />
             <UserDropdown />
           </div>
 

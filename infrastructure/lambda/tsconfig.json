@@ -30,7 +30,7 @@
     "generate-story-breakdown/**/*.ts",
     "generate-audio/**/*.ts",
     "generate-images/**/*.ts",
-    "fetch-script/**/*.ts"
+    "fetch-data-preview/**/*.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

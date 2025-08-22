@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     const apiGatewayUrl = `${
       process.env.API_GATEWAY_URL
-    }fetch-script?${apiGatewayParams.toString()}`;
+    }fetch-data-preview?${apiGatewayParams.toString()}`;
 
     const lambdaResponse = await fetch(apiGatewayUrl, {
       method: 'GET',

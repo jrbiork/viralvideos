@@ -231,19 +231,25 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
-    // Lambda function for fetching scripts
-    const fetchScriptLambda = new lambda.Function(this, 'FetchScriptLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/fetch-script')),
-      role: lambdaRole,
-      timeout: cdk.Duration.minutes(1),
-      memorySize: 128,
-      environment: {
-        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
-        USERS_TABLE_NAME: usersTable.tableName,
+    // Lambda function for fetching data preview
+    const fetchDataPreviewLambda = new lambda.Function(
+      this,
+      'FetchDataPreviewLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/fetch-data-preview'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.minutes(1),
+        memorySize: 128,
+        environment: {
+          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+          USERS_TABLE_NAME: usersTable.tableName,
+        },
       },
-    });
+    );
 
     // Lambda function for user management
     const getUserLambda = new lambda.Function(this, 'GetUserLambda', {
@@ -378,8 +384,8 @@ export class ViralVideosStack extends cdk.Stack {
     );
 
     // Lambda integration for fetching scripts
-    const fetchScriptIntegration = new apigateway.LambdaIntegration(
-      fetchScriptLambda,
+    const fetchDataPreviewIntegration = new apigateway.LambdaIntegration(
+      fetchDataPreviewLambda,
       {
         requestTemplates: {
           'application/json': JSON.stringify({
@@ -459,8 +465,8 @@ export class ViralVideosStack extends cdk.Stack {
       authorizer: jwtAuthorizer,
     });
 
-    const fetchScriptResource = api.root.addResource('fetch-script');
-    fetchScriptResource.addMethod('GET', fetchScriptIntegration, {
+    const fetchDataPreviewResource = api.root.addResource('fetch-data-preview');
+    fetchDataPreviewResource.addMethod('GET', fetchDataPreviewIntegration, {
       authorizer: jwtAuthorizer,
     });
 
@@ -517,8 +523,8 @@ export class ViralVideosStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    new logs.LogGroup(this, 'FetchScriptLogGroup', {
-      logGroupName: `/aws/lambda/${fetchScriptLambda.functionName}`,
+    new logs.LogGroup(this, 'FetchDataPreviewLogGroup', {
+      logGroupName: `/aws/lambda/${fetchDataPreviewLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });

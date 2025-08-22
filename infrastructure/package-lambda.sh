@@ -12,7 +12,7 @@ mkdir -p dist/upsert-user
 mkdir -p dist/generate-story-breakdown
 mkdir -p dist/generate-audio
 mkdir -p dist/generate-images
-mkdir -p dist/fetch-script
+mkdir -p dist/fetch-data-preview
 
 # Copy built JavaScript files
 echo "📋 Copying video-generation files..."
@@ -49,8 +49,8 @@ cp -r lambda/generate-audio/util dist/generate-audio/
 echo "📋 Copying generate-images files..."
 cp lambda/generate-images/*.js dist/generate-images/
 
-echo "📋 Copying fetch-script files..."
-cp lambda/fetch-script/*.js dist/fetch-script/
+echo "📋 Copying fetch-data-preview files..."
+cp lambda/fetch-data-preview/*.js dist/fetch-data-preview/
 
 
 
@@ -105,8 +105,8 @@ cp ../../lambda/package.json .
 npm install --production
 cd ../..
 
-echo "📦 Installing dependencies for fetch-script..."
-cd dist/fetch-script
+echo "📦 Installing dependencies for fetch-data-preview..."
+cd dist/fetch-data-preview
 cp ../../lambda/package.json .
 npm install --production
 cd ../..

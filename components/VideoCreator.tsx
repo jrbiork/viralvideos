@@ -80,9 +80,6 @@ export default function VideoCreator({
         {/* Script Section */}
         <div className="mb-8 px-2.5">
           <div className="mb-4">
-            <label className="block text-white text-sm font-medium mb-2">
-              Start writing your script... then use Magic Script ✨
-            </label>
             <div className="relative w-full">
               <textarea
                 className={`w-full h-48 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 box-border ${
@@ -90,7 +87,7 @@ export default function VideoCreator({
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-slate-700'
                 }`}
-                placeholder="Start writing your script... then use Magic Script ✨"
+                placeholder="Write your script here..."
                 value={script}
                 onChange={(e) => {
                   const newValue = e.target.value;
@@ -139,11 +136,21 @@ export default function VideoCreator({
               <button
                 onClick={handleMagicScript}
                 disabled={!script.trim() || isGeneratingScript}
-                className={`px-6 py-3 rounded-lg text-base font-semibold transition-all duration-300 flex items-center space-x-2 shadow-lg ${
+                className={`px-6 py-3 text-base font-semibold transition-all duration-300 flex items-center space-x-2 ${
                   script.trim() && !isGeneratingScript
-                    ? 'bg-gradient-to-r from-[#826eff] to-purple-600 hover:from-[#826eff] hover:to-purple-700 text-white hover:shadow-xl'
-                    : 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                    ? 'text-white'
+                    : 'bg-gray-600 text-gray-400 cursor-not-allowed rounded-xl'
                 }`}
+                style={
+                  script.trim() && !isGeneratingScript
+                    ? {
+                        borderRadius: '0.75rem',
+                        background:
+                          'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
+                        boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                      }
+                    : {}
+                }
               >
                 {isGeneratingScript ? (
                   <>
@@ -166,9 +173,14 @@ export default function VideoCreator({
                   onClick={() => setSelectedDuration('15s')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     selectedDuration === '15s'
-                      ? 'bg-purple-600 text-white'
+                      ? 'text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
+                  style={
+                    selectedDuration === '15s'
+                      ? { backgroundColor: '#7552F2' }
+                      : {}
+                  }
                 >
                   15s
                 </button>
@@ -176,9 +188,14 @@ export default function VideoCreator({
                   onClick={() => setSelectedDuration('30s')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     selectedDuration === '30s'
-                      ? 'bg-purple-600 text-white'
+                      ? 'text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
+                  style={
+                    selectedDuration === '30s'
+                      ? { backgroundColor: '#7552F2' }
+                      : {}
+                  }
                 >
                   30s
                 </button>
@@ -186,9 +203,14 @@ export default function VideoCreator({
                   onClick={() => setSelectedDuration('60s')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     selectedDuration === '60s'
-                      ? 'bg-purple-600 text-white'
+                      ? 'text-white'
                       : 'text-gray-400 hover:text-white'
                   }`}
+                  style={
+                    selectedDuration === '60s'
+                      ? { backgroundColor: '#7552F2' }
+                      : {}
+                  }
                 >
                   60s
                 </button>
@@ -201,11 +223,21 @@ export default function VideoCreator({
                 onGenerateVideo(script, duration);
               }}
               disabled={isGenerating || !script.trim() || wordCount < 10}
-              className={`px-6 py-3 rounded-lg text-base font-semibold flex items-center justify-center space-x-2 transition-all duration-300 shadow-lg ${
+              className={`px-6 py-3 text-base font-semibold flex items-center justify-center space-x-2 transition-all duration-300 ${
                 isGenerating || !script.trim() || wordCount < 10
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-[#826eff] to-purple-600 hover:from-[#826eff] hover:to-purple-700 text-white hover:shadow-xl'
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed rounded-xl'
+                  : 'text-white'
               }`}
+              style={
+                !isGenerating && script.trim() && wordCount >= 10
+                  ? {
+                      borderRadius: '0.75rem',
+                      background:
+                        'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
+                      boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                    }
+                  : {}
+              }
             >
               {isGenerating ? (
                 <>

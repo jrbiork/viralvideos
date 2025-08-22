@@ -40,9 +40,10 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
               onClick={() => router.push(item.href)}
               className={`w-full flex items-center space-x-3 p-3 rounded-xl text-left transition-all duration-200 ${
                 item.isActive
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-500 text-white shadow-lg'
+                  ? 'text-white shadow-lg'
                   : 'text-gray-300 hover:bg-slate-800/50 hover:text-white'
               }`}
+              style={item.isActive ? { backgroundColor: '#7552F2' } : {}}
             >
               <span className="text-lg">{item.icon}</span>
               <span className="font-medium hidden sm:inline">{item.name}</span>
@@ -60,8 +61,14 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
         {showCreditsUpgrade && isAuthenticated && (
           <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
             <div className="flex items-center space-x-3 mb-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">💎</span>
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center"
+                style={{
+                  background:
+                    'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
+                }}
+              >
+                <img src="/coins.svg" alt="Credits" className="w-6 h-6" />
               </div>
               <div>
                 <CreditsDisplay />
@@ -74,7 +81,12 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
 
             <button
               onClick={() => router.push('/pricing')}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="w-full text-white font-semibold py-2 px-4 transition-all duration-200"
+              style={{
+                borderRadius: '0.75rem',
+                background: 'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
+                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+              }}
             >
               Buy Credits
             </button>
