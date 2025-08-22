@@ -105,10 +105,15 @@ export default function MainLayout({
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
-          <div className="flex">
-            <div className="flex-1">{children}</div>
+          <div className="flex flex-col md:flex-row">
+            <div className="w-full md:w-[57.5%] p-4 order-2 md:order-1 border-r border-border overflow-auto">
+              {children}
+            </div>
             {rightSidebarContent && (
-              <div className="w-80 p-6 hidden lg:block">
+              <div
+                className="flex-1 order-1 md:order-2"
+                style={{ backgroundColor: '#090526' }}
+              >
                 {rightSidebarContent}
               </div>
             )}

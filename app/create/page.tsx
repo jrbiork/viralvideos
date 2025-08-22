@@ -36,6 +36,12 @@ export default function GeneratePage() {
   const [mediaFiles, setMediaFiles] = useState<{ [key: string]: string }>({});
   const [assFiles, setAssFiles] = useState<{ [key: string]: string }>({});
   const [selectedSceneId, setSelectedSceneId] = useState<number | null>(null);
+  const [autoAdvanceEnabled, setAutoAdvanceEnabled] = useState<boolean>(false);
+
+  // Wrapper function to handle scene selection
+  const handleSceneSelection = (sceneId: number) => {
+    setSelectedSceneId(sceneId);
+  };
   const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
   const { authenticatedFetch, isAuthenticated, user } = useAuthenticatedFetch();
 
@@ -131,6 +137,53 @@ export default function GeneratePage() {
     // Store the interval ID for cleanup
     return pollInterval;
   };
+
+  // Auto-select first scene when script data is loaded (only if not in step 2)
+  useEffect(() => {
+    if (
+      scriptData &&
+      scriptData.scenes &&
+      scriptData.scenes.length > 0 &&
+      selectedSceneId === null &&
+      currentStep !== 2
+    ) {
+      handleSceneSelection(scriptData.scenes[0].id);
+    }
+  }, [scriptData, selectedSceneId, currentStep]);
+
+  // Auto-play video when selectedSceneId changes (only if auto-advance is enabled)
+  useEffect(() => {
+    if (
+      selectedSceneId !== null &&
+      scriptData &&
+      scriptData.scenes &&
+      autoAdvanceEnabled
+    ) {
+      const selectedSceneIndex = scriptData.scenes.findIndex(
+        (s: any) => s.id === selectedSceneId,
+      );
+
+      if (selectedSceneIndex !== -1) {
+        // Stop all videos first
+        const allVideos = document.querySelectorAll('video');
+        allVideos.forEach((video) => {
+          video.pause();
+          video.currentTime = 0;
+        });
+
+        // Start the selected video after a short delay
+        setTimeout(() => {
+          const videoKey = `${currentTimestamp}.scene-${selectedSceneIndex}.mp4`;
+          const videoElement = document.querySelector(
+            `video[src*="${videoKey}"]`,
+          ) as HTMLVideoElement;
+          if (videoElement) {
+            videoElement.play().catch(console.error);
+          }
+        }, 300);
+      }
+    }
+  }, [selectedSceneId, scriptData, currentTimestamp, autoAdvanceEnabled]);
 
   // Cleanup polling on component unmount
   useEffect(() => {
@@ -280,132 +333,181 @@ export default function GeneratePage() {
         />
       )}
 
-      {currentStep === 2 && selectedSceneId !== null && (
-        <div className="space-y-4">
-          {/* Scene Video with Subtitles */}
-          {mediaFiles[`${currentTimestamp}.scene-${selectedSceneId}.mp4`] && (
-            <div>
-              <div className="relative w-[126%] -ml-[33%] mt-16">
-                <video
-                  ref={(videoRef) => {
-                    if (videoRef) {
-                      // Parse subtitles for this scene
-                      const assContent =
-                        assFiles[
-                          `${currentTimestamp}.scene-${selectedSceneId}.ass`
-                        ];
-                      const subtitles = assContent
-                        ? parseAssFile(assContent)
-                        : [];
+      {currentStep === 2 && scriptData && scriptData.scenes && (
+        <>
+          {scriptData.scenes.map((scene: any, index: number) => {
+            const videoKey = `${currentTimestamp}.scene-${index}.mp4`;
+            const assKey = `${currentTimestamp}.scene-${index}.ass`;
+            const isVisible = selectedSceneId === scene.id;
 
-                      const updateSubtitle = () => {
-                        const currentTime = videoRef.currentTime;
-                        const currentSub = subtitles.find(
-                          (sub) =>
-                            currentTime >= sub.start && currentTime <= sub.end,
-                        );
-                        setCurrentSubtitle(
-                          currentSub ? currentSub.coloredText : '',
-                        );
-                      };
+            // Find the correct index for the selected scene
+            const selectedSceneIndex = scriptData.scenes.findIndex(
+              (s: any) => s.id === selectedSceneId,
+            );
+            const isVisibleByIndex = index === selectedSceneIndex;
 
-                      videoRef.addEventListener('play', () => {
-                        const audioElement = document.getElementById(
-                          `audio-${selectedSceneId}`,
-                        ) as HTMLAudioElement;
-                        if (audioElement) {
-                          audioElement.currentTime = videoRef.currentTime;
-                          audioElement.play();
-                        }
-                      });
-                      videoRef.addEventListener('pause', () => {
-                        const audioElement = document.getElementById(
-                          `audio-${selectedSceneId}`,
-                        ) as HTMLAudioElement;
-                        if (audioElement) {
-                          audioElement.pause();
-                        }
-                      });
-                      videoRef.addEventListener('seeked', () => {
-                        const audioElement = document.getElementById(
-                          `audio-${selectedSceneId}`,
-                        ) as HTMLAudioElement;
-                        if (audioElement) {
-                          audioElement.currentTime = videoRef.currentTime;
-                        }
-                        updateSubtitle();
-                      });
-                      videoRef.addEventListener('timeupdate', updateSubtitle);
-                      videoRef.addEventListener('ended', () => {
-                        const audioElement = document.getElementById(
-                          `audio-${selectedSceneId}`,
-                        ) as HTMLAudioElement;
-                        if (audioElement) {
-                          audioElement.pause();
-                          audioElement.currentTime = 0;
-                        }
-                        setCurrentSubtitle('');
+            return (
+              <div
+                key={scene.id}
+                className={`w-full h-[600px] ${
+                  isVisibleByIndex ? 'block' : 'hidden'
+                }`}
+              >
+                {mediaFiles[videoKey] && (
+                  <div className="relative w-full h-full">
+                    <video
+                      ref={(videoRef) => {
+                        if (videoRef && !videoRef.dataset.initialized) {
+                          // Mark as initialized to prevent multiple event listener setup
+                          videoRef.dataset.initialized = 'true';
 
-                        // Auto-select next scene if available
-                        if (scriptData && scriptData.scenes) {
-                          const currentSceneIndex = scriptData.scenes.findIndex(
-                            (scene: any) => scene.id === selectedSceneId,
+                          // Parse subtitles for this scene
+                          const assContent = assFiles[assKey];
+                          const subtitles = assContent
+                            ? parseAssFile(assContent)
+                            : [];
+
+                          const updateSubtitle = () => {
+                            const currentTime = videoRef.currentTime;
+                            const currentSub = subtitles.find(
+                              (sub) =>
+                                currentTime >= sub.start &&
+                                currentTime <= sub.end,
+                            );
+                            setCurrentSubtitle(
+                              currentSub ? currentSub.coloredText : '',
+                            );
+                          };
+
+                          // Add event listeners only once
+                          videoRef.addEventListener('play', () => {
+                            // Enable auto-advance when user manually plays a video
+                            if (!autoAdvanceEnabled) {
+                              setAutoAdvanceEnabled(true);
+                            }
+
+                            const audioElement = document.getElementById(
+                              `audio-${scene.id}`,
+                            ) as HTMLAudioElement;
+                            if (audioElement) {
+                              audioElement.currentTime = videoRef.currentTime;
+                              audioElement.play();
+                            }
+                          });
+                          videoRef.addEventListener('pause', () => {
+                            const audioElement = document.getElementById(
+                              `audio-${scene.id}`,
+                            ) as HTMLAudioElement;
+                            if (audioElement) {
+                              audioElement.pause();
+                            }
+                          });
+                          videoRef.addEventListener('seeked', () => {
+                            const audioElement = document.getElementById(
+                              `audio-${scene.id}`,
+                            ) as HTMLAudioElement;
+                            if (audioElement) {
+                              audioElement.currentTime = videoRef.currentTime;
+                            }
+                            updateSubtitle();
+                          });
+                          videoRef.addEventListener(
+                            'timeupdate',
+                            updateSubtitle,
                           );
-                          const nextSceneIndex = currentSceneIndex + 1;
+                          videoRef.addEventListener('ended', () => {
+                            const audioElement = document.getElementById(
+                              `audio-${scene.id}`,
+                            ) as HTMLAudioElement;
+                            if (audioElement) {
+                              audioElement.pause();
+                              audioElement.currentTime = 0;
+                            }
+                            setCurrentSubtitle('');
 
-                          if (nextSceneIndex < scriptData.scenes.length) {
-                            const nextScene = scriptData.scenes[nextSceneIndex];
-                            setSelectedSceneId(nextScene.id);
+                            // Auto-select next scene if available
+                            if (scriptData && scriptData.scenes) {
+                              const currentSceneIndex =
+                                scriptData.scenes.findIndex(
+                                  (s: any) => s.id === scene.id,
+                                );
+                              const nextSceneIndex = currentSceneIndex + 1;
 
-                            // Auto-play the next scene video after a short delay
-                            setTimeout(() => {
-                              const nextVideoElement = document.querySelector(
-                                `video[src*="scene-${nextSceneIndex}.mp4"]`,
-                              ) as HTMLVideoElement;
-                              if (nextVideoElement) {
-                                nextVideoElement.play();
+                              if (nextSceneIndex < scriptData.scenes.length) {
+                                const nextScene =
+                                  scriptData.scenes[nextSceneIndex];
+                                setSelectedSceneId(nextScene.id);
                               }
-                            }, 500);
+                            }
+                          });
+                        }
+                      }}
+                      onLoadStart={(event) => {
+                        // Handle visibility changes when video loads
+                        if (isVisibleByIndex) {
+                          // First, stop ALL videos
+                          const allVideos = document.querySelectorAll('video');
+                          allVideos.forEach((video) => {
+                            if (video !== event.target) {
+                              video.pause();
+                              video.currentTime = 0;
+                            }
+                          });
+
+                          // Only auto-play if auto-advance is enabled
+                          if (autoAdvanceEnabled) {
+                            setTimeout(() => {
+                              const video = event.target as HTMLVideoElement;
+                              if (video && isVisibleByIndex) {
+                                video.play().catch(console.error);
+                              }
+                            }, 200);
                           }
                         }
-                      });
-                    }
-                  }}
-                  className="w-full h-[70.875%] rounded-xl shadow-lg"
-                  controls
-                  src={
-                    mediaFiles[
-                      `${currentTimestamp}.scene-${selectedSceneId}.mp4`
-                    ]
-                  }
-                />
+                      }}
+                      className="rounded-xl shadow-lg border-2 border-gray-600"
+                      style={{
+                        width: '140%',
+                        height: '840px',
+                        margin: '0 auto',
+                      }}
+                      controls
+                      preload="auto"
+                      src={mediaFiles[videoKey]}
+                    />
 
-                {/* Subtitles Overlay */}
-                {currentSubtitle && (
-                  <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5">
-                    <p
-                      className="text-xl font-medium leading-relaxed text-center"
-                      style={{ fontFamily: 'DMSerifText, serif' }}
-                    >
-                      {parseColoredText(currentSubtitle)}
-                    </p>
+                    {/* Subtitles Overlay - Inside video container */}
+                    {isVisibleByIndex && currentSubtitle && (
+                      <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
+                        <p
+                          className="text-xl font-medium leading-relaxed text-center"
+                          style={{ fontFamily: 'DMSerifText, serif' }}
+                        >
+                          {parseColoredText(currentSubtitle)}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
-            </div>
-          )}
+            );
+          })}
 
           {/* Scene Audio - Hidden Controls */}
-          {mediaFiles[`${currentTimestamp}.scene-${selectedSceneId}.mp3`] && (
-            <audio
-              id={`audio-${selectedSceneId}`}
-              className="hidden"
-              src={
-                mediaFiles[`${currentTimestamp}.scene-${selectedSceneId}.mp3`]
-              }
-            />
-          )}
-        </div>
+          {scriptData &&
+            scriptData.scenes &&
+            scriptData.scenes.map((scene: any, index: number) => {
+              const audioKey = `${currentTimestamp}.scene-${index}.mp3`;
+              return mediaFiles[audioKey] ? (
+                <audio
+                  key={scene.id}
+                  id={`audio-${scene.id}`}
+                  className="hidden"
+                  src={mediaFiles[audioKey]}
+                />
+              ) : null;
+            })}
+        </>
       )}
 
       {generatedVideoUrl && (
@@ -431,7 +533,7 @@ export default function GeneratePage() {
       showCreditsUpgrade={true}
       rightSidebarContent={rightSidebarContent}
     >
-      <div className="w-full max-w-4xl mx-auto flex flex-col justify-start pt-4 lg:pt-8">
+      <div className="flex flex-col justify-start pt-4 lg:pt-8 mb-6 lg:mb-8">
         <ProgressSteps currentStep={currentStep} />
 
         <div className="relative overflow-hidden">
@@ -460,7 +562,7 @@ export default function GeneratePage() {
           </div>
 
           <div
-            className={`absolute top-0 left-0 w-full h-[120%] transition-transform duration-500 ease-in-out ${
+            className={`absolute top-0 left-0 w-full h-[120%] transition-transform duration-500 ease-in-out px-3 ${
               currentStep === 2
                 ? 'translate-x-0'
                 : currentStep > 2
@@ -469,7 +571,7 @@ export default function GeneratePage() {
             }`}
           >
             {/* Scene Cards Container */}
-            <div className="space-y-4 mb-6 max-h-[598px] overflow-y-auto pr-2">
+            <div className="space-y-4 mb-6 max-h-[598px] overflow-y-auto pr-2 px-4">
               {/* Header */}
               <div className="mb-6 lg:mb-8">
                 <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
@@ -517,7 +619,7 @@ export default function GeneratePage() {
                         onEditedNarrationChange={setEditedNarration}
                         imageUrl={imageUrl}
                         isSelected={selectedSceneId === scene.id}
-                        onSelect={setSelectedSceneId}
+                        onSelect={handleSceneSelection}
                       />
                     );
                   })}

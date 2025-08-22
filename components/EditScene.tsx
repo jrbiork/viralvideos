@@ -43,7 +43,7 @@ export default function EditScene({
 
       {/* Scene Card */}
       <div
-        className={`bg-slate-800/50 border rounded-xl p-6 flex space-x-6 cursor-pointer transition-all duration-200 ${
+        className={`bg-slate-800/50 border rounded-xl p-6 flex space-x-6 cursor-pointer transition-all duration-200 mr-4 ${
           isSelected
             ? 'border-purple-500 shadow-lg shadow-purple-500/25'
             : 'border-slate-700/50 hover:border-slate-600'
@@ -56,7 +56,7 @@ export default function EditScene({
             className="flex-shrink-0 rounded-xl"
             style={{
               width: '11.75rem',
-              height: '14.4375rem',
+              height: '12rem',
               background: `url(${imageUrl}) center / cover no-repeat`,
             }}
           />
@@ -65,7 +65,7 @@ export default function EditScene({
             className="flex-shrink-0 rounded-xl flex items-center justify-center"
             style={{
               width: '11.75rem',
-              height: '14.4375rem',
+              height: '12rem',
               backgroundColor: '#374151',
             }}
           >
@@ -85,7 +85,7 @@ export default function EditScene({
                   <span className="text-white text-xs font-bold">T</span>
                 </div>
                 <textarea
-                  className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl p-4 pl-12 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full h-20 bg-slate-700/50 border border-purple-500/30 rounded-xl p-4 pl-12 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   value={editedNarration}
                   onChange={(e) => onEditedNarrationChange(e.target.value)}
                   placeholder="Enter scene narration..."

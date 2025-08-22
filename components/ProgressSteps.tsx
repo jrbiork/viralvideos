@@ -29,6 +29,8 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
                   className={`text-base font-medium transition-colors duration-200 ${
                     step.id === currentStep
                       ? 'text-[#7552F2] font-semibold'
+                      : step.id < currentStep
+                      ? 'text-gray-400'
                       : 'text-white'
                   }`}
                 >
