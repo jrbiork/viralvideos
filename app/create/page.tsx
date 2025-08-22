@@ -38,10 +38,15 @@ export default function GeneratePage() {
   const [currentSubtitle, setCurrentSubtitle] = useState<string>('');
   const { authenticatedFetch, isAuthenticated, user } = useAuthenticatedFetch();
 
-  // Parse ASS subtitle file
+  // Parse ASS subtitle file with color information
   const parseAssFile = (assContent: string) => {
     const lines = assContent.split('\n');
-    const events: Array<{ start: number; end: number; text: string }> = [];
+    const events: Array<{
+      start: number;
+      end: number;
+      text: string;
+      coloredText: string;
+    }> = [];
 
     let inEvents = false;
     for (const line of lines) {
@@ -57,12 +62,23 @@ export default function GeneratePage() {
         if (parts.length >= 10) {
           const startTime = parseTime(parts[1]);
           const endTime = parseTime(parts[2]);
-          const text = parts
-            .slice(9)
-            .join(',')
+          const rawText = parts.slice(9).join(',');
+
+          // Extract text without ASS formatting
+          const cleanText = rawText
             .replace(/\\N/g, ' ')
-            .replace(/\{[^}]*\}/g, '');
-          events.push({ start: startTime, end: endTime, text: text.trim() });
+            .replace(/\{[^}]*\}/g, '')
+            .trim();
+
+          // Extract text with color information preserved
+          const coloredText = rawText.replace(/\\N/g, ' ').trim();
+
+          events.push({
+            start: startTime,
+            end: endTime,
+            text: cleanText,
+            coloredText,
+          });
         }
       }
     }
@@ -80,6 +96,96 @@ export default function GeneratePage() {
       return hours * 3600 + minutes * 60 + seconds + centiseconds / 100;
     }
     return 0;
+  };
+
+  // Parse colored text and convert to JSX elements
+  const parseColoredText = (coloredText: string) => {
+    console.log('Original colored text:', coloredText);
+
+    // First, remove all bracket codes to get clean text
+    const cleanText = coloredText.replace(/\{[^}]*\}/g, '');
+    console.log('Clean text after removing all brackets:', cleanText);
+
+    // If no color codes found, return plain white text
+    if (!coloredText.includes('{\\c&H')) {
+      return [
+        <span key="default" className="text-white">
+          {cleanText}
+        </span>,
+      ];
+    }
+
+    const parts = [];
+    let currentIndex = 0;
+    let currentColor = 'white'; // default color
+
+    // Match ASS color codes: {\c&H00FFFF&} or {\c&H00FFFFFF&}
+    const colorRegex = /\{\\c&H([0-9A-Fa-f]{6})&\}/g;
+    let match;
+
+    while ((match = colorRegex.exec(coloredText)) !== null) {
+      const colorCode = match[1].toUpperCase();
+      const matchStart = match.index;
+      const matchEnd = matchStart + match[0].length;
+
+      // Add text before this color code (clean version)
+      if (matchStart > currentIndex) {
+        const beforeTextWithCodes = coloredText.slice(currentIndex, matchStart);
+        const beforeTextClean = beforeTextWithCodes.replace(/\{[^}]*\}/g, '');
+        if (beforeTextClean.trim()) {
+          parts.push(
+            <span
+              key={`text-${currentIndex}`}
+              className={`text-${
+                currentColor === 'yellow' ? 'yellow-300' : 'white'
+              }`}
+            >
+              {beforeTextClean}
+            </span>,
+          );
+        }
+      }
+
+      // Determine color based on the code
+      if (colorCode === '00FFFF') {
+        currentColor = 'yellow';
+      } else if (colorCode === 'FFFFFF') {
+        currentColor = 'white';
+      }
+      // For any other color codes, keep current color
+
+      currentIndex = matchEnd;
+    }
+
+    // Add remaining text after the last color code (clean version)
+    if (currentIndex < coloredText.length) {
+      const remainingTextWithCodes = coloredText.slice(currentIndex);
+      const remainingTextClean = remainingTextWithCodes.replace(
+        /\{[^}]*\}/g,
+        '',
+      );
+      if (remainingTextClean.trim()) {
+        parts.push(
+          <span
+            key={`text-end-${currentIndex}`}
+            className={`text-${
+              currentColor === 'yellow' ? 'yellow-300' : 'white'
+            }`}
+          >
+            {remainingTextClean}
+          </span>,
+        );
+      }
+    }
+
+    console.log('Parsed parts:', parts);
+    return parts.length > 0
+      ? parts
+      : [
+          <span key="default" className="text-white">
+            {cleanText}
+          </span>,
+        ];
   };
 
   // Example video URL
@@ -347,7 +453,9 @@ export default function GeneratePage() {
                           (sub) =>
                             currentTime >= sub.start && currentTime <= sub.end,
                         );
-                        setCurrentSubtitle(currentSub ? currentSub.text : '');
+                        setCurrentSubtitle(
+                          currentSub ? currentSub.coloredText : '',
+                        );
                       };
 
                       videoRef.addEventListener('play', () => {
@@ -424,11 +532,12 @@ export default function GeneratePage() {
                 {/* Subtitles Overlay */}
                 {currentSubtitle && (
                   <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 w-4/5">
-                    <div className="bg-black/70 backdrop-blur-sm rounded-lg p-3 text-center">
-                      <p className="text-white text-sm font-medium leading-relaxed">
-                        {currentSubtitle}
-                      </p>
-                    </div>
+                    <p
+                      className="text-xl font-medium leading-relaxed text-center"
+                      style={{ fontFamily: 'DMSerifText, serif' }}
+                    >
+                      {parseColoredText(currentSubtitle)}
+                    </p>
                   </div>
                 )}
               </div>
