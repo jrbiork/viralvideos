@@ -321,10 +321,11 @@ export default function GeneratePage() {
 
   // Right sidebar content
   const rightSidebarContent = (
-    <div className="sticky top-4">
+    <div className="sticky top-4 p-[50px]">
       {currentStep === 1 && !generatedVideoUrl && !selectedGalleryVideo && (
         <video
-          className="w-[180%] h-[101.25%] rounded-xl shadow-lg group -ml-[60%] mt-16"
+          className="rounded-xl shadow-lg border-2 border-gray-600"
+          style={{ width: '90%', height: 'auto' }}
           controls
           autoPlay
           muted
@@ -349,12 +350,10 @@ export default function GeneratePage() {
             return (
               <div
                 key={scene.id}
-                className={`w-full h-[600px] ${
-                  isVisibleByIndex ? 'block' : 'hidden'
-                }`}
+                className={isVisibleByIndex ? 'block' : 'hidden'}
               >
                 {mediaFiles[videoKey] && (
-                  <div className="relative w-full h-full">
+                  <div className="relative">
                     <video
                       ref={(videoRef) => {
                         if (videoRef && !videoRef.dataset.initialized) {
@@ -466,17 +465,13 @@ export default function GeneratePage() {
                         }
                       }}
                       className="rounded-xl shadow-lg border-2 border-gray-600"
-                      style={{
-                        width: '140%',
-                        height: '840px',
-                        margin: '0 auto',
-                      }}
+                      style={{ width: '90%', height: 'auto' }}
                       controls
                       preload="auto"
                       src={mediaFiles[videoKey]}
                     />
 
-                    {/* Subtitles Overlay - Inside video container */}
+                    {/* Subtitles Overlay */}
                     {isVisibleByIndex && currentSubtitle && (
                       <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
                         <p
@@ -536,7 +531,10 @@ export default function GeneratePage() {
       <div className="flex flex-col justify-start pt-4 lg:pt-8 mb-6 lg:mb-8">
         <ProgressSteps currentStep={currentStep} />
 
-        <div className="relative overflow-hidden">
+        <div
+          className="relative overflow-hidden"
+          style={{ height: 'calc(100vh - 64px - 160px)' }}
+        >
           <div
             className={`transition-transform duration-500 ease-in-out ${
               currentStep === 1
@@ -572,25 +570,16 @@ export default function GeneratePage() {
           >
             {/* Scene Cards Container */}
             <div className="space-y-4 mb-6 max-h-[598px] overflow-y-auto pr-2 px-4">
-              {/* Header */}
-              <div className="mb-6 lg:mb-8">
-                <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                  Review the scenes of your video
-                </h1>
-                <p className="text-gray-300 text-sm lg:text-base">
-                  Edit the text and add new or delete scenes.
-                </p>
-                {isLoadingScript && (
-                  <div className="mt-4 bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 border border-purple-700 rounded-xl p-3 lg:p-4 shadow-lg">
-                    <div className="text-white text-sm">
-                      <div className="flex items-center space-x-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        <span>Loading video information...</span>
-                      </div>
+              {isLoadingScript && (
+                <div className="mt-4 bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 border border-purple-700 rounded-xl p-3 lg:p-4 shadow-lg">
+                  <div className="text-white text-sm">
+                    <div className="flex items-center space-x-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      <span>Loading video information...</span>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Scene Cards */}
               {isLoadingScript
@@ -626,23 +615,8 @@ export default function GeneratePage() {
             </div>
           </div>
 
-          {/* Update Preview Button - Outside scrollable container */}
-          <div className="text-center mb-6">
-            <button
-              onClick={handleUpdatePreview}
-              disabled={isLoadingScript}
-              className={`px-8 py-4 rounded-lg text-lg font-semibold transition-colors ${
-                isLoadingScript
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
-              }`}
-            >
-              {isLoadingScript ? 'Loading...' : 'Update Preview 3 Credits'}
-            </button>
-          </div>
-
           {/* Back Button */}
-          <div className="absolute bottom-6 left-4">
+          <div className="absolute -bottom-5 left-4">
             <button
               onClick={() => {
                 setCurrentStep(1);

@@ -250,35 +250,6 @@ export default function VideoCreator({
             </button>
           </div>
         </div>
-
-        {/* Status Message */}
-        {generationStatus !== 'idle' && (
-          <div className="mb-6 p-4 bg-slate-800 border border-slate-700 rounded-lg">
-            <div className="flex items-center space-x-3">
-              <div>
-                <div className="text-white font-medium">
-                  {generationStatus === 'queued' && 'Video Queued'}
-                  {generationStatus === 'processing' && 'Processing Video'}
-                  {generationStatus === 'completed' && 'Video Completed'}
-                  {generationStatus === 'error' && 'Generation Failed'}
-                </div>
-                <div className="text-gray-400 text-sm">{statusMessage}</div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Next Button */}
-        {showNextButton && (
-          <div className="text-center">
-            <button
-              onClick={onNextStep}
-              className="px-8 py-4 rounded-xl text-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors border border-blue-500"
-            >
-              Next Step →
-            </button>
-          </div>
-        )}
       </div>
     </>
   );

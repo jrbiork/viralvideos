@@ -53,19 +53,30 @@ export default function EditScene({
         {/* Scene Image */}
         {imageUrl ? (
           <div
-            className="flex-shrink-0 rounded-xl"
+            className="flex-shrink-0 rounded-xl overflow-hidden"
             style={{
               width: '11.75rem',
-              height: '12rem',
-              background: `url(${imageUrl}) center / cover no-repeat`,
+              height: '20.89rem', // 11.75 * (16/9) = 20.89 for 9:16 aspect ratio
             }}
-          />
+          >
+            <img
+              src={imageUrl}
+              alt={`Scene ${scene.id + 1}`}
+              className="w-full h-full object-contain rounded-xl"
+              onError={(e) => {
+                // Hide the image if it fails to load
+                e.currentTarget.style.display = 'none';
+                e.currentTarget.parentElement!.style.backgroundColor =
+                  '#374151';
+              }}
+            />
+          </div>
         ) : (
           <div
             className="flex-shrink-0 rounded-xl flex items-center justify-center"
             style={{
               width: '11.75rem',
-              height: '12rem',
+              height: '20.89rem', // 11.75 * (16/9) = 20.89 for 9:16 aspect ratio
               backgroundColor: '#374151',
             }}
           >

@@ -93,7 +93,10 @@ export default function MainLayout({
       </div>
 
       {/* Main Content */}
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden h-screen">
+      <div
+        className="flex flex-col lg:flex-row flex-1 overflow-hidden"
+        style={{ height: 'calc(100vh - 64px)' }}
+      >
         {showSidebar && (
           <div
             style={{ backgroundColor: 'rgba(26,9,64,255)' }}
@@ -106,7 +109,7 @@ export default function MainLayout({
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="flex flex-col md:flex-row">
-            <div className="w-full md:w-[57.5%] p-4 order-2 md:order-1 border-r border-border overflow-auto">
+            <div className="w-full md:w-[57.5%] px-8 py-4 order-2 md:order-1 overflow-auto">
               {children}
             </div>
             {rightSidebarContent && (
