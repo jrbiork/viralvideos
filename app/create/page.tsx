@@ -138,18 +138,17 @@ export default function GeneratePage() {
     return pollInterval;
   };
 
-  // Auto-select first scene when script data is loaded (only if not in step 2)
+  // Auto-select first scene when script data is loaded
   useEffect(() => {
     if (
       scriptData &&
       scriptData.scenes &&
       scriptData.scenes.length > 0 &&
-      selectedSceneId === null &&
-      currentStep !== 2
+      selectedSceneId === null
     ) {
       handleSceneSelection(scriptData.scenes[0].id);
     }
-  }, [scriptData, selectedSceneId, currentStep]);
+  }, [scriptData, selectedSceneId]);
 
   // Auto-play video when selectedSceneId changes (only if auto-advance is enabled)
   useEffect(() => {
@@ -533,7 +532,7 @@ export default function GeneratePage() {
 
         <div
           className="relative overflow-hidden"
-          style={{ height: 'calc(100vh - 64px - 160px)' }}
+          style={{ height: 'calc(100vh - 64px - 200px)' }}
         >
           <div
             className={`transition-transform duration-500 ease-in-out ${
@@ -560,7 +559,7 @@ export default function GeneratePage() {
           </div>
 
           <div
-            className={`absolute top-0 left-0 w-full h-[120%] transition-transform duration-500 ease-in-out px-3 ${
+            className={`absolute top-0 left-0 w-full h-[80%] transition-transform duration-500 ease-in-out px-3 ${
               currentStep === 2
                 ? 'translate-x-0'
                 : currentStep > 2
@@ -616,7 +615,7 @@ export default function GeneratePage() {
           </div>
 
           {/* Back Button */}
-          <div className="absolute -bottom-5 left-4">
+          <div className="absolute bottom-4 left-4">
             <button
               onClick={() => {
                 setCurrentStep(1);
