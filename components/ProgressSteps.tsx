@@ -14,15 +14,16 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
       <div className="flex items-center justify-center">
         <div className="flex items-center bg-slate-900 rounded-lg px-8 py-4 border border-slate-800 w-full max-w-4xl">
           {steps.map((step, index) => (
-            <div
-              key={step.id}
-              className="flex items-center flex-1 justify-center"
-            >
+            <div key={step.id} className="flex items-center justify-center">
               {/* Step dot and label */}
               <div className="flex items-center space-x-3">
                 <div
                   className={`w-5 h-5 rounded-full transition-colors duration-200 ${
-                    step.id <= currentStep ? 'bg-[#7552F2]' : 'bg-gray-600'
+                    step.id === currentStep
+                      ? 'bg-[#7552F2]'
+                      : step.id < currentStep
+                      ? 'bg-gray-600'
+                      : 'bg-gray-600'
                   }`}
                 ></div>
                 <span
@@ -40,7 +41,7 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
 
               {/* Connector line */}
               {index < steps.length - 1 && (
-                <div className="w-16 h-0.5 bg-gray-700 mx-6 flex-1"></div>
+                <div className="w-16 h-0.5 bg-gray-700 mx-6"></div>
               )}
             </div>
           ))}

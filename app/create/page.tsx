@@ -184,16 +184,25 @@ export default function GeneratePage() {
     }
   }, [selectedSceneId, scriptData, currentTimestamp, autoAdvanceEnabled]);
 
-  // Cleanup polling on component unmount
+  // Handle URL query parameters for step and timestamp
   useEffect(() => {
-    // Check if there's a timestamp in the URL query parameters
     const urlParams = new URLSearchParams(window.location.search);
     const timestampFromUrl = urlParams.get('timestamp');
+    const stepFromUrl = urlParams.get('step');
 
+    // Set step from URL if provided
+    if (stepFromUrl) {
+      const stepNumber = parseInt(stepFromUrl);
+      if (stepNumber >= 1 && stepNumber <= 3) {
+        setCurrentStep(stepNumber);
+      }
+    }
+
+    // Handle timestamp and polling
     if (timestampFromUrl && !currentTimestamp) {
       setCurrentTimestamp(timestampFromUrl);
-      // If we're on step 2 and have a timestamp, start polling
-      if (currentStep === 2) {
+      // If step=2 is specified, start polling immediately
+      if (stepFromUrl === '2') {
         startPolling(timestampFromUrl);
       }
     }
@@ -201,7 +210,7 @@ export default function GeneratePage() {
     return () => {
       // Any cleanup needed for polling
     };
-  }, [currentStep, currentTimestamp]);
+  }, [currentTimestamp]);
 
   // Reset subtitle when selected scene changes
   useEffect(() => {

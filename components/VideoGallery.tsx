@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Play,
   Download,
@@ -8,6 +9,7 @@ import {
   FileVideo,
   MoreHorizontal,
   Trash2,
+  Edit,
 } from 'lucide-react';
 import VideoPreview from './VideoPreview';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
@@ -27,6 +29,7 @@ interface VideoGalleryProps {
 }
 
 export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
+  const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -139,6 +142,14 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
         console.error('Error deleting video:', error);
       }
     }
+  };
+
+  const handleEdit = (video: Video, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenu(null);
+
+    // Navigate to create page with the video's timestamp and step=2
+    router.push(`/create?timestamp=${video.timestamp}&step=2`);
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -286,6 +297,13 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
                 {/* Dropdown Menu */}
                 {openMenu === video.key && (
                   <div className="video-menu-dropdown absolute top-10 right-2 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 min-w-[120px]">
+                    <button
+                      onClick={(e) => handleEdit(video, e)}
+                      className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Edit
+                    </button>
                     <button
                       onClick={(e) => handleExport(video, e)}
                       className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
