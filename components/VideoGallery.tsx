@@ -251,12 +251,8 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   return (
     <div className="relative flex h-full">
       {/* Main Gallery */}
-      <div
-        className={`glass-effect rounded-2xl p-8 animate-fade-in-up transition-all duration-500 ${
-          selectedVideo ? 'w-3/4' : 'w-full'
-        }`}
-      >
-        <div className="flex flex-wrap gap-7 pb-4">
+      <div className="w-full">
+        <div className="flex flex-wrap gap-7 pb-4 w-3/4">
           {videos.map((video) => (
             <div
               key={video.key}

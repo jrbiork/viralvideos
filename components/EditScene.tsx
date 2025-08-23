@@ -43,7 +43,7 @@ export default function EditScene({
 
       {/* Scene Card */}
       <div
-        className={`bg-slate-800/50 border rounded-xl p-6 flex space-x-6 cursor-pointer transition-all duration-200 mr-4 ${
+        className={`bg-slate-800/50 border rounded-xl p-2 flex space-x-3 cursor-pointer transition-all duration-200 mr-4 ${
           isSelected
             ? 'border-purple-500 shadow-lg shadow-purple-500/25'
             : 'border-slate-700/50 hover:border-slate-600'
@@ -55,8 +55,8 @@ export default function EditScene({
           <div
             className="flex-shrink-0 rounded-xl overflow-hidden"
             style={{
-              width: '11.75rem',
-              height: '20.89rem', // 11.75 * (16/9) = 20.89 for 9:16 aspect ratio
+              width: '7.0rem', // Reduced by 15% more from 8.23rem
+              height: '12.43rem', // Reduced by 15% more from 14.62rem
             }}
           >
             <img
@@ -75,8 +75,8 @@ export default function EditScene({
           <div
             className="flex-shrink-0 rounded-xl flex items-center justify-center"
             style={{
-              width: '11.75rem',
-              height: '20.89rem', // 11.75 * (16/9) = 20.89 for 9:16 aspect ratio
+              width: '7.0rem', // Reduced by 15% more from 8.23rem
+              height: '12.43rem', // Reduced by 15% more from 14.62rem
               backgroundColor: '#374151',
             }}
           >
@@ -90,13 +90,13 @@ export default function EditScene({
         {/* Scene Content */}
         <div className="flex-1 flex flex-col">
           {isEditing ? (
-            <div className="space-y-4">
+            <div className="space-y-1">
               <div className="relative">
-                <div className="absolute top-3 left-3 w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
+                <div className="absolute top-1 left-1 w-4 h-4 bg-purple-600 rounded flex items-center justify-center">
                   <span className="text-white text-xs font-bold">T</span>
                 </div>
                 <textarea
-                  className="w-full h-20 bg-slate-700/50 border border-purple-500/30 rounded-xl p-4 pl-12 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full h-8 bg-slate-700/50 border border-purple-500/30 rounded-xl p-1 pl-8 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   value={editedNarration}
                   onChange={(e) => onEditedNarrationChange(e.target.value)}
                   placeholder="Enter scene narration..."
@@ -147,12 +147,12 @@ export default function EditScene({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-1">
               <div className="relative">
-                <div className="absolute top-3 left-3 w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
+                <div className="absolute top-1 left-1 w-4 h-4 bg-purple-600 rounded flex items-center justify-center">
                   <span className="text-white text-xs font-bold">T</span>
                 </div>
-                <div className="w-full min-h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl p-4 pl-12 text-white">
+                <div className="w-full min-h-28 bg-slate-700/50 border border-purple-500/30 rounded-xl p-1 pl-8 pb-4 text-white my-2">
                   <p className="text-white text-sm leading-relaxed">
                     {scene.narration}
                   </p>

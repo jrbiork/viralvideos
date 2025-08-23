@@ -109,9 +109,7 @@ export default function MainLayout({
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
           <div className="flex flex-col md:flex-row">
-            <div className="w-full md:w-[57.5%] px-8 py-4 order-2 md:order-1 overflow-auto">
-              {children}
-            </div>
+            <div>{children}</div>
             {rightSidebarContent && (
               <div
                 className="flex-1 order-1 md:order-2"

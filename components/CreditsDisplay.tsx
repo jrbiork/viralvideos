@@ -49,9 +49,34 @@ export default function CreditsDisplay({
 
   return (
     <div className={`flex items-center ${currentSize.container} ${className}`}>
-      <span className={`text-white font-medium ${currentSize.text}`}>
+      <span
+        className={`${currentSize.text}`}
+        style={{
+          color: 'white',
+          fontFamily: 'Satoshi',
+          fontSize: '2rem',
+          fontStyle: 'normal',
+          fontWeight: 900,
+        }}
+      >
         {credits?.creditsAvailable || 0}
-        {showLabel && <span className="ml-1">Credits</span>}
+        {showLabel && (
+          <>
+            <div style={{ height: '0.25rem' }}></div>
+            <span
+              style={{
+                color: 'white',
+                fontFamily: 'Satoshi',
+                fontSize: '0.875rem',
+                fontStyle: 'normal',
+                fontWeight: 500,
+                lineHeight: 'normal',
+              }}
+            >
+              Credits remaining
+            </span>
+          </>
+        )}
       </span>
     </div>
   );

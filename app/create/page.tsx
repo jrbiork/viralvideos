@@ -199,10 +199,12 @@ export default function GeneratePage() {
     }
 
     // Handle timestamp and polling
-    if (timestampFromUrl && !currentTimestamp) {
+    if (timestampFromUrl) {
+      // Always set the timestamp from URL
       setCurrentTimestamp(timestampFromUrl);
-      // If step=2 is specified, start polling immediately
-      if (stepFromUrl === '2') {
+
+      // If step=2 is specified and we don't have script data yet, start polling immediately
+      if (stepFromUrl === '2' && !scriptData) {
         startPolling(timestampFromUrl);
       }
     }
@@ -210,7 +212,7 @@ export default function GeneratePage() {
     return () => {
       // Any cleanup needed for polling
     };
-  }, [currentTimestamp]);
+  }, [currentTimestamp, scriptData]);
 
   // Reset subtitle when selected scene changes
   useEffect(() => {
@@ -333,7 +335,7 @@ export default function GeneratePage() {
       {currentStep === 1 && !generatedVideoUrl && !selectedGalleryVideo && (
         <video
           className="rounded-xl shadow-lg border-2 border-gray-600"
-          style={{ width: '90%', height: 'auto' }}
+          style={{ width: '80%', height: 'auto' }}
           controls
           autoPlay
           muted
@@ -473,7 +475,7 @@ export default function GeneratePage() {
                         }
                       }}
                       className="rounded-xl shadow-lg border-2 border-gray-600"
-                      style={{ width: '90%', height: 'auto' }}
+                      style={{ width: '80%', height: 'auto' }}
                       controls
                       preload="auto"
                       src={mediaFiles[videoKey]}

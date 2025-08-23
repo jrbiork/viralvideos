@@ -18,13 +18,11 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
     {
       name: 'Dashboard',
       href: '/create',
-      icon: '🏠',
       isActive: pathname === '/create' || pathname === '/',
     },
     {
       name: 'Videos',
       href: '/videos',
-      icon: '📹',
       isActive: pathname === '/videos',
     },
   ];
@@ -38,15 +36,14 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
             <button
               key={item.name}
               onClick={() => router.push(item.href)}
-              className={`w-full flex items-center space-x-3 p-3 rounded-xl text-left transition-all duration-200 ${
+              className={`w-full flex items-center p-3 rounded-xl text-left transition-all duration-200 ${
                 item.isActive
                   ? 'text-white shadow-lg'
                   : 'text-gray-300 hover:bg-slate-800/50 hover:text-white'
               }`}
               style={item.isActive ? { backgroundColor: '#7552F2' } : {}}
             >
-              <span className="text-lg">{item.icon}</span>
-              <span className="font-medium hidden sm:inline">{item.name}</span>
+              <span className="font-medium">{item.name}</span>
             </button>
           ))}
         </div>
@@ -75,17 +72,29 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
               </div>
             </div>
 
-            <p className="text-gray-400 text-sm mb-3">
+            <p className="text-white mb-3" style={{ fontSize: '0.875rem' }}>
               Need more? Buy more credits
             </p>
 
             <button
               onClick={() => router.push('/pricing')}
-              className="w-full text-white font-semibold py-2 px-4 transition-all duration-200"
+              className="w-full text-white font-semibold py-2 px-4 transition-all duration-200 hover:shadow-lg"
               style={{
                 borderRadius: '0.75rem',
                 background: 'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
                 boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background =
+                  'linear-gradient(90deg, #6B4FCC 0%, #1F8ACC 100%)';
+                e.currentTarget.style.boxShadow =
+                  '0 4px 12px 0 rgba(100, 0, 160, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background =
+                  'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)';
+                e.currentTarget.style.boxShadow =
+                  '0 2px 6px 0 rgba(100, 0, 160, 0.25)';
               }}
             >
               Buy Credits
