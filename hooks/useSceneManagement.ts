@@ -32,7 +32,10 @@ const initialState: SceneManagementState = {
 };
 
 // Reducer function
-function sceneManagementReducer(state: SceneManagementState, action: SceneManagementAction): SceneManagementState {
+function sceneManagementReducer(
+  state: SceneManagementState,
+  action: SceneManagementAction,
+): SceneManagementState {
   switch (action.type) {
     case 'SET_EDITING_SCENE':
       return { ...state, editingScene: action.payload };
@@ -61,7 +64,11 @@ export function useSceneManagement() {
     dispatch({ type: 'SET_EDITED_NARRATION', payload: narration });
   };
 
-  const handleSaveEdit = (sceneId: number, scriptData: any, onScriptUpdate: (updatedScript: any) => void) => {
+  const handleSaveEdit = (
+    sceneId: number,
+    scriptData: any,
+    onScriptUpdate: (updatedScript: any) => void,
+  ) => {
     if (scriptData) {
       const updatedScenes = scriptData.scenes.map((scene: any) =>
         scene.id === sceneId
@@ -154,7 +161,7 @@ export function useSceneManagement() {
     scriptData: any,
     assFiles: { [key: string]: string },
     currentTimestamp: string,
-    sceneIndex: number
+    sceneIndex: number,
   ) => {
     if (!videoRef || videoRef.dataset.initialized) return;
 
@@ -162,7 +169,7 @@ export function useSceneManagement() {
     videoRef.dataset.initialized = 'true';
 
     // Parse subtitles for this scene
-    const assKey = `${currentTimestamp}.scene-${sceneIndex}.ass`;
+    const assKey = `${currentTimestamp}.scene-${scene.id}.ass`;
     const assContent = assFiles[assKey];
     const subtitles = assContent ? parseAssFile(assContent) : [];
 
@@ -241,6 +248,7 @@ export function useSceneManagement() {
 
   return {
     state,
+    dispatch,
     handleEditScene,
     handleSaveEdit,
     handleCancelEdit,

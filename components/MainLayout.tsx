@@ -99,7 +99,7 @@ export default function MainLayout({
       {/* Main Content */}
       <div
         className="flex flex-col lg:flex-row flex-1 overflow-hidden"
-        style={{ height: 'calc(100vh - 64px)' }}
+        style={{ height: 'calc(100vh - 64px)', backgroundColor: '#090526' }}
       >
         {showSidebar && (
           <div
@@ -111,7 +111,7 @@ export default function MainLayout({
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto h-full">
           {/* Progress Steps */}
           {progressSteps && (
             <div className="flex items-center justify-center">
@@ -120,13 +120,13 @@ export default function MainLayout({
           )}
 
           <div
-            className="flex flex-col md:flex-row"
+            className="flex flex-col md:flex-row h-full"
             style={{ backgroundColor: '#090526' }}
           >
-            <div>{children}</div>
+            <div className="h-full">{children}</div>
             {rightSidebarContent && (
               <div
-                className="flex-1 order-1 md:order-2"
+                className="flex-1 order-1 md:order-2 h-full"
                 style={{ backgroundColor: '#090526' }}
               >
                 {rightSidebarContent}

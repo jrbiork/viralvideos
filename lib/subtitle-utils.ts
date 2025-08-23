@@ -108,7 +108,8 @@ export const parseAssFile = (assContent: string) => {
 
 // Parse colored text and convert to JSX elements
 export const parseColoredText = (coloredText: string) => {
-  console.log('Original colored text:', coloredText);
+  console.log('🎨 parseColoredText called with:', coloredText);
+  console.log('🎨 Contains color codes:', coloredText.includes('{\\c&H'));
 
   // Get ASS style information
   const styleInfo = (globalThis as any).assStyleInfo || {
@@ -122,7 +123,7 @@ export const parseColoredText = (coloredText: string) => {
   // Create style object based on ASS styles
   const subtitleStyle = {
     fontFamily: styleInfo.fontName,
-    fontSize: '30px', // Force 30px regardless of ASS file
+    fontSize: '24px', // Reduced by 20% from 30px to 24px
     fontWeight: styleInfo.bold ? 'bold' : 'normal',
     textShadow: '2px 2px 2px rgba(0, 0, 0, 0.9)', // Darker shadow
     textAlign: 'center' as const,
@@ -147,84 +148,71 @@ export const parseColoredText = (coloredText: string) => {
     ];
   }
 
-  const parts = [];
-  let currentIndex = 0;
-  let currentColor = 'white'; // default color
+  // Find the first yellow word and make everything else white
+  const yellowMatch = coloredText.match(/\{\\c&H00FFFF&\}([^{]+)/);
 
-  // Match ASS color codes: {\c&H00FFFF&} or {\c&H00FFFFFF&}
-  const colorRegex = /\{\\c&H([0-9A-Fa-f]{6})&\}/g;
-  let match;
+  if (yellowMatch) {
+    const yellowWord = yellowMatch[1].trim();
+    const allText = coloredText.replace(/\{[^}]*\}/g, '').trim();
 
-  while ((match = colorRegex.exec(coloredText)) !== null) {
-    const colorCode = match[1].toUpperCase();
-    const matchStart = match.index;
-    const matchEnd = matchStart + match[0].length;
+    // Split the text to find where the yellow word appears
+    const words = allText.split(' ');
+    const yellowWordIndex = words.findIndex(
+      (word) => allText.indexOf(yellowWord) === allText.indexOf(word),
+    );
 
-    // Add text before this color code (clean version)
-    if (matchStart > currentIndex) {
-      const beforeTextWithCodes = coloredText.slice(currentIndex, matchStart);
-      const beforeTextClean = beforeTextWithCodes.replace(/\{[^}]*\}/g, '');
-      if (beforeTextClean.trim()) {
+    const parts = [];
+
+    for (let i = 0; i < words.length; i++) {
+      if (i === yellowWordIndex) {
+        // This is the yellow word
         parts.push(
           React.createElement(
             'span',
             {
-              key: `text-${currentIndex}`,
-              className: `text-${
-                currentColor === 'yellow' ? 'yellow-300' : 'white'
-              }`,
-              style: subtitleStyle,
+              key: `yellow-${i}`,
+              style: {
+                ...subtitleStyle,
+                color: '#fbbf24',
+              },
             },
-            beforeTextClean,
+            words[i] + (i < words.length - 1 ? ' ' : ''),
+          ),
+        );
+      } else {
+        // This is a white word
+        parts.push(
+          React.createElement(
+            'span',
+            {
+              key: `white-${i}`,
+              style: {
+                ...subtitleStyle,
+                color: 'white',
+              },
+            },
+            words[i] + (i < words.length - 1 ? ' ' : ''),
           ),
         );
       }
     }
 
-    // Determine color based on the code
-    if (colorCode === '00FFFF') {
-      currentColor = 'yellow';
-    } else if (colorCode === 'FFFFFF') {
-      currentColor = 'white';
-    }
-    // For any other color codes, keep current color
-
-    currentIndex = matchEnd;
-  }
-
-  // Add remaining text after the last color code (clean version)
-  if (currentIndex < coloredText.length) {
-    const remainingTextWithCodes = coloredText.slice(currentIndex);
-    const remainingTextClean = remainingTextWithCodes.replace(/\{[^}]*\}/g, '');
-    if (remainingTextClean.trim()) {
-      parts.push(
-        React.createElement(
-          'span',
-          {
-            key: `text-end-${currentIndex}`,
-            className: `text-${
-              currentColor === 'yellow' ? 'yellow-300' : 'white'
-            }`,
-            style: subtitleStyle,
+    return parts;
+  } else {
+    // No yellow word found, return all text in white
+    const cleanText = coloredText.replace(/\{[^}]*\}/g, '').trim();
+    return [
+      React.createElement(
+        'span',
+        {
+          key: 'default',
+          style: {
+            ...subtitleStyle,
+            color: 'white',
           },
-          remainingTextClean,
-        ),
-      );
-    }
+        },
+        cleanText,
+      ),
+    ];
   }
-
-  console.log('Parsed parts:', parts);
-  return parts.length > 0
-    ? parts
-    : [
-        React.createElement(
-          'span',
-          {
-            key: 'default',
-            className: 'text-white',
-            style: subtitleStyle,
-          },
-          cleanText,
-        ),
-      ];
 };

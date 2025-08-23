@@ -53,7 +53,7 @@ export default function CreditsDisplay({
         className={`${currentSize.text}`}
         style={{
           color: 'white',
-          fontFamily: 'Satoshi',
+
           fontSize: '2rem',
           fontStyle: 'normal',
           fontWeight: 900,
@@ -66,7 +66,6 @@ export default function CreditsDisplay({
             <span
               style={{
                 color: 'white',
-                fontFamily: 'Satoshi',
                 fontSize: '0.875rem',
                 fontStyle: 'normal',
                 fontWeight: 500,

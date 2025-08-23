@@ -118,6 +118,12 @@ export default function GeneratePage() {
   };
 
   // Right sidebar content
+  console.log(
+    'Debug - currentStep:',
+    currentStep,
+    'isLoadingScript:',
+    pollingState.isLoadingScript,
+  );
   const rightSidebarContent = (
     <div className="sticky top-4 p-[50px]">
       {currentStep === 1 &&
@@ -126,7 +132,7 @@ export default function GeneratePage() {
           <div className="flex justify-center">
             <video
               className="rounded-xl shadow-lg border-2 border-gray-600"
-              style={{ width: '80%', height: 'auto' }}
+              style={{ width: '60%', height: 'auto' }}
               controls
               autoPlay
               muted
@@ -136,7 +142,11 @@ export default function GeneratePage() {
           </div>
         )}
 
-      {currentStep === 2 && pollingState.isLoadingScript && <VideoSkeleton />}
+      {currentStep === 2 && pollingState.isLoadingScript && (
+        <div className="flex justify-center items-center h-full">
+          <VideoSkeleton />
+        </div>
+      )}
 
       {currentStep === 2 &&
         !pollingState.isLoadingScript &&
@@ -200,7 +210,7 @@ export default function GeneratePage() {
                           }
                         }}
                         className="rounded-xl shadow-lg border-2 border-gray-600"
-                        style={{ width: '80%', height: 'auto' }}
+                        style={{ width: '60%', height: 'auto' }}
                         controls
                         preload="auto"
                         src={pollingState.mediaFiles[videoKey]}
@@ -335,8 +345,6 @@ export default function GeneratePage() {
                       // Get the image URL for this scene
                       const imageKey = `${pollingState.currentTimestamp}.scene-${index}.jpg`;
                       const imageUrl = pollingState.mediaFiles[imageKey];
-                      console.log('mediaFiles:', pollingState.mediaFiles);
-                      console.log('imageUrl:', imageUrl);
 
                       return (
                         <EditScene

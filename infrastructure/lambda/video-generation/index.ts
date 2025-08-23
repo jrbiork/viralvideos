@@ -238,7 +238,7 @@ async function processVideoGeneration(
       narrationResult.subtitles,
     );
 
-    console.log('🎥 Subtitles generated:', subtitleKeys);
+
 
     // Step 6: Combine video clips, audio, and subtitles
     const finalVideo = await combineVideoAndAudio(
@@ -248,7 +248,6 @@ async function processVideoGeneration(
     );
 
     if (!finalVideo) {
-      console.log('❌ Error: Failed to combine video, audio, and subtitles');
       throw new Error('Failed to combine video, audio, and subtitles');
     }
 
