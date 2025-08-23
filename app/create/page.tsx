@@ -229,16 +229,16 @@ export default function GeneratePage() {
     setStatusMessage('Queuing video generation request...');
 
     try {
-      const timestamp = '1003'; // format(new Date(), 'MMddyyHHmmss');
-      // const data = await authenticatedFetch('/api/generate-video', {
-      //   method: 'POST',
-      //   body: {
-      //     prompt: script,
-      //     timestamp,
-      //     totalDuration: duration,
-      //     sceneCount: duration === 60 || duration === 30 ? 6 : 3,
-      //   },
-      // });
+      const timestamp = '1004'; // format(new Date(), 'MMddyyHHmmss');
+      const data = await authenticatedFetch('/api/generate-video', {
+        method: 'POST',
+        body: {
+          prompt: script,
+          timestamp,
+          totalDuration: duration,
+          sceneCount: duration === 60 || duration === 30 ? 6 : 3,
+        },
+      });
 
       setGenerationStatus('processing');
       setStatusMessage(
@@ -333,15 +333,17 @@ export default function GeneratePage() {
   const rightSidebarContent = (
     <div className="sticky top-4 p-[50px]">
       {currentStep === 1 && !generatedVideoUrl && !selectedGalleryVideo && (
-        <video
-          className="rounded-xl shadow-lg border-2 border-gray-600"
-          style={{ width: '80%', height: 'auto' }}
-          controls
-          autoPlay
-          muted
-          loop
-          src={exampleVideoUrl}
-        />
+        <div className="flex justify-center">
+          <video
+            className="rounded-xl shadow-lg border-2 border-gray-600"
+            style={{ width: '80%', height: 'auto' }}
+            controls
+            autoPlay
+            muted
+            loop
+            src={exampleVideoUrl}
+          />
+        </div>
       )}
 
       {currentStep === 2 && scriptData && scriptData.scenes && (
@@ -363,7 +365,7 @@ export default function GeneratePage() {
                 className={isVisibleByIndex ? 'block' : 'hidden'}
               >
                 {mediaFiles[videoKey] && (
-                  <div className="relative">
+                  <div className="relative flex justify-center">
                     <video
                       ref={(videoRef) => {
                         if (videoRef && !videoRef.dataset.initialized) {
