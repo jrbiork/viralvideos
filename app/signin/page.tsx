@@ -84,7 +84,7 @@ export default function SignIn() {
             </div>
 
             {/* Password Input */}
-            <div className="relative">
+            <div>
               <input
                 type="password"
                 value={password}
@@ -92,14 +92,13 @@ export default function SignIn() {
                 className="w-full px-4 py-3 bg-white text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
                 placeholder="Password"
               />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <a
-                  href="#"
-                  className="text-gray-600 text-sm hover:text-gray-800"
-                >
-                  Forgot Password?
-                </a>
-              </div>
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="text-right">
+              <a href="#" className="text-gray-400 text-sm hover:text-gray-300">
+                Forgot Password?
+              </a>
             </div>
 
             {/* Sign In Button */}
@@ -110,6 +109,19 @@ export default function SignIn() {
             >
               {isLoading ? 'Signing in...' : 'Sign in'}
             </button>
+
+            {/* Sign Up Link */}
+            <div className="text-center">
+              <p className="text-gray-400 text-sm">
+                Don't have an account?{' '}
+                <a
+                  href="#"
+                  className="text-white font-semibold hover:text-gray-300"
+                >
+                  Sign up
+                </a>
+              </p>
+            </div>
 
             {/* Separator */}
             <div className="relative">
@@ -160,19 +172,6 @@ export default function SignIn() {
               )}
               <span>Google</span>
             </button>
-
-            {/* Sign Up Link */}
-            <div className="text-center">
-              <p className="text-gray-400 text-sm">
-                Don't have an account?{' '}
-                <a
-                  href="#"
-                  className="text-white font-semibold hover:text-gray-300"
-                >
-                  Sign up
-                </a>
-              </p>
-            </div>
 
             {/* Legal Text */}
             <div className="text-left">
