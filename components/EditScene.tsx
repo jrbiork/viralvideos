@@ -48,6 +48,7 @@ export default function EditScene({
             ? 'border-purple-500 shadow-lg shadow-purple-500/25'
             : 'border-slate-700/50 hover:border-slate-600'
         }`}
+        style={{ padding: '2rem' }}
         onClick={() => onSelect && onSelect(scene.id)}
       >
         {/* Scene Image */}
