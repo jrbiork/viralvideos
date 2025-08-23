@@ -119,21 +119,19 @@ export default function MainLayout({
             </div>
           )}
 
-          <div className="p-8 overflow-y-auto h-full flex items-center justify-center">
-            <div
-              className="flex flex-col md:flex-row"
-              style={{ backgroundColor: '#090526' }}
-            >
-              <div>{children}</div>
-              {rightSidebarContent && (
-                <div
-                  className="flex-1 order-1 md:order-2"
-                  style={{ backgroundColor: '#090526' }}
-                >
-                  {rightSidebarContent}
-                </div>
-              )}
-            </div>
+          <div
+            className="flex flex-col md:flex-row"
+            style={{ backgroundColor: '#090526' }}
+          >
+            <div>{children}</div>
+            {rightSidebarContent && (
+              <div
+                className="flex-1 order-1 md:order-2"
+                style={{ backgroundColor: '#090526' }}
+              >
+                {rightSidebarContent}
+              </div>
+            )}
           </div>
         </div>
       </div>
