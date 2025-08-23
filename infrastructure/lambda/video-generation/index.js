@@ -87,10 +87,8 @@ async function processVideoGeneration(request, record) {
         const videoEffectsKeys = await (0, videoEffects_1.generateVideoEffects)(scenes, request.userId, timestamp);
         console.log('videoEffectsKeys:', videoEffectsKeys);
         const subtitleKeys = await (0, subtitles_1.generateSubtitles)(scenes, request.userId, timestamp, narrationResult.subtitles);
-        console.log('🎥 Subtitles generated:', subtitleKeys);
         const finalVideo = await (0, videoCombiner_1.combineVideoAndAudio)(request.userId, timestamp, scenes);
         if (!finalVideo) {
-            console.log('❌ Error: Failed to combine video, audio, and subtitles');
             throw new Error('Failed to combine video, audio, and subtitles');
         }
         const videoKey = await (0, s3Uploader_1.uploadToS3)(finalVideo, request.userId, timestamp);

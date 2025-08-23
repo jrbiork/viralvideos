@@ -5,25 +5,17 @@ const client_s3_1 = require("@aws-sdk/client-s3");
 const assUtils_1 = require("./util/assUtils");
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION });
 async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
-    console.log('📝 Generating ASS subtitles with word-timed karaoke...');
     try {
         const subtitleKeys = [];
         let currentTime = 0;
         for (let i = 0; i < scenes.length; i++) {
             const scene = scenes[i];
             let assContent;
-            console.log(`🔍 Looking for subtitle data for scene ${i}, available data:`, subtitleData?.map((d) => ({
-                sceneIndex: d.sceneIndex,
-                wordsCount: d.words.length,
-            })));
             const sceneSubtitleData = subtitleData?.find((data) => data.sceneIndex === i);
             if (sceneSubtitleData && sceneSubtitleData.words.length > 0) {
-                console.log(`🎤 Creating word-timed karaoke subtitle for scene ${i} with ${sceneSubtitleData.words.length} words`);
-                console.log(`🎤 Scene ${i} (ID: ${scene.id}) - currentTime: ${currentTime}, duration: ${scene.duration}`);
                 assContent = (0, assUtils_1.createWordTimedKaraokeASSSubtitle)(sceneSubtitleData.words, 0);
             }
             else {
-                console.log(`📝 Creating simple subtitle for scene ${i} (no word data available)`);
                 assContent = createSimpleASSSubtitle(i + 1, 0, scene.duration, scene.narration);
             }
             const assSubtitleBuffer = Buffer.from(assContent, 'utf-8');
@@ -35,9 +27,7 @@ async function generateSubtitles(scenes, userId, timestamp, subtitleData) {
                 ContentType: 'text/plain',
             }));
             subtitleKeys.push(assSubtitleKey);
-            console.log(`🔍 Scene ${i} completed. Duration: ${scene.duration}s, currentTime before increment: ${currentTime}`);
             currentTime += scene.duration;
-            console.log(`🔍 Scene ${i} completed. currentTime after increment: ${currentTime}`);
         }
         return subtitleKeys;
     }

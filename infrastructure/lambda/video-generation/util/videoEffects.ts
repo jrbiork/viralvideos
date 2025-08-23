@@ -137,6 +137,21 @@ async function generateSceneVideo(
     });
     const imageBuffer = Buffer.from(imageResponse.data);
 
+    // download the watermark.png from viral short parts bucket
+    const watermarkKey = 'watermark.png';
+    const watermarkUrl = await getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+        Key: watermarkKey,
+      }),
+    );
+
+    const watermarkResponse = await axios.get(watermarkUrl, {
+      responseType: 'arraybuffer',
+    });
+    const watermarkBuffer = Buffer.from(watermarkResponse.data);
+
     // Create temporary files
     const tempDir = '/tmp';
     const inputImagePath = path.join(tempDir, `input-${sceneIndex}.jpg`);
@@ -144,6 +159,10 @@ async function generateSceneVideo(
 
     // Write image to temp file
     fs.writeFileSync(inputImagePath, imageBuffer);
+
+    // Write watermark to temp file
+    const watermarkPath = path.join(tempDir, `watermark-${sceneIndex}.png`);
+    fs.writeFileSync(watermarkPath, watermarkBuffer);
 
     const frames = Math.floor(scene.duration * 25);
     const blurInDuration = 0.2;
@@ -200,7 +219,9 @@ async function generateSceneVideo(
       `${config.scale},` +
       `split[b0][b1];` +
       `[b1]boxblur=8:1[bb];` +
-      `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[v]`;
+      `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[main];` +
+      `[1:v]scale=200:-1[watermark];` +
+      `[main][watermark]overlay=(W-w)/2:10[v]`;
 
     const ffmpegPath = resolveFfmpegPath();
 
@@ -209,6 +230,10 @@ async function generateSceneVideo(
       '1',
       '-i',
       inputImagePath,
+      '-loop',
+      '1',
+      '-i',
+      watermarkPath,
       '-filter_complex',
       filterComplex,
       '-map',
@@ -270,6 +295,7 @@ async function generateSceneVideo(
     // Clean up temporary files
     try {
       fs.unlinkSync(inputImagePath);
+      fs.unlinkSync(watermarkPath);
       fs.unlinkSync(outputVideoPath);
     } catch (cleanupError) {
       console.warn(
