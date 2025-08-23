@@ -172,18 +172,18 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
 
   if (loading) {
     return (
-      <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
-        <div className="text-center">
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center animate-fade-in-up">
           <div className="relative mb-6 flex justify-center">
             <div className="relative w-16 h-16">
               <div className="absolute inset-0 w-16 h-16 border-4 border-slate-600 rounded-full animate-pulse-slow"></div>
               <div className="absolute inset-0 w-16 h-16 border-4 border-blue-500 rounded-full animate-spin border-t-transparent"></div>
             </div>
           </div>
-          <h3 className="text-2xl font-bold text-white mb-3">
+          <h3 className="text-2xl font-bold text-gray-700 mb-3">
             Loading Your Videos
           </h3>
-          <p className="text-slate-300 text-lg">
+          <p className="text-gray-500 text-lg">
             Fetching videos from your library...
           </p>
         </div>
@@ -193,15 +193,15 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
 
   if (!isAuthenticated) {
     return (
-      <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
-        <div className="text-center">
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center animate-fade-in-up">
           <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <FileVideo className="w-8 h-8 text-yellow-400" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-3">
+          <h3 className="text-2xl font-bold text-gray-700 mb-3">
             Authentication Required
           </h3>
-          <p className="text-slate-300 text-lg mb-4">
+          <p className="text-gray-500 text-lg mb-4">
             Please sign in to view your video library. Your authentication token
             will be automatically included in all requests.
           </p>
@@ -212,15 +212,15 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
 
   if (error) {
     return (
-      <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
-        <div className="text-center">
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center animate-fade-in-up">
           <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <FileVideo className="w-8 h-8 text-white" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-3">
+          <h3 className="text-2xl font-bold text-gray-700 mb-3">
             Error Loading Videos
           </h3>
-          <p className="text-slate-300 text-lg mb-4">{error}</p>
+          <p className="text-gray-500 text-lg mb-4">{error}</p>
           <button
             onClick={fetchVideos}
             className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
@@ -234,15 +234,15 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
 
   if (videos.length === 0) {
     return (
-      <div className="glass-effect rounded-2xl p-8 animate-fade-in-up">
-        <div className="text-center">
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center animate-fade-in-up">
           <div className="w-16 h-16 bg-slate-600 rounded-full flex items-center justify-center mx-auto mb-6">
             <FileVideo className="w-8 h-8 text-white" />
           </div>
-          <h3 className="text-2xl font-bold text-white mb-3">
+          <h3 className="text-2xl font-bold text-gray-700 mb-3">
             No Videos Found
           </h3>
-          <p className="text-slate-300 text-lg">Start creating now!</p>
+          <p className="text-gray-500 text-lg">Start creating now!</p>
         </div>
       </div>
     );

@@ -65,9 +65,9 @@ export default function VideoCreator({
 
   return (
     <>
-      <div className="max-w-4xl mx-auto flex flex-col justify-start pt-4 lg:pt-8">
+      <div className="mt-2 ml-4">
         {/* Header */}
-        <div className="mb-6 lg:mb-8">
+        <div className="mb-6 lg:mb-8 px-2.5">
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
             Let's create your viral short!
           </h1>
@@ -221,21 +221,27 @@ export default function VideoCreator({
               onClick={() => {
                 const duration = parseInt(selectedDuration.replace('s', ''));
                 onGenerateVideo(script, duration);
-                
+
                 // Show browser notification for testing
-                if ('Notification' in window && Notification.permission === 'granted') {
+                if (
+                  'Notification' in window &&
+                  Notification.permission === 'granted'
+                ) {
                   new Notification('Your video is ready!', {
                     body: 'Your video has been generated successfully!',
                     icon: '/favicon.ico',
-                    badge: '/favicon.ico'
+                    badge: '/favicon.ico',
                   });
-                } else if ('Notification' in window && Notification.permission !== 'denied') {
-                  Notification.requestPermission().then(permission => {
+                } else if (
+                  'Notification' in window &&
+                  Notification.permission !== 'denied'
+                ) {
+                  Notification.requestPermission().then((permission) => {
                     if (permission === 'granted') {
                       new Notification('Your video is ready!', {
                         body: 'Your video has been generated successfully!',
                         icon: '/favicon.ico',
-                        badge: '/favicon.ico'
+                        badge: '/favicon.ico',
                       });
                     }
                   });

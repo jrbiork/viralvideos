@@ -11,6 +11,8 @@ interface MainLayoutProps {
   showSidebar?: boolean;
   showCreditsUpgrade?: boolean;
   rightSidebarContent?: ReactNode;
+  backgroundColor?: string;
+  progressSteps?: ReactNode;
 }
 
 export default function MainLayout({
@@ -18,6 +20,8 @@ export default function MainLayout({
   showSidebar = true,
   showCreditsUpgrade = true,
   rightSidebarContent,
+  backgroundColor = '#0F0A1E',
+  progressSteps,
 }: MainLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -39,7 +43,7 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#0F0A1E' }}>
+    <div className="min-h-screen" style={{ backgroundColor }}>
       {/* Header */}
       <div className="sticky top-0 z-50 w-full" id="navbar-wrapper">
         <nav
@@ -108,7 +112,17 @@ export default function MainLayout({
 
         {/* Main Content Area */}
         <div className="flex-1 overflow-auto">
-          <div className="flex flex-col md:flex-row">
+          {/* Progress Steps */}
+          {progressSteps && (
+            <div className="flex items-center justify-center">
+              {progressSteps}
+            </div>
+          )}
+
+          <div
+            className="flex flex-col md:flex-row"
+            style={{ backgroundColor: '#090526' }}
+          >
             <div>{children}</div>
             {rightSidebarContent && (
               <div

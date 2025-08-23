@@ -10,11 +10,30 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
   ];
 
   return (
-    <div className="mb-6 lg:mb-8">
-      <div className="flex items-center justify-center">
-        <div className="flex items-center bg-slate-900 rounded-lg px-8 py-4 border border-slate-800 w-full max-w-4xl">
+    <div className="mt-4 w-full px-10 pr-24 pt-10">
+      <div
+        className="flex items-center justify-center h-full w-full"
+        style={{ backgroundColor: '#090526' }}
+      >
+        <div
+          className="flex items-center bg-slate-900 rounded-lg border border-slate-800"
+          style={{
+            display: 'flex',
+            width: '100%',
+            height: '3.5rem',
+            padding: '1.0625rem 2rem',
+            alignItems: 'center',
+            justifyContent: 'space-evenly',
+            flexShrink: 0,
+          }}
+        >
           {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center justify-center">
+            <div
+              key={step.id}
+              className={`flex items-center ${
+                index === steps.length - 1 ? 'justify-end' : 'flex-1'
+              }`}
+            >
               {/* Step dot and label */}
               <div className="flex items-center space-x-3">
                 <div
@@ -39,9 +58,12 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
                 </span>
               </div>
 
-              {/* Connector line */}
+              {/* Connector line after each step (except the last one) */}
               {index < steps.length - 1 && (
-                <div className="w-16 h-0.5 bg-gray-700 mx-6"></div>
+                <div
+                  className="flex-1 bg-gray-500 mx-6"
+                  style={{ height: '0.0625rem' }}
+                ></div>
               )}
             </div>
           ))}

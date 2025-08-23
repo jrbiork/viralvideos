@@ -230,15 +230,15 @@ export default function GeneratePage() {
 
     try {
       const timestamp = '1004'; // format(new Date(), 'MMddyyHHmmss');
-      const data = await authenticatedFetch('/api/generate-video', {
-        method: 'POST',
-        body: {
-          prompt: script,
-          timestamp,
-          totalDuration: duration,
-          sceneCount: duration === 60 || duration === 30 ? 6 : 3,
-        },
-      });
+      // const data = await authenticatedFetch('/api/generate-video', {
+      //   method: 'POST',
+      //   body: {
+      //     prompt: script,
+      //     timestamp,
+      //     totalDuration: duration,
+      //     sceneCount: duration === 60 || duration === 30 ? 6 : 3,
+      //   },
+      // });
 
       setGenerationStatus('processing');
       setStatusMessage(
@@ -539,10 +539,10 @@ export default function GeneratePage() {
     <MainLayout
       showCreditsUpgrade={true}
       rightSidebarContent={rightSidebarContent}
+      backgroundColor={currentStep === 1 ? '#090526' : '#0F0A1E'}
+      progressSteps={<ProgressSteps currentStep={currentStep} />}
     >
-      <div className="flex flex-col justify-start pt-4 lg:pt-8 mb-6 lg:mb-8">
-        <ProgressSteps currentStep={currentStep} />
-
+      <div className="flex flex-col justify-start p-4">
         <div
           className="relative overflow-hidden"
           style={{ height: 'calc(100vh - 64px - 200px)' }}
@@ -583,11 +583,13 @@ export default function GeneratePage() {
             {/* Scene Cards Container */}
             <div className="space-y-4 mb-6 max-h-[598px] overflow-y-auto pr-2 px-4">
               {isLoadingScript && (
-                <div className="mt-4 bg-gradient-to-br from-purple-900 via-purple-800 to-blue-900 border border-purple-700 rounded-xl p-3 lg:p-4 shadow-lg">
-                  <div className="text-white text-sm">
-                    <div className="flex items-center space-x-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      <span>Loading video information...</span>
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center space-x-2 mb-2">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                      <span className="text-lg font-medium text-gray-700">
+                        Loading your videos...
+                      </span>
                     </div>
                   </div>
                 </div>
