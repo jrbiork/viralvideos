@@ -19,6 +19,9 @@ import VideoSkeleton from '../../components/VideoSkeleton';
 export default function GeneratePage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
+    null,
+  );
 
   // Custom hooks
   const {
@@ -26,7 +29,11 @@ export default function GeneratePage() {
     generateVideo,
     isAuthenticated,
   } = useVideoGeneration();
-  const { state: pollingState, startPolling } = useScriptPolling();
+  const {
+    state: pollingState,
+    dispatch: pollingDispatch,
+    startPolling,
+  } = useScriptPolling();
   const {
     state: sceneState,
     dispatch: sceneDispatch,
@@ -111,6 +118,9 @@ export default function GeneratePage() {
       return;
     }
 
+    // Set loading state for this scene
+    setRegeneratingSceneId(sceneId);
+
     const queryParams = new URLSearchParams(window.location.search);
 
     try {
@@ -176,9 +186,20 @@ export default function GeneratePage() {
         pollingState.mediaFiles[audioData.audioKey] = audioData.audioUrl;
         pollingState.assFiles[audioData.assKey] = audioData.assFileContent;
 
-        // Force a re-render by updating the polling state
-        // This will cause the video components to re-initialize with new data
-        startPolling(pollingState.currentTimestamp);
+        // Force a re-render of just the video components by updating the polling state
+        // This will cause only the video components to re-initialize with new data
+        const updatedMediaFiles = { ...pollingState.mediaFiles };
+        const updatedAssFiles = { ...pollingState.assFiles };
+
+        // Update the polling state directly to trigger re-render
+        pollingDispatch({
+          type: 'SET_MEDIA_FILES',
+          payload: updatedMediaFiles,
+        });
+        pollingDispatch({
+          type: 'SET_ASS_FILES',
+          payload: updatedAssFiles,
+        });
 
         // Force refresh of the video player to use new subtitles
         // If this scene is currently selected, update the current subtitle immediately
@@ -243,6 +264,21 @@ export default function GeneratePage() {
     } catch (error) {
       console.error('Error regenerating audio:', error);
       alert('Failed to regenerate audio. Please try again.');
+    } finally {
+      // Clear loading state
+      setRegeneratingSceneId(null);
+
+      // Reset the scene back to initial mode (showing edit button)
+      if (sceneState.editingScene === sceneId) {
+        sceneDispatch({
+          type: 'SET_EDITING_SCENE',
+          payload: null,
+        });
+        sceneDispatch({
+          type: 'SET_EDITED_NARRATION',
+          payload: '',
+        });
+      }
     }
   };
 
@@ -530,6 +566,7 @@ export default function GeneratePage() {
                                   sceneState.selectedSceneId === scene.id
                                 }
                                 onSelect={handleSceneSelection}
+                                regeneratingSceneId={regeneratingSceneId}
                               />
 
                               {/* Add scene button after each scene (except the last one) */}

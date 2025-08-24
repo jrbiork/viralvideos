@@ -53,7 +53,10 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
           ))}
 
           {/* Separator */}
-          <div className="my-12 border-t border-slate-700"></div>
+          <div
+            className="border-t border-slate-700"
+            style={{ margin: '50px 0' }}
+          ></div>
 
           {navigationItems.slice(2).map((item) => (
             <button

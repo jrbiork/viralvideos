@@ -33,7 +33,10 @@ const initialState: ScriptPollingState = {
 };
 
 // Reducer function
-function scriptPollingReducer(state: ScriptPollingState, action: ScriptPollingAction): ScriptPollingState {
+function scriptPollingReducer(
+  state: ScriptPollingState,
+  action: ScriptPollingAction,
+): ScriptPollingState {
   switch (action.type) {
     case 'SET_LOADING_SCRIPT':
       return { ...state, isLoadingScript: action.payload };
@@ -157,6 +160,7 @@ export function useScriptPolling() {
 
   return {
     state,
+    dispatch,
     fetchPreviewData,
     startPolling,
     resetPollingState,

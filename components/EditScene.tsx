@@ -18,6 +18,7 @@ interface EditSceneProps {
   imageUrl?: string;
   isSelected?: boolean;
   onSelect?: (sceneId: number) => void;
+  regeneratingSceneId?: number | null;
 }
 
 export default function EditScene({
@@ -33,8 +34,10 @@ export default function EditScene({
   imageUrl,
   isSelected = false,
   onSelect,
+  regeneratingSceneId,
 }: EditSceneProps) {
   const isEditing = editingScene === scene.id;
+  const isRegenerating = regeneratingSceneId === scene.id;
 
   return (
     <div className="mb-4">
@@ -55,6 +58,15 @@ export default function EditScene({
         style={{ padding: '2rem' }}
         onClick={() => onSelect && onSelect(scene.id)}
       >
+        {/* Loading Overlay */}
+        {isRegenerating && (
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center z-50">
+            <div className="flex flex-col items-center space-y-3">
+              <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
+              <span className="text-white text-sm font-medium">Generating Audio...</span>
+            </div>
+          </div>
+        )}
         {/* Delete Button - Top Right Corner */}
         {onDeleteScene && (
           <button
