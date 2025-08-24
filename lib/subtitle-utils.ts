@@ -108,9 +108,6 @@ export const parseAssFile = (assContent: string) => {
 
 // Parse colored text and convert to JSX elements
 export const parseColoredText = (coloredText: string) => {
-  console.log('🎨 parseColoredText called with:', coloredText);
-  console.log('🎨 Contains color codes:', coloredText.includes('{\\c&H'));
-
   // Get ASS style information
   const styleInfo = (globalThis as any).assStyleInfo || {
     fontName: 'DMSerifText',
@@ -131,7 +128,6 @@ export const parseColoredText = (coloredText: string) => {
 
   // First, remove all bracket codes to get clean text
   const cleanText = coloredText.replace(/\{[^}]*\}/g, '');
-  console.log('Clean text after removing all brackets:', cleanText);
 
   // If no color codes found, return plain white text with ASS styles
   if (!coloredText.includes('{\\c&H')) {

@@ -10,7 +10,7 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
   ];
 
   return (
-    <div className="mt-4 w-full px-10 pr-24 pt-10">
+    <div className="mt-4 w-full px-10 pr-24 pt-4 pb-10 mr-16">
       <div
         className="flex items-center justify-center h-full w-full"
         style={{ backgroundColor: '#090526' }}

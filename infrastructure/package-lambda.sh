@@ -10,7 +10,7 @@ mkdir -p dist/jwt-authorizer
 mkdir -p dist/get-user
 mkdir -p dist/upsert-user
 mkdir -p dist/generate-story-breakdown
-mkdir -p dist/generate-audio
+mkdir -p dist/generate-audio-subtitle
 mkdir -p dist/generate-images
 mkdir -p dist/fetch-data-preview
 mkdir -p dist/delete-video
@@ -19,6 +19,7 @@ mkdir -p dist/delete-video
 echo "📋 Copying video-generation files..."
 cp lambda/video-generation/*.js dist/video-generation/
 cp -r lambda/video-generation/util dist/video-generation/
+cp -r lambda/common dist/video-generation/
 cp lambda/package.json dist/video-generation/
 
 echo "📋 Copying full-video-queue files..."
@@ -42,13 +43,15 @@ cp lambda/upsert-user/*.js dist/upsert-user/
 echo "📋 Copying generate-story-breakdown files..."
 cp lambda/generate-story-breakdown/*.js dist/generate-story-breakdown/
 cp -r lambda/generate-story-breakdown/util dist/generate-story-breakdown/
+cp -r lambda/common dist/generate-story-breakdown/
 
-echo "📋 Copying generate-audio files..."
-cp lambda/generate-audio/*.js dist/generate-audio/
-cp -r lambda/generate-audio/util dist/generate-audio/
+echo "📋 Copying generate-audio-subtitle files..."
+cp lambda/generate-audio-subtitle/*.js dist/generate-audio-subtitle/
+cp -r lambda/common dist/generate-audio-subtitle/
 
 echo "📋 Copying generate-images files..."
 cp lambda/generate-images/*.js dist/generate-images/
+cp -r lambda/common dist/generate-images/
 
 echo "📋 Copying fetch-data-preview files..."
 cp lambda/fetch-data-preview/*.js dist/fetch-data-preview/
@@ -97,8 +100,8 @@ cp ../../lambda/package.json .
 npm install --production
 cd ../..
 
-echo "📦 Installing dependencies for generate-audio..."
-cd dist/generate-audio
+echo "📦 Installing dependencies for generate-audio-subtitle..."
+cd dist/generate-audio-subtitle
 cp ../../lambda/package.json .
 npm install --production
 cd ../..

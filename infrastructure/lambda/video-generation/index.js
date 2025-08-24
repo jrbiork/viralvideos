@@ -4,12 +4,12 @@ exports.handler = void 0;
 const client_sqs_1 = require("@aws-sdk/client-sqs");
 const image_1 = require("./image");
 const narration_1 = require("./narration");
-const subtitles_1 = require("./subtitles");
+const subtitles_1 = require("./common/subtitles");
 const videoCombiner_1 = require("./videoCombiner");
 const s3Uploader_1 = require("./util/s3Uploader");
 const imageUtils_1 = require("./util/imageUtils");
 const videoEffects_1 = require("./util/videoEffects");
-const script_1 = require("./script");
+const script_1 = require("./common/script");
 const sqs = new client_sqs_1.SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 const handler = async (event) => {
     return await handleSQSEvent(event);

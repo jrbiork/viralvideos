@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
 export async function POST(request: NextRequest) {
-  console.log('🚀 generate-audio API route called');
+  console.log('🚀 generate-audio-subtitle API route called');
 
   try {
     // Verify session
@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       cognitoToken.length,
     );
 
-    const { scenes, instructions } = await request.json();
+    const { scenes, instructions, timestamp } = await request.json();
 
     if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
       return NextResponse.json(
@@ -68,7 +68,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('🔧 Environment check (generate-audio):', {
+    if (!timestamp) {
+      return NextResponse.json(
+        { error: 'timestamp is required' },
+        { status: 400 },
+      );
+    }
+
+    console.log('🔧 Environment check (generate-audio-subtitle):', {
       hasApiGatewayUrl: !!process.env.API_GATEWAY_URL,
       apiGatewayUrl: process.env.API_GATEWAY_URL,
     });
@@ -80,22 +87,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare Lambda payload
+    // Prepare Lambda payload with userId and timestamp from request
     const lambdaPayload = {
       scenes,
-      instructions: instructions || 'Speak in a cheerful and positive tone',
+      userId: userInfo.id,
+      timestamp,
+      voiceToneInstruction: instructions,
     };
 
     // Call the API Gateway endpoint
-    const apiGatewayUrl = `${process.env.API_GATEWAY_URL}generate-audio`;
-    console.log('🔗 Calling API Gateway (generate-audio):', apiGatewayUrl);
-    console.log('🔗 Full URL breakdown (generate-audio):', {
+    const apiGatewayUrl = `${process.env.API_GATEWAY_URL}generate-audio-subtitle`;
+    console.log(
+      '🔗 Calling API Gateway (generate-audio-subtitle):',
+      apiGatewayUrl,
+    );
+    console.log('🔗 Full URL breakdown (generate-audio-subtitle):', {
       baseUrl: process.env.API_GATEWAY_URL,
-      endpoint: 'generate-audio',
+      endpoint: 'generate-audio-subtitle',
       fullUrl: apiGatewayUrl,
     });
     console.log(
-      '🔑 Using Cognito token length (generate-audio):',
+      '🔑 Using Cognito token length (generate-audio-subtitle):',
       cognitoToken.length,
     );
 
@@ -140,12 +152,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      audioKeys: responsePayload.audioKeys,
-      subtitles: responsePayload.subtitles,
-      message: responsePayload.message,
+      data: responsePayload.data,
+      message:
+        responsePayload.message || 'Audio and subtitles generated successfully',
     });
   } catch (error) {
-    console.error('💥 Error in audio generation:', error);
+    console.error('💥 Error in audio-subtitle generation:', error);
     console.error(
       'Error stack:',
       error instanceof Error ? error.stack : 'No stack trace',
@@ -157,7 +169,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: 'Failed to generate audio narration',
+        error: 'Failed to generate audio and subtitles',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 },

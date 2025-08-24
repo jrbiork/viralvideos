@@ -19,7 +19,9 @@ export type SceneManagementAction =
   | { type: 'SET_AUTO_ADVANCE_ENABLED'; payload: boolean }
   | { type: 'SET_CURRENT_SUBTITLE'; payload: string }
   | { type: 'SET_EXPORTING'; payload: boolean }
-  | { type: 'RESET_SCENE_STATE' };
+  | { type: 'RESET_SCENE_STATE' }
+  | { type: 'DELETE_SCENE'; payload: number }
+  | { type: 'ADD_SCENE'; payload: { position: number; scene: any } };
 
 // Initial state
 const initialState: SceneManagementState = {
@@ -51,6 +53,15 @@ function sceneManagementReducer(
       return { ...state, isExporting: action.payload };
     case 'RESET_SCENE_STATE':
       return initialState;
+    case 'DELETE_SCENE':
+      // Reset selected scene if it's being deleted
+      if (state.selectedSceneId === action.payload) {
+        return { ...state, selectedSceneId: null };
+      }
+      return state;
+    case 'ADD_SCENE':
+      // Reset selected scene when adding new scenes
+      return { ...state, selectedSceneId: null };
     default:
       return state;
   }
@@ -89,6 +100,22 @@ export function useSceneManagement() {
 
   const handleSceneSelection = (sceneId: number) => {
     dispatch({ type: 'SET_SELECTED_SCENE_ID', payload: sceneId });
+  };
+
+  const handleDeleteScene = (sceneId: number) => {
+    dispatch({ type: 'DELETE_SCENE', payload: sceneId });
+  };
+
+  const handleAddScene = (position: number) => {
+    // Create a new scene object
+    const newScene = {
+      id: Date.now(), // Use timestamp as temporary ID
+      description: `New scene at position ${position + 1}`,
+      narration: 'Enter scene narration here...',
+      duration: 5, // Default duration
+    };
+
+    dispatch({ type: 'ADD_SCENE', payload: { position, scene: newScene } });
   };
 
   const handleExportVideo = () => {
@@ -168,16 +195,36 @@ export function useSceneManagement() {
     // Mark as initialized to prevent multiple event listener setup
     videoRef.dataset.initialized = 'true';
 
-    // Parse subtitles for this scene
-    const assKey = `${currentTimestamp}.scene-${scene.id}.ass`;
-    const assContent = assFiles[assKey];
-    const subtitles = assContent ? parseAssFile(assContent) : [];
+    // Store the assFiles reference on the video element for dynamic updates
+    videoRef.dataset.assFiles = JSON.stringify(assFiles);
+    videoRef.dataset.currentTimestamp = currentTimestamp;
+    videoRef.dataset.sceneId = scene.id.toString();
 
     const updateSubtitle = () => {
+      // Get the latest assFiles from the video element
+      const latestAssFiles = JSON.parse(videoRef.dataset.assFiles || '{}');
+      const assKey = `${currentTimestamp}.scene-${scene.id}.ass`;
+      const assContent = latestAssFiles[assKey];
+      const subtitles = assContent ? parseAssFile(assContent) : [];
+
+      console.log('🔍 updateSubtitle - assKey:', assKey);
+      console.log(
+        '🔍 updateSubtitle - assContent length:',
+        assContent ? assContent.length : 0,
+      );
+      console.log('🔍 updateSubtitle - subtitles count:', subtitles.length);
+
       const currentTime = videoRef.currentTime;
       const currentSub = subtitles.find(
         (sub) => currentTime >= sub.start && currentTime <= sub.end,
       );
+
+      console.log('🔍 updateSubtitle - currentTime:', currentTime);
+      console.log(
+        '🔍 updateSubtitle - currentSub:',
+        currentSub ? currentSub.coloredText : 'none',
+      );
+
       dispatch({
         type: 'SET_CURRENT_SUBTITLE',
         payload: currentSub ? currentSub.coloredText : '',
@@ -253,6 +300,8 @@ export function useSceneManagement() {
     handleSaveEdit,
     handleCancelEdit,
     handleSceneSelection,
+    handleDeleteScene,
+    handleAddScene,
     handleExportVideo,
     resetSceneState,
     autoSelectFirstScene,

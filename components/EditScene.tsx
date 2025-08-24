@@ -13,6 +13,8 @@ interface EditSceneProps {
   onSaveEdit: (sceneId: number) => void;
   onCancelEdit: () => void;
   onEditedNarrationChange: (value: string) => void;
+  onDeleteScene?: (sceneId: number) => void;
+  onRegenerateAudio?: (sceneId: number) => void;
   imageUrl?: string;
   isSelected?: boolean;
   onSelect?: (sceneId: number) => void;
@@ -26,6 +28,8 @@ export default function EditScene({
   onSaveEdit,
   onCancelEdit,
   onEditedNarrationChange,
+  onDeleteScene,
+  onRegenerateAudio,
   imageUrl,
   isSelected = false,
   onSelect,
@@ -43,7 +47,7 @@ export default function EditScene({
 
       {/* Scene Card */}
       <div
-        className={`bg-slate-800/50 border rounded-xl p-2 flex space-x-3 cursor-pointer transition-all duration-200 mr-4 ${
+        className={`bg-slate-800/50 border rounded-xl p-2 flex space-x-3 cursor-pointer transition-all duration-200 mr-4 relative ${
           isSelected
             ? 'border-purple-500 shadow-lg shadow-purple-500/25'
             : 'border-slate-700/50 hover:border-slate-600'
@@ -51,6 +55,33 @@ export default function EditScene({
         style={{ padding: '2rem' }}
         onClick={() => onSelect && onSelect(scene.id)}
       >
+        {/* Delete Button - Top Right Corner */}
+        {onDeleteScene && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm('Are you sure you want to delete this scene?')) {
+                onDeleteScene(scene.id);
+              }
+            }}
+            className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors duration-200 z-10"
+            title="Delete scene"
+          >
+            <svg
+              className="w-4 h-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        )}
         {/* Scene Image */}
         {imageUrl ? (
           <div
@@ -92,12 +123,12 @@ export default function EditScene({
         <div className="flex-1 flex flex-col">
           {isEditing ? (
             <div className="space-y-1">
-              <div className="relative">
-                <div className="absolute top-1 left-1 w-4 h-4 bg-purple-600 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">T</span>
+              <div className="relative mb-2">
+                <div className="absolute top-3 left-3 w-6 h-6 bg-purple-600 rounded flex items-center justify-center m-2">
+                  <span className="text-white text-sm font-bold">T</span>
                 </div>
                 <textarea
-                  className="w-full h-8 bg-slate-700/50 border border-purple-500/30 rounded-xl p-1 pl-8 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl p-4 pl-16 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                   value={editedNarration}
                   onChange={(e) => onEditedNarrationChange(e.target.value)}
                   placeholder="Enter scene narration..."
@@ -105,8 +136,11 @@ export default function EditScene({
               </div>
               <div className="flex justify-end space-x-3">
                 <button
-                  onClick={() => onSaveEdit(scene.id)}
-                  className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center space-x-2"
+                  onClick={() =>
+                    onRegenerateAudio && onRegenerateAudio(scene.id)
+                  }
+                  className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                  title="Generate audio and captions"
                 >
                   <svg
                     className="w-4 h-4"
@@ -118,10 +152,10 @@ export default function EditScene({
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M5 13l4 4L19 7"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                     />
                   </svg>
-                  <span>Save</span>
+                  <span>Generate Audio/Caption</span>
                 </button>
                 <button
                   onClick={onCancelEdit}
@@ -150,8 +184,8 @@ export default function EditScene({
           ) : (
             <div className="space-y-1">
               <div className="relative">
-                <div className="absolute top-1 left-1 w-4 h-4 bg-purple-600 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">T</span>
+                <div className="absolute top-3 left-3 w-6 h-6 bg-purple-600 rounded flex items-center justify-center m-2">
+                  <span className="text-white text-sm font-bold">T</span>
                 </div>
                 <div className="w-full min-h-28 bg-slate-700/50 border border-purple-500/30 rounded-xl p-1 pl-8 pb-4 text-white my-2">
                   <p className="text-white text-sm leading-relaxed">

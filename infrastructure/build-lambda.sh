@@ -44,9 +44,9 @@ cd lambda/generate-story-breakdown
 npm run build
 cd ../..
 
-# Build generate-audio Lambda
-echo "📦 Building generate-audio..."
-cd lambda/generate-audio
+# Build generate-audio-subtitle Lambda
+echo "📦 Building generate-audio-subtitle..."
+cd lambda/generate-audio-subtitle
 npm run build
 cd ../..
 

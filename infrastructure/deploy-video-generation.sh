@@ -34,6 +34,7 @@ mkdir -p dist/video-generation
 echo "📋 Copying video-generation files..."
 cp lambda/video-generation/*.js dist/video-generation/
 cp -r lambda/video-generation/util dist/video-generation/
+cp -r lambda/common dist/video-generation/
 cp lambda/package.json dist/video-generation/
 
 # Install production dependencies

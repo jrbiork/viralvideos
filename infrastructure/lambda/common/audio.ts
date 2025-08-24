@@ -136,14 +136,14 @@ export async function generateNarration(
       }
 
       // Save complete subtitle data to S3 (including fullText)
-      const subtitleKey = `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`;
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: subtitleKey,
-          Body: JSON.stringify(subtitleData),
-        }),
-      );
+      // const subtitleKey = `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`;
+      // await s3.send(
+      //   new PutObjectCommand({
+      //     Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+      //     Key: subtitleKey,
+      //     Body: JSON.stringify(subtitleData),
+      //   }),
+      // );
 
       return {
         audioKey,

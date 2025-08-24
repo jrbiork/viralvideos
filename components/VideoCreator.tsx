@@ -26,7 +26,7 @@ export default function VideoCreator({
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState<
     '15s' | '30s' | '60s'
-  >('30s');
+  >('15s');
 
   // Word count calculation
   const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0;

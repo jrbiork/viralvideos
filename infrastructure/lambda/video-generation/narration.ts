@@ -1,8 +1,10 @@
 // Re-export functions and interfaces from split files for backward compatibility
-export { generateStoryBreakdown, Scene } from './script';
+export { generateStoryBreakdown } from '../common/script';
+export { Scene } from '../common/script';
 export {
   generateNarration,
   SubtitleWord,
   SubtitleData,
   NarrationResult,
-} from './audio';
+} from '../common/audio';
+export { generateSubtitles } from '../common/subtitles';

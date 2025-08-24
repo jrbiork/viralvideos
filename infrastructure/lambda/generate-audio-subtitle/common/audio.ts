@@ -40,28 +40,19 @@ export async function generateNarration(
     '🎤 Generating narration from scenes with word-level timestamps...',
   );
   try {
-    const audioKeys: string[] = [];
-    const subtitles: SubtitleData[] = [];
-
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
-      console.log(`🎤 Generating narration for scene ${i}:`, scene.narration);
+    // Process all scenes in parallel
+    const scenePromises = scenes.map(async (scene, i) => {
+      console.log(`🎤 Generating narration for scene ${i}:`, scene);
 
       // Generate speech with standard format
       const response = await openai.audio.speech.create({
-        model: 'gpt-4o-mini-tts',
-        voice: 'sage',
-        instructions: instructions,
+        model: 'tts-1',
+        voice: 'fable',
+        instructions: `Speak clearly and keep duration in ${scene.duration}s hard cap. Avoid long pauses.`,
         input: scene.narration,
       });
 
       const originalAudioBuffer = Buffer.from(await response.arrayBuffer());
-
-      // Adjust audio duration to match target duration
-      const adjustedAudioBuffer = await adjustAudioDuration(
-        originalAudioBuffer,
-        scene.duration,
-      );
 
       // Save to S3 with timestamp prefix using scene.id
       const audioKey = `${userId}/${timestamp}.scene-${scene.id}.mp3`;
@@ -70,12 +61,10 @@ export async function generateNarration(
         new PutObjectCommand({
           Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
           Key: audioKey,
-          Body: adjustedAudioBuffer,
+          Body: originalAudioBuffer,
           ContentType: 'audio/mpeg',
         }),
       );
-
-      audioKeys.push(audioKey);
 
       // Get word-level timestamps using transcription
 
@@ -84,8 +73,11 @@ export async function generateNarration(
       const os = require('os');
       const path = require('path');
 
-      const tempAudioPath = path.join(os.tmpdir(), `scene-${i}.mp3`);
-      fs.writeFileSync(tempAudioPath, adjustedAudioBuffer);
+      const tempAudioPath = path.join(
+        os.tmpdir(),
+        `scene-${i}-${timestamp}.mp3`,
+      );
+      fs.writeFileSync(tempAudioPath, originalAudioBuffer);
 
       // Create file object for OpenAI API
       const audioFile = fs.createReadStream(tempAudioPath);
@@ -97,6 +89,16 @@ export async function generateNarration(
         timestamp_granularities: ['word'],
         language: 'en',
       });
+
+      // Save transcription to S3
+      const transcriptionKey = `${userId}/${timestamp}.scene-${scene.id}.transcription.json`;
+      await s3.send(
+        new PutObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: transcriptionKey,
+          Body: JSON.stringify(transcription),
+        }),
+      );
 
       // Clean up temporary file
       fs.unlinkSync(tempAudioPath);
@@ -114,8 +116,10 @@ export async function generateNarration(
           start: word.start,
           end: word.end,
         }));
+        console.log(`🔍 Scene ${i}: Word timestamps extracted successfully`);
         // Word timestamps extracted successfully
       } else {
+        console.log(`🔍 Scene ${i}: No word timestamps found, using fallback`);
         // Using fallback word timestamps
         // Fallback: create a simple word-level breakdown without precise timestamps
         const words = scene.narration
@@ -131,9 +135,32 @@ export async function generateNarration(
         }));
       }
 
-      subtitles.push(subtitleData);
-    }
+      // Save complete subtitle data to S3 (including fullText)
+      // const subtitleKey = `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`;
+      // await s3.send(
+      //   new PutObjectCommand({
+      //     Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+      //     Key: subtitleKey,
+      //     Body: JSON.stringify(subtitleData),
+      //   }),
+      // );
 
+      return {
+        audioKey,
+        subtitleData,
+      };
+    });
+
+    // Wait for all scenes to complete
+    const results = await Promise.all(scenePromises);
+
+    // Extract results in the correct order
+    const audioKeys = results.map((result) => result.audioKey);
+    const subtitles = results.map((result) => result.subtitleData);
+
+    console.log(
+      `✅ Generated narration for ${results.length} scenes in parallel`,
+    );
     return { audioKeys, subtitles };
   } catch (error) {
     console.error('❌ Error in generateNarration:', error);

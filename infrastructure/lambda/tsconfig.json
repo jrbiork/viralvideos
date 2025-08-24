@@ -28,7 +28,7 @@
     "fetch-videos/**/*.ts",
     "jwt-authorizer/**/*.ts",
     "generate-story-breakdown/**/*.ts",
-    "generate-audio/**/*.ts",
+    "generate-audio-subtitle/**/*.ts",
     "generate-images/**/*.ts",
     "fetch-data-preview/**/*.ts"
   ],

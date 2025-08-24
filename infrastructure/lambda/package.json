@@ -5,16 +5,16 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "build:video-generation": "cd video-generation && tsc",
+    "build:video-generation": "cp -r common video-generation/ && cd video-generation && tsc",
     "build:full-video-queue": "cd full-video-queue && tsc",
     "build:fetch-videos": "cd fetch-videos && tsc",
     "build:jwt-authorizer": "cd jwt-authorizer && tsc",
     "build:generate-story-breakdown": "cd generate-story-breakdown && tsc",
-    "build:generate-audio": "cd generate-audio && tsc",
+    "build:generate-audio-subtitle": "cp -r common generate-audio-subtitle/ && cd generate-audio-subtitle && tsc",
     "build:generate-images": "cd generate-images && tsc",
     "build:fetch-data-preview": "cd fetch-data-preview && tsc",
     "build:delete-video": "cd delete-video && tsc",
-    "build:all": "npm run build:video-generation && npm run build:full-video-queue && npm run build:fetch-videos && npm run build:jwt-authorizer && npm run build:generate-story-breakdown && npm run build:generate-audio && npm run build:generate-images && npm run build:fetch-data-preview && npm run build:delete-video",
+    "build:all": "npm run build:video-generation && npm run build:full-video-queue && npm run build:fetch-videos && npm run build:jwt-authorizer && npm run build:generate-story-breakdown && npm run build:generate-audio-subtitle && npm run build:generate-images && npm run build:fetch-data-preview && npm run build:delete-video",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

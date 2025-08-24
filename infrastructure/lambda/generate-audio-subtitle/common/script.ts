@@ -1,8 +1,11 @@
 import OpenAI from 'openai';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import {
   estimateTextDuration,
   adjustTextForDuration,
 } from './util/narrationHelper';
+
+const s3 = new S3Client({ region: process.env.AWS_REGION });
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -13,11 +16,21 @@ export interface Scene {
   id: number;
 }
 
+// Utility function to add IDs to scenes
+export function addSceneIds(scenes: any[]): Scene[] {
+  return scenes.map((scene: any, idx: number) => ({
+    ...scene,
+    id: idx,
+  }));
+}
+
 export async function generateStoryBreakdown(
   prompt: string,
   sceneCount: number,
   sceneDuration: number,
   totalDuration: number,
+  userId: string,
+  timestamp: string,
 ): Promise<{ scenes: Scene[]; voiceToneInstruction: string }> {
   console.log('🤖 Calling OpenAI for story breakdown...');
   console.log(
@@ -26,32 +39,28 @@ export async function generateStoryBreakdown(
 
   console.log(`⏱️  Each scene will be ${sceneDuration} seconds long`);
 
+  console.log('prompt:', prompt);
+
   try {
     // Guidance for narration pacing and safety caps
-    const wordsPerSecond = 2.2; // ~132 wpm, natural VO pace
-    const wordsPerMinute = Math.round(wordsPerSecond * 60);
-    const maxWordsPerScene = Math.max(
-      8,
-      Math.round(sceneDuration * wordsPerSecond),
-    );
-    const maxTotalWords = Math.round(totalDuration * wordsPerSecond);
+    const WPS = 2.2;
+
+    const maxWordsPerScene = Math.floor(sceneDuration * WPS);
+    console.log('maxWordsPerScene:', maxWordsPerScene);
+    const maxTotalWords = Math.floor(totalDuration * WPS);
     const response = await openai.chat.completions.create({
       model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
           content: `You are a short-form video scriptwriter for TikTok/Reels/Shorts.
-Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
-
-Strict rules:
-- Output **JSON only** matching the provided schema; no prose, no backticks.
-- Language: **use the same language as the user's input**.
-- **Scene 1 must include a strong curiosity hook** in the narration (one sentence).
-- Each **description**: what viewers see (subject, action, framing/camera, motion, lighting). No dialogue.
-- Each **narration**: spoken VO, conversational, **no hashtags, emojis, or scene labels**.
-- **Timing**: narration per scene ≤ ${maxWordsPerScene} words; total narration must fit ${totalDuration}s at ~${wordsPerMinute} wpm.
-- Tone: energetic and clear; keep actions **safe and realistic**; brand-neutral (no logos, trademarks, or celebrity names).
-- End with a satisfying visual beat (rest, reveal, or resolution), not a hard sales CTA unless implied by the idea.
+                Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
+                Strict rules:
+                - Narration per scene should have ${maxWordsPerScene} words (hard cap) and total words should be less than ${maxTotalWords}.
+                - Language: **use the same language as the user's input**.
+                - Each **description**: what viewers see. No dialogue. Keep it short and concise.
+                - Avoid filler and long pauses: max 1 comma per sentence, no parentheses, no ellipses.
+                - Prefer active voice and simple clauses.
   `,
         },
         {
@@ -101,34 +110,40 @@ Strict rules:
       parsedResponse.voiceToneInstruction ||
       'Speak in a cheerful and positive tone';
 
-    // Post-process scenes to ensure text fits duration
-    const adjustedScenes = scenes.map((scene: Scene, idx: number) => {
-      const adjustedNarration = adjustTextForDuration(
-        scene.narration,
-        scene.duration,
-      );
-      const originalDuration = estimateTextDuration(scene.narration);
-      const adjustedDuration = estimateTextDuration(adjustedNarration);
-
-      console.log(`📝 Scene ${scene.description.substring(0, 50)}...`);
-      console.log(
-        `   Original: ${originalDuration.toFixed(
-          1,
-        )}s, Adjusted: ${adjustedDuration.toFixed(1)}s, Target: ${
-          scene.duration
-        }s`,
-      );
-
-      return {
-        ...scene,
-        narration: adjustedNarration,
-        id: idx,
-      };
-    });
+    // Add scene IDs to each scene
+    const scenesWithIds = addSceneIds(scenes);
 
     console.log('✅ Story breakdown parsed and adjusted successfully');
     console.log('🎤 Voice tone instruction:', voiceToneInstruction);
-    return { scenes: adjustedScenes, voiceToneInstruction };
+
+    // Save script response to S3
+    const scriptKey = `${userId}/${timestamp}.script.txt`;
+    const scriptContent = JSON.stringify(
+      {
+        prompt,
+        sceneCount,
+        sceneDuration,
+        totalDuration,
+        scenes: scenesWithIds,
+        voiceToneInstruction,
+        timestamp,
+      },
+      null,
+      2,
+    );
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+        Key: scriptKey,
+        Body: scriptContent,
+        ContentType: 'text/plain',
+      }),
+    );
+
+    console.log(`💾 Script saved to S3: ${scriptKey}`);
+
+    return { scenes: scenesWithIds, voiceToneInstruction };
   } catch (error) {
     console.error('❌ Error in generateStoryBreakdown:', error);
     throw error;

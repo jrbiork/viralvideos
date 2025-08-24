@@ -309,14 +309,14 @@ export class ViralVideosStack extends cdk.Stack {
     );
 
     // Lambda function for generating audio narration
-    const generateAudioLambda = new lambda.Function(
+    const generateAudioSubtitleLambda = new lambda.Function(
       this,
-      'GenerateAudioLambda',
+      'GenerateAudioSubtitleLambda',
       {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: 'index.handler',
         code: lambda.Code.fromAsset(
-          path.join(__dirname, '../dist/generate-audio'),
+          path.join(__dirname, '../dist/generate-audio-subtitle'),
         ),
         role: lambdaRole,
         timeout: cdk.Duration.minutes(5),
@@ -457,9 +457,9 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    // Lambda integration for generating audio narration
-    const generateAudioIntegration = new apigateway.LambdaIntegration(
-      generateAudioLambda,
+    // Lambda integration for generating audio and subtitles
+    const generateAudioSubtitleIntegration = new apigateway.LambdaIntegration(
+      generateAudioSubtitleLambda,
       {
         requestTemplates: {
           'application/json': JSON.stringify({
@@ -508,10 +508,16 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    const generateAudioResource = api.root.addResource('generate-audio');
-    generateAudioResource.addMethod('POST', generateAudioIntegration, {
-      authorizer: jwtAuthorizer,
-    });
+    const generateAudioSubtitleResource = api.root.addResource(
+      'generate-audio-subtitle',
+    );
+    generateAudioSubtitleResource.addMethod(
+      'POST',
+      generateAudioSubtitleIntegration,
+      {
+        authorizer: jwtAuthorizer,
+      },
+    );
 
     const generateImagesResource = api.root.addResource('generate-images');
     generateImagesResource.addMethod('POST', generateImagesIntegration, {

@@ -25,6 +25,11 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
       href: '/videos',
       isActive: pathname === '/videos',
     },
+    {
+      name: 'Settings',
+      href: '/settings',
+      isActive: pathname === '/settings',
+    },
   ];
 
   return (
@@ -32,7 +37,25 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
       {/* Navigation Links */}
       <div className="mb-8">
         <div className="space-y-2">
-          {navigationItems.map((item) => (
+          {navigationItems.slice(0, 2).map((item) => (
+            <button
+              key={item.name}
+              onClick={() => router.push(item.href)}
+              className={`w-full flex items-center p-3 rounded-xl text-left transition-all duration-200 ${
+                item.isActive
+                  ? 'text-white shadow-lg'
+                  : 'text-gray-300 hover:bg-slate-800/50 hover:text-white'
+              }`}
+              style={item.isActive ? { backgroundColor: '#7552F2' } : {}}
+            >
+              <span className="font-medium">{item.name}</span>
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div className="my-12 border-t border-slate-700"></div>
+
+          {navigationItems.slice(2).map((item) => (
             <button
               key={item.name}
               onClick={() => router.push(item.href)}

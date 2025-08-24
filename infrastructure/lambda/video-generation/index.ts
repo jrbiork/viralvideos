@@ -9,13 +9,13 @@ import {
 import { generateVideoClip } from './video';
 import { generateImage } from './image';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
-import { generateSubtitles } from './subtitles';
+import { generateSubtitles } from './common/subtitles';
 import { combineVideoAndAudio } from './videoCombiner';
 import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { getImageUrls } from './util/imageUtils';
 import { generateVideoEffects } from './util/videoEffects';
 import { fetchAudioFilesForTimestamp } from './util/audioUtils';
-import { addSceneIds } from './script';
+import { addSceneIds } from './common/script';
 
 interface VideoGenerationRequest {
   prompt: string;
@@ -115,7 +115,7 @@ async function processVideoGeneration(
       console.log('🎨 Generating images for each scene in parallel...');
 
       try {
-        const imagePromises = scenes.map(async (scene, i) => {
+        const imagePromises = scenes.map(async (scene: any, i: number) => {
           console.log(
             `🎨 Generating image for scene ${i + 1}:`,
             scene.description,
