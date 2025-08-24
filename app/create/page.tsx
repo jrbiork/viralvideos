@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import VideoPreview from '../../components/VideoPreview';
 import MainLayout from '../../components/MainLayout';
@@ -22,6 +22,13 @@ export default function GeneratePage() {
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
+  const autoPlayRef = useRef<{
+    selectedSceneId: number | null;
+    timestamp: string;
+  }>({
+    selectedSceneId: null,
+    timestamp: '',
+  });
 
   // Custom hooks
   const {
@@ -52,20 +59,88 @@ export default function GeneratePage() {
   // Example video URL
   const exampleVideoUrl = '/assets/example.mp4';
 
+  // Create scenes from subtitleFiles data
+  const createScenesFromSubtitleFiles = () => {
+    if (
+      !pollingState.subtitleFiles ||
+      pollingState.subtitleFiles.length === 0
+    ) {
+      return [];
+    }
+
+    return pollingState.subtitleFiles.map(
+      (subtitleFile: any, index: number) => {
+        // Extract the subtitle content from the object
+        const fileName = Object.keys(subtitleFile)[0];
+        const narration = subtitleFile[fileName];
+
+        return {
+          id: index,
+          description: `Scene ${index + 1}`,
+          narration: narration,
+          duration: 5, // Default duration
+        };
+      },
+    );
+  };
+
+  const scenes = createScenesFromSubtitleFiles();
+
+  // Debug video URLs
+  useEffect(() => {
+    if (scenes.length > 0 && pollingState.mediaFiles) {
+      console.log(
+        '🎬 Available video files:',
+        Object.keys(pollingState.mediaFiles).filter((key) =>
+          key.includes('.mp4'),
+        ),
+      );
+      scenes.forEach((scene, index) => {
+        const videoKey = `${pollingState.currentTimestamp}.scene-${index}.mp4`;
+        console.log(
+          `🎬 Scene ${index} video:`,
+          videoKey,
+          'URL:',
+          pollingState.mediaFiles[videoKey],
+        );
+      });
+    }
+  }, [scenes, pollingState.mediaFiles, pollingState.currentTimestamp]);
+
   // Auto-select first scene when script data is loaded
   useEffect(() => {
-    autoSelectFirstScene(pollingState.scriptData);
-  }, [pollingState.scriptData, sceneState.selectedSceneId]);
+    if (scenes.length > 0 && !sceneState.selectedSceneId) {
+      autoSelectFirstScene(scenes);
+    }
+  }, [scenes, sceneState.selectedSceneId]);
 
   // Auto-play video when selectedSceneId changes (only if auto-advance is enabled)
   useEffect(() => {
-    handleAutoPlay(pollingState.scriptData, pollingState.currentTimestamp);
-  }, [
-    sceneState.selectedSceneId,
-    pollingState.scriptData,
-    pollingState.currentTimestamp,
-    sceneState.autoAdvanceEnabled,
-  ]);
+    // Prevent infinite loops by checking if we've already handled this state
+    if (
+      autoPlayRef.current.selectedSceneId === sceneState.selectedSceneId &&
+      autoPlayRef.current.timestamp === pollingState.currentTimestamp
+    ) {
+      return;
+    }
+
+    console.log('🎬 Auto-play effect triggered:', {
+      scenesLength: scenes.length,
+      selectedSceneId: sceneState.selectedSceneId,
+      autoAdvanceEnabled: sceneState.autoAdvanceEnabled,
+      currentTimestamp: pollingState.currentTimestamp,
+    });
+
+    if (scenes.length > 0 && sceneState.selectedSceneId !== null) {
+      // Update ref to prevent loops
+      autoPlayRef.current = {
+        selectedSceneId: sceneState.selectedSceneId,
+        timestamp: pollingState.currentTimestamp,
+      };
+
+      handleAutoPlay(scenes, pollingState.currentTimestamp);
+    }
+  }, [sceneState.selectedSceneId, pollingState.currentTimestamp]);
 
   // Handle URL query parameters for step and timestamp
   useEffect(() => {
@@ -83,12 +158,12 @@ export default function GeneratePage() {
 
     // Handle timestamp and polling
     if (timestampFromUrl) {
-      // If step=2 is specified and we don't have script data yet, start polling immediately
-      if (stepFromUrl === '2' && !pollingState.scriptData) {
+      // If step=2 is specified and we don't have subtitle files yet, start polling immediately
+      if (stepFromUrl === '2' && !pollingState.subtitleFiles.length) {
         startPolling(timestampFromUrl);
       }
     }
-  }, [pollingState.currentTimestamp, pollingState.scriptData]);
+  }, [pollingState.currentTimestamp, pollingState.subtitleFiles]);
 
   const handleGenerateVideo = async (script: string, duration: number) => {
     await generateVideo(script, duration, (timestamp) => {
@@ -104,17 +179,14 @@ export default function GeneratePage() {
 
   const handleUpdatePreview = () => {
     // TODO: Implement preview update logic
-    console.log(
-      'Updating preview with edited scenes:',
-      pollingState.scriptData,
-    );
+    console.log('Updating preview with edited scenes:', scenes);
     // Transition to step 3
     setCurrentStep(3);
   };
 
   const handleRegenerateAudio = async (sceneId: number) => {
-    if (!pollingState.scriptData || !pollingState.currentTimestamp) {
-      console.error('No script data or timestamp available');
+    if (!scenes.length || !pollingState.currentTimestamp) {
+      console.error('No scenes or timestamp available');
       return;
     }
 
@@ -125,9 +197,7 @@ export default function GeneratePage() {
 
     try {
       // Find the scene to regenerate
-      const scene = pollingState.scriptData.scenes.find(
-        (s: any) => s.id === sceneId,
-      );
+      const scene = scenes.find((s: any) => s.id === sceneId);
       if (!scene) {
         console.error('Scene not found:', sceneId);
         return;
@@ -157,21 +227,6 @@ export default function GeneratePage() {
       });
       console.log('Regenerating audio response:', response);
       console.log('Regenerating pollingState:', pollingState);
-
-      // Update the polling state with the new audio/subtitles
-      // Example response:
-      // {
-      //     "data": [
-      //         {
-      //             "sceneId": 1,
-      //             "audioKey": "1004.scene-1.mp3",
-      //             "assKey": "1004.scene-1.ass",
-      //             "audioUrl": "https://video-parts-445241615553-us-east-1.s3.us-east-1.amazonaws.com/b49864f8-70a1-70f1-cc63-70f4f8c1985e/1004.scene-1.mp3?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=ASIAWPKTX4TA2UH66GCE%2F20250824%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250824T121459Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEO3%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCXVzLWVhc3QtMSJHMEUCIECfc5nE77wRVKlWeQpyGj0tRBVk%2BGx5K6hhyJ7AkPSdAiEAl6KIQyN3LWAuP8GEqaAtdjpUv0tEMQEqgF%2BLyqOVZHIq0wMIRRAEGgw0NDUyNDE2MTU1NTMiDG5JZ%2FrlxbWz9vxFBCqwA4Z87YGOUzeLc76GtBo3NUa2E0Ef%2B%2BJH8SAB1FJZBV565QnWwAOw30EHyuuFsJMgM4SttNcHJsuEbyrAW%2FRxBQBQQjzusmfW2ouve3CG5OOGkeV66T8fVUH2RDHNiAWHq6P62RRfqgBqoBgt1stwEI5LhnydTB%2FItGnrkitOeyourXUPtu51T7yZNlY2HgmSDYQg2zDHLDMS86kyJnRK8uV%2BOXbwGKEXJgq7WPkVoZGdPHfqDwDVqzR3jRLOKRbaCmwUTyV%2BFHaua83SASwsJl4o%2FhTrwAlfqE7xIf0KLrxqF0OkA7ipJ51Vpxi6wEiUQo1WND2XI%2FrqO6VX4T7SSf%2FfixDQIQmPbsw795VoKJS%2Bc9CQps8Hn1Em5x1LqmGlj%2B5bLGn%2FwTljYfvPRNIsPsnxkyWjtQnFuoFteyJM7F2BxehXRgVX8CTToGWsLzrPeYHz%2Fz6GqvoGARsMtxJzlMNbthwsfC7IkaScIV5o2WR1bRiGrDK4MtAMnh1qEslYKHZv1Zl9xULaBoSY66c%2Fr%2FcmubNQx5jyUgLq0sdhR0ZZsvq5dOQE%2B2DLXxknLJniZzC%2BhKzFBjqeASgIVzT5hOWm7Nz4Tfns8iZTDWwdnfnRE93nKXIdkbJw3hEn08bCT8hApt8G3ilsfyoTb7jhQOGBGNUQfyjLaxWjfji4lPBMRFNWpU0gHW16oDxulXpjFL46a%2B%2BSyqQZ%2FIPcMQLJ37Hg762RfZRiP5sDglzOSb%2FilFmzuy6%2F9xJ4CF3FyVy4JRx2lCjHG9HLJ5mbZCqkgxvuIKXfbTW5&X-Amz-Signature=40e391939462dcfa19b6c079048bfa8bb95669be237768a0c7d2347967a69b2b&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject",
-      //             "assFileContent": "[Script Info]\nTitle: Test\nScriptType: v4.00+\nWrapStyle: 1\nScaledBorderAndShadow: yes\nYCbCr Matrix: None\nPlayResX: 1080\nPlayResY: 1920\n\n[V4+ Styles]\nFormat: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\nStyle: Default,DMSerifText,100,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,1,0,0,0,100,100,0,0,1,6,6,2,10,10,480,1\n\n[Events]\nFormat: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\nDialogue: 0,0:00:00.00,0:00:00.54,Default,,,,,,{\\c&H00FFFF&}SHENZHEN{\\c&H00FFFFFF&} DAZZLES\nDialogue: 0,0:00:00.54,0:00:00.96,Default,,,,,,{\\c&H00FFFFFF&}SHENZHEN {\\c&H00FFFF&}DAZZLES\nDialogue: 0,0:00:00.96,0:00:01.18,Default,,,,,,{\\c&H00FFFF&}AT{\\c&H00FFFFFF&} NIGHT\nDialogue: 0,0:00:01.18,0:00:01.44,Default,,,,,,{\\c&H00FFFFFF&}AT {\\c&H00FFFF&}NIGHT\nDialogue: 0,0:00:02.08,0:00:02.34,Default,,,,,,{\\c&H00FFFF&}SHOWCASING{\\c&H00FFFFFF&} ITS\nDialogue: 0,0:00:02.34,0:00:02.60,Default,,,,,,{\\c&H00FFFFFF&}SHOWCASING {\\c&H00FFFF&}ITS\nDialogue: 0,0:00:02.60,0:00:03.04,Default,,,,,,{\\c&H00FFFF&}VIBRANT{\\c&H00FFFFFF&} ILLUMINATED\nDialogue: 0,0:00:03.04,0:00:03.70,Default,,,,,,{\\c&H00FFFFFF&}VIBRANT {\\c&H00FFFF&}ILLUMINATED\nDialogue: 0,0:00:03.70,0:00:04.28,Default,,,,,,{\\c&H00FFFF&}ARCHITECTURE\n"
-      //         }
-      //     ],
-      //     "message": "Audio and subtitles generated successfully"
-      // }
 
       if (!response.ok) {
         throw new Error(`Failed to regenerate audio: ${response.statusText}`);
@@ -283,10 +338,10 @@ export default function GeneratePage() {
   };
 
   const handleNextStep = () => {
-    if (pollingState.scriptData) {
+    if (scenes.length > 0) {
       setCurrentStep(2);
     } else {
-      // If no script data, start polling with the current timestamp
+      // If no scenes, start polling with the current timestamp
       if (pollingState.currentTimestamp) {
         setCurrentStep(2);
         startPolling(pollingState.currentTimestamp);
@@ -318,27 +373,35 @@ export default function GeneratePage() {
           </div>
         )}
 
-      {currentStep === 2 && pollingState.isLoadingScript && (
+      {currentStep === 2 && pollingState.isLoadingSubtitles && (
         <div className="flex justify-center items-center h-full">
           <VideoSkeleton />
         </div>
       )}
 
       {currentStep === 2 &&
-        !pollingState.isLoadingScript &&
-        pollingState.scriptData &&
-        pollingState.scriptData.scenes && (
+        !pollingState.isLoadingSubtitles &&
+        scenes.length > 0 && (
           <>
-            {pollingState.scriptData.scenes.map((scene: any, index: number) => {
+            {scenes.map((scene: any, index: number) => {
               const videoKey = `${pollingState.currentTimestamp}.scene-${index}.mp4`;
               const assKey = `${pollingState.currentTimestamp}.scene-${index}.ass`;
               const isVisible = sceneState.selectedSceneId === scene.id;
 
+              // Debug logging
+              console.log(
+                '🎬 Scene',
+                index,
+                'videoKey:',
+                videoKey,
+                'URL:',
+                pollingState.mediaFiles[videoKey],
+              );
+
               // Find the correct index for the selected scene
-              const selectedSceneIndex =
-                pollingState.scriptData.scenes.findIndex(
-                  (s: any) => s.id === sceneState.selectedSceneId,
-                );
+              const selectedSceneIndex = scenes.findIndex(
+                (s: any) => s.id === sceneState.selectedSceneId,
+              );
               const isVisibleByIndex = index === selectedSceneIndex;
 
               return (
@@ -346,85 +409,118 @@ export default function GeneratePage() {
                   key={scene.id}
                   className={isVisibleByIndex ? 'block' : 'hidden'}
                 >
-                  {pollingState.mediaFiles[videoKey] && (
-                    <div className="relative flex justify-center">
-                      <video
-                        ref={(videoRef) => {
-                          if (videoRef) {
-                            setupVideoEventListeners(
-                              videoRef,
-                              scene,
-                              pollingState.scriptData,
-                              pollingState.assFiles,
-                              pollingState.currentTimestamp,
+                  {pollingState.mediaFiles[videoKey] &&
+                    pollingState.mediaFiles[videoKey].startsWith('http') && (
+                      <div className="relative flex justify-center">
+                        <video
+                          ref={(videoRef) => {
+                            if (videoRef) {
+                              setupVideoEventListeners(
+                                videoRef,
+                                scene,
+                                scenes,
+                                pollingState.assFiles,
+                                pollingState.currentTimestamp,
+                                index,
+                              );
+                            }
+                          }}
+                          onLoadStart={(event) => {
+                            console.log(
+                              '🎬 Video load start for scene:',
                               index,
                             );
-                          }
-                        }}
-                        onLoadStart={(event) => {
-                          // Handle visibility changes when video loads
-                          if (isVisibleByIndex) {
-                            // First, stop ALL videos
-                            const allVideos =
-                              document.querySelectorAll('video');
-                            allVideos.forEach((video) => {
-                              if (video !== event.target) {
-                                video.pause();
-                                video.currentTime = 0;
-                              }
-                            });
+                          }}
+                          onCanPlay={(event) => {
+                            console.log('🎬 Video can play for scene:', index);
+                          }}
+                          onError={(event) => {
+                            console.error('Video error:', event);
+                          }}
+                          onLoadedData={(event) => {
+                            console.log(
+                              '🎬 Video loaded data for scene:',
+                              index,
+                              'URL:',
+                              pollingState.mediaFiles[videoKey],
+                            );
+                          }}
+                          onPlay={(event) => {
+                            console.log(
+                              '🎬 Video play event for scene:',
+                              index,
+                            );
+                          }}
+                          onPause={(event) => {
+                            console.log(
+                              '🎬 Video pause event for scene:',
+                              index,
+                            );
+                          }}
+                          className="rounded-xl shadow-lg border-2 border-gray-600"
+                          style={{ width: '60%', height: 'auto' }}
+                          controls
+                          preload="auto"
+                          src={pollingState.mediaFiles[videoKey]}
+                        />
 
-                            // Only auto-play if auto-advance is enabled
-                            if (sceneState.autoAdvanceEnabled) {
-                              setTimeout(() => {
-                                const video = event.target as HTMLVideoElement;
-                                if (video && isVisibleByIndex) {
-                                  video.play().catch(console.error);
+                        {/* Subtitles Overlay */}
+                        {isVisibleByIndex && sceneState.currentSubtitle && (
+                          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
+                            <p
+                              className="text-xl font-medium leading-relaxed text-center"
+                              style={{ fontFamily: 'DMSerifText, serif' }}
+                            >
+                              {parseColoredText(sceneState.currentSubtitle)}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Debug Play Button */}
+                        {isVisibleByIndex && (
+                          <div className="absolute top-4 right-4">
+                            <button
+                              onClick={() => {
+                                const video = document.querySelector(
+                                  `video[src*="${videoKey}"]`,
+                                ) as HTMLVideoElement;
+                                if (video) {
+                                  console.log(
+                                    '🎬 Manual play button clicked for scene:',
+                                    index,
+                                  );
+                                  video.play().catch((error) => {
+                                    console.error(
+                                      '🎬 Manual play failed:',
+                                      error,
+                                    );
+                                  });
                                 }
-                              }, 200);
-                            }
-                          }
-                        }}
-                        className="rounded-xl shadow-lg border-2 border-gray-600"
-                        style={{ width: '60%', height: 'auto' }}
-                        controls
-                        preload="auto"
-                        src={pollingState.mediaFiles[videoKey]}
-                      />
-
-                      {/* Subtitles Overlay */}
-                      {isVisibleByIndex && sceneState.currentSubtitle && (
-                        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
-                          <p
-                            className="text-xl font-medium leading-relaxed text-center"
-                            style={{ fontFamily: 'DMSerifText, serif' }}
-                          >
-                            {parseColoredText(sceneState.currentSubtitle)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                              }}
+                              className="px-2 py-1 bg-blue-500 text-white text-xs rounded"
+                            >
+                              Test Play
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                 </div>
               );
             })}
 
             {/* Scene Audio - Hidden Controls */}
-            {pollingState.scriptData &&
-              pollingState.scriptData.scenes &&
-              pollingState.scriptData.scenes.map(
-                (scene: any, index: number) => {
-                  const audioKey = `${pollingState.currentTimestamp}.scene-${index}.mp3`;
-                  return pollingState.mediaFiles[audioKey] ? (
-                    <audio
-                      key={scene.id}
-                      id={`audio-${scene.id}`}
-                      className="hidden"
-                      src={pollingState.mediaFiles[audioKey]}
-                    />
-                  ) : null;
-                },
-              )}
+            {scenes.map((scene: any, index: number) => {
+              const audioKey = `${pollingState.currentTimestamp}.scene-${index}.mp3`;
+              return pollingState.mediaFiles[audioKey] ? (
+                <audio
+                  key={scene.id}
+                  id={`audio-${scene.id}`}
+                  className="hidden"
+                  src={pollingState.mediaFiles[audioKey]}
+                />
+              ) : null;
+            })}
           </>
         )}
 
@@ -477,7 +573,7 @@ export default function GeneratePage() {
               showNextButton={
                 generationState.hasStartedProcess &&
                 currentStep === 1 &&
-                (pollingState.scriptData ||
+                (scenes.length > 0 ||
                   generationState.generationStatus === 'completed')
               }
               onNextStep={handleNextStep}
@@ -495,7 +591,7 @@ export default function GeneratePage() {
           >
             {/* Scene Cards Container */}
             <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4">
-              {pollingState.isLoadingScript && (
+              {pollingState.isLoadingSubtitles && (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <div className="flex items-center justify-center space-x-2 mb-2">
@@ -509,13 +605,12 @@ export default function GeneratePage() {
               )}
 
               {/* Scene Cards */}
-              {pollingState.isLoadingScript
+              {pollingState.isLoadingSubtitles
                 ? // Show skeleton placeholders while loading script
                   Array.from({ length: 3 }).map((_, index) => (
                     <EditSceneSkeleton key={index} />
                   ))
-                : pollingState.scriptData &&
-                  pollingState.scriptData.scenes && (
+                : scenes.length > 0 && (
                     <>
                       {/* Add scene button before first scene */}
                       <AddSceneButton
@@ -525,67 +620,81 @@ export default function GeneratePage() {
                       />
 
                       {/* Scene Cards */}
-                      {pollingState.scriptData.scenes.map(
-                        (scene: any, index: number) => {
-                          // Get the image URL for this scene
-                          const imageKey = `${pollingState.currentTimestamp}.scene-${index}.jpg`;
-                          const imageUrl = pollingState.mediaFiles[imageKey];
+                      {scenes.map((scene: any, index: number) => {
+                        // Get the image URL for this scene
+                        const imageKey = `${pollingState.currentTimestamp}.scene-${index}.jpg`;
+                        const imageUrl = pollingState.mediaFiles[imageKey];
 
-                          return (
-                            <div key={scene.id}>
-                              <EditScene
-                                scene={scene}
-                                editingScene={sceneState.editingScene}
-                                editedNarration={sceneState.editedNarration}
-                                onEditScene={handleEditScene}
-                                onSaveEdit={(sceneId) =>
-                                  handleSaveEdit(
-                                    sceneId,
-                                    pollingState.scriptData,
-                                    (updatedScript) => {
-                                      // This would need to be handled by updating the polling state
-                                      console.log(
-                                        'Script updated:',
-                                        updatedScript,
+                        return (
+                          <div key={scene.id}>
+                            <EditScene
+                              scene={scene}
+                              editingScene={sceneState.editingScene}
+                              editedNarration={sceneState.editedNarration}
+                              onEditScene={handleEditScene}
+                              onSaveEdit={(sceneId) =>
+                                handleSaveEdit(
+                                  sceneId,
+                                  scenes,
+                                  (updatedScenes) => {
+                                    // Update the subtitleFiles in polling state
+                                    console.log(
+                                      'Scenes updated:',
+                                      updatedScenes,
+                                    );
+
+                                    // Create updated subtitleFiles from the updated scenes
+                                    const updatedSubtitleFiles =
+                                      updatedScenes.map(
+                                        (scene: any, index: number) => {
+                                          const fileName = `${pollingState.currentTimestamp}.scene-${index}.subtitle.json`;
+                                          return {
+                                            [fileName]: scene.narration,
+                                          };
+                                        },
                                       );
-                                    },
-                                  )
-                                }
-                                onCancelEdit={handleCancelEdit}
-                                onEditedNarrationChange={(value) => {
-                                  // Update the edited narration in the scene management state
-                                  sceneDispatch({
-                                    type: 'SET_EDITED_NARRATION',
-                                    payload: value,
-                                  });
-                                }}
-                                onDeleteScene={handleDeleteScene}
-                                onRegenerateAudio={handleRegenerateAudio}
-                                imageUrl={imageUrl}
-                                isSelected={
-                                  sceneState.selectedSceneId === scene.id
-                                }
-                                onSelect={handleSceneSelection}
-                                regeneratingSceneId={regeneratingSceneId}
-                              />
 
-                              {/* Add scene button after each scene (except the last one) */}
-                              {index <
-                                pollingState.scriptData.scenes.length - 1 && (
-                                <AddSceneButton
-                                  onAddScene={handleAddScene}
-                                  position={index + 1}
-                                />
-                              )}
-                            </div>
-                          );
-                        },
-                      )}
+                                    // Update the subtitleFiles in polling state
+                                    pollingDispatch({
+                                      type: 'SET_SUBTITLE_FILES',
+                                      payload: updatedSubtitleFiles,
+                                    });
+                                  },
+                                )
+                              }
+                              onCancelEdit={handleCancelEdit}
+                              onEditedNarrationChange={(value) => {
+                                // Update the edited narration in the scene management state
+                                sceneDispatch({
+                                  type: 'SET_EDITED_NARRATION',
+                                  payload: value,
+                                });
+                              }}
+                              onDeleteScene={handleDeleteScene}
+                              onRegenerateAudio={handleRegenerateAudio}
+                              imageUrl={imageUrl}
+                              isSelected={
+                                sceneState.selectedSceneId === scene.id
+                              }
+                              onSelect={handleSceneSelection}
+                              regeneratingSceneId={regeneratingSceneId}
+                            />
+
+                            {/* Add scene button after each scene (except the last one) */}
+                            {index < scenes.length - 1 && (
+                              <AddSceneButton
+                                onAddScene={handleAddScene}
+                                position={index + 1}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
 
                       {/* Add scene button after last scene */}
                       <AddSceneButton
                         onAddScene={handleAddScene}
-                        position={pollingState.scriptData.scenes.length}
+                        position={scenes.length}
                         isLast={true}
                       />
                     </>

@@ -8,15 +8,48 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
+/**
+ * Extracts subtitle text content from ASS file content
+ * @param assContent - The ASS file content as string
+ * @returns Array of subtitle text lines
+ */
+function extractSubtitleContent(assContent: string): string[] {
+  const lines = assContent.split('\n');
+  const subtitleLines: string[] = [];
+
+  for (const line of lines) {
+    if (line.startsWith('Dialogue:')) {
+      // ASS Dialogue format: Dialogue: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+      const parts = line.split(',');
+      if (parts.length >= 10) {
+        // Extract the text part (everything after the 9th comma)
+        const textPart = parts.slice(9).join(','); // Rejoin in case text contains commas
+        // Remove ASS formatting tags and clean up the text
+        const cleanText = textPart
+          .replace(/\\[^\\]*\\/g, '') // Remove ASS formatting tags like {\c&H00FFFF&}
+          .replace(/^\s+|\s+$/g, '') // Trim whitespace
+          .replace(/\\N/g, ' '); // Replace line breaks with spaces
+
+        if (cleanText && cleanText.length > 0) {
+          subtitleLines.push(cleanText);
+        }
+      }
+    }
+  }
+
+  return subtitleLines;
+}
+
 interface FetchScriptRequest {
   userId: string;
   timestamp?: string;
 }
 
 interface FileData {
-  script?: any;
   assFiles: { [key: string]: string };
   mediaFiles: { [key: string]: string };
+  subtitleFiles: { [key: string]: string }[];
+  scenesCount?: number;
 }
 
 export const handler = async (
@@ -90,9 +123,9 @@ export const handler = async (
       return {
         statusCode: 200,
         body: JSON.stringify({
-          script: null,
           assFiles: {},
           mediaFiles: {},
+          subtitleFiles: [],
           message: 'No files found',
         }),
       };
@@ -101,6 +134,7 @@ export const handler = async (
     const result: FileData = {
       assFiles: {},
       mediaFiles: {},
+      subtitleFiles: [],
     };
 
     // Process each file
@@ -110,38 +144,42 @@ export const handler = async (
       const fileName = object.Key.split('/').pop() || '';
       console.log('📄 Processing file:', fileName);
 
-      if (fileName.endsWith('.script.txt')) {
-        // Fetch script content
-        console.log('📄 Fetching script content:', object.Key);
-        const getObjectCommand = new GetObjectCommand({
-          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: object.Key,
-        });
+      // Create GetObjectCommand once for this object
+      const getObjectCommand = new GetObjectCommand({
+        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+        Key: object.Key,
+      });
 
+      // Get script file and parse it
+      if (fileName.endsWith('.script.txt')) {
         const scriptObject = await s3.send(getObjectCommand);
         const scriptContent = await scriptObject.Body?.transformToString();
-
         if (scriptContent) {
-          result.script = JSON.parse(scriptContent);
-          console.log(
-            '✅ Successfully fetched script with',
-            result.script.scenes?.length || 0,
-            'scenes',
-          );
+          const scriptData = JSON.parse(scriptContent);
+          result.scenesCount = scriptData.sceneCount || 0;
+        }
+      }
+
+      if (fileName.endsWith('.subtitle.json')) {
+        // Fetch subtitle JSON content
+        console.log('📄 Fetching subtitle JSON content:', object.Key);
+        const subtitleObject = await s3.send(getObjectCommand);
+        const subtitleContent = await subtitleObject.Body?.transformToString();
+
+        if (subtitleContent) {
+          const subtitleData = JSON.parse(subtitleContent);
+          result.subtitleFiles.push({ [fileName]: subtitleData.fullText });
+          console.log('✅ Successfully fetched subtitle JSON file:', fileName);
         }
       } else if (fileName.endsWith('.ass')) {
         // Fetch ASS file content
         console.log('📄 Fetching ASS content:', object.Key);
-        const getObjectCommand = new GetObjectCommand({
-          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: object.Key,
-        });
-
         const assObject = await s3.send(getObjectCommand);
         const assContent = await assObject.Body?.transformToString();
 
         if (assContent) {
           result.assFiles[fileName] = assContent;
+
           console.log('✅ Successfully fetched ASS file:', fileName);
         }
       } else if (
@@ -151,11 +189,6 @@ export const handler = async (
       ) {
         // Generate signed URL for media files
         console.log('🔗 Generating signed URL for:', object.Key);
-        const getObjectCommand = new GetObjectCommand({
-          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: object.Key,
-        });
-
         const signedUrl = await getSignedUrl(s3, getObjectCommand, {
           expiresIn: 3600,
         }); // 1 hour
@@ -165,19 +198,20 @@ export const handler = async (
     }
 
     console.log('✅ Successfully processed all files');
-    console.log('📄 Script files:', result.script ? 1 : 0);
     console.log('📄 ASS files:', Object.keys(result.assFiles).length);
     console.log('📄 Media files:', Object.keys(result.mediaFiles).length);
+    console.log('📄 Subtitle JSON files:', result.subtitleFiles.length);
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        script: result.script,
+        scenesCount: result.scenesCount,
         assFiles: result.assFiles,
         mediaFiles: result.mediaFiles,
-        message: `Found ${result.script ? 1 : 0} script, ${
-          Object.keys(result.assFiles).length
-        } ASS files, and ${Object.keys(result.mediaFiles).length} media files`,
+        subtitleFiles: result.subtitleFiles,
+        message: `Found ${Object.keys(result.assFiles).length} ASS files, ${
+          Object.keys(result.mediaFiles).length
+        } media files, and ${result.subtitleFiles.length} subtitle JSON files`,
         timestamp: timestamp,
       }),
     };

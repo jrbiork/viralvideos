@@ -1,4 +1,4 @@
-import { useReducer, useEffect } from 'react';
+import { useReducer, useEffect, useRef } from 'react';
 import { parseAssFile } from '../lib/subtitle-utils';
 
 // Define the state interface
@@ -69,6 +69,7 @@ function sceneManagementReducer(
 
 export function useSceneManagement() {
   const [state, dispatch] = useReducer(sceneManagementReducer, initialState);
+  const lastAutoPlayCall = useRef<string>('');
 
   const handleEditScene = (sceneId: number, narration: string) => {
     dispatch({ type: 'SET_EDITING_SCENE', payload: sceneId });
@@ -77,17 +78,16 @@ export function useSceneManagement() {
 
   const handleSaveEdit = (
     sceneId: number,
-    scriptData: any,
-    onScriptUpdate: (updatedScript: any) => void,
+    scenes: any[],
+    onScenesUpdate: (updatedScenes: any[]) => void,
   ) => {
-    if (scriptData) {
-      const updatedScenes = scriptData.scenes.map((scene: any) =>
+    if (scenes) {
+      const updatedScenes = scenes.map((scene: any) =>
         scene.id === sceneId
           ? { ...scene, narration: state.editedNarration }
           : scene,
       );
-      const updatedScript = { ...scriptData, scenes: updatedScenes };
-      onScriptUpdate(updatedScript);
+      onScenesUpdate(updatedScenes);
       dispatch({ type: 'SET_EDITING_SCENE', payload: null });
       dispatch({ type: 'SET_EDITED_NARRATION', payload: '' });
     }
@@ -132,51 +132,102 @@ export function useSceneManagement() {
     dispatch({ type: 'RESET_SCENE_STATE' });
   };
 
-  // Auto-select first scene when script data is loaded
-  const autoSelectFirstScene = (scriptData: any) => {
-    if (
-      scriptData &&
-      scriptData.scenes &&
-      scriptData.scenes.length > 0 &&
-      state.selectedSceneId === null
-    ) {
+  // Auto-select first scene when scenes are loaded
+  const autoSelectFirstScene = (scenes: any[]) => {
+    if (scenes && scenes.length > 0 && state.selectedSceneId === null) {
       dispatch({
         type: 'SET_SELECTED_SCENE_ID',
-        payload: scriptData.scenes[0].id,
+        payload: scenes[0].id,
       });
+      // Enable auto-advance by default when first scene is selected
+      if (!state.autoAdvanceEnabled) {
+        dispatch({ type: 'SET_AUTO_ADVANCE_ENABLED', payload: true });
+      }
     }
   };
 
   // Auto-play video when selectedSceneId changes (only if auto-advance is enabled)
-  const handleAutoPlay = (scriptData: any, currentTimestamp: string) => {
+  const handleAutoPlay = (scenes: any[], currentTimestamp: string) => {
+    // Prevent multiple calls with the same parameters
+    const callKey = `${state.selectedSceneId}-${currentTimestamp}`;
+    if (lastAutoPlayCall.current === callKey) {
+      console.log(
+        '🎬 handleAutoPlay already called with same parameters, skipping',
+      );
+      return;
+    }
+    lastAutoPlayCall.current = callKey;
+
+    console.log('🎬 handleAutoPlay called:', {
+      selectedSceneId: state.selectedSceneId,
+      scenesCount: scenes?.length,
+      autoAdvanceEnabled: state.autoAdvanceEnabled,
+      currentTimestamp,
+    });
+
     if (
       state.selectedSceneId !== null &&
-      scriptData &&
-      scriptData.scenes &&
+      scenes &&
+      scenes.length > 0 &&
       state.autoAdvanceEnabled
     ) {
-      const selectedSceneIndex = scriptData.scenes.findIndex(
+      const selectedSceneIndex = scenes.findIndex(
         (s: any) => s.id === state.selectedSceneId,
       );
+
+      console.log('🎬 Selected scene index:', selectedSceneIndex);
 
       if (selectedSceneIndex !== -1) {
         // Stop all videos first
         const allVideos = document.querySelectorAll('video');
+        console.log('🎬 Stopping', allVideos.length, 'videos');
         allVideos.forEach((video) => {
           video.pause();
           video.currentTime = 0;
         });
 
-        // Start the selected video after a short delay
+        // Start the selected video after a longer delay to avoid conflicts
         setTimeout(() => {
           const videoKey = `${currentTimestamp}.scene-${selectedSceneIndex}.mp4`;
+          console.log('🎬 Looking for video with key:', videoKey);
           const videoElement = document.querySelector(
             `video[src*="${videoKey}"]`,
           ) as HTMLVideoElement;
-          if (videoElement) {
-            videoElement.play().catch(console.error);
+          if (videoElement && !videoElement.dataset.autoPlaying) {
+            console.log('🎬 Found video element, attempting to play');
+            // Mark as auto-playing to prevent conflicts
+            videoElement.dataset.autoPlaying = 'true';
+
+            // Check if video is ready before playing
+            if (videoElement.readyState >= 2) {
+              // HAVE_CURRENT_DATA
+              videoElement.play().catch((error) => {
+                console.error('🎬 Failed to auto-play video:', error);
+                videoElement.dataset.autoPlaying = 'false';
+              });
+            } else {
+              console.log('🎬 Video not ready yet, waiting...');
+              videoElement.addEventListener(
+                'canplay',
+                () => {
+                  videoElement.play().catch((error) => {
+                    console.error(
+                      '🎬 Failed to auto-play video after canplay:',
+                      error,
+                    );
+                    videoElement.dataset.autoPlaying = 'false';
+                  });
+                },
+                { once: true },
+              );
+            }
+          } else {
+            console.log(
+              '🎬 Video element not found or already auto-playing for key:',
+              videoKey,
+            );
           }
-        }, 300);
+        }, 500); // Increased delay to avoid conflicts
       }
     }
   };
@@ -185,7 +236,7 @@ export function useSceneManagement() {
   const setupVideoEventListeners = (
     videoRef: HTMLVideoElement,
     scene: any,
-    scriptData: any,
+    scenes: any[],
     assFiles: { [key: string]: string },
     currentTimestamp: string,
     sceneIndex: number,
@@ -233,21 +284,28 @@ export function useSceneManagement() {
 
     // Add event listeners only once
     videoRef.addEventListener('play', () => {
+      console.log('🎬 Video play event triggered for scene:', scene.id);
       // Enable auto-advance when user manually plays a video
       if (!state.autoAdvanceEnabled) {
         dispatch({ type: 'SET_AUTO_ADVANCE_ENABLED', payload: true });
       }
 
+      // Sync audio with video
       const audioElement = document.getElementById(
         `audio-${scene.id}`,
       ) as HTMLAudioElement;
       if (audioElement) {
         audioElement.currentTime = videoRef.currentTime;
-        audioElement.play();
+        audioElement.play().catch((error) => {
+          console.error('Failed to play audio for scene:', scene.id, error);
+        });
       }
     });
 
     videoRef.addEventListener('pause', () => {
+      // Reset auto-playing flag
+      videoRef.dataset.autoPlaying = 'false';
+
       const audioElement = document.getElementById(
         `audio-${scene.id}`,
       ) as HTMLAudioElement;
@@ -269,6 +327,9 @@ export function useSceneManagement() {
     videoRef.addEventListener('timeupdate', updateSubtitle);
 
     videoRef.addEventListener('ended', () => {
+      // Reset auto-playing flag
+      videoRef.dataset.autoPlaying = 'false';
+
       const audioElement = document.getElementById(
         `audio-${scene.id}`,
       ) as HTMLAudioElement;
@@ -279,14 +340,14 @@ export function useSceneManagement() {
       dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
 
       // Auto-select next scene if available
-      if (scriptData && scriptData.scenes) {
-        const currentSceneIndex = scriptData.scenes.findIndex(
+      if (scenes && scenes.length > 0) {
+        const currentSceneIndex = scenes.findIndex(
           (s: any) => s.id === scene.id,
         );
         const nextSceneIndex = currentSceneIndex + 1;
 
-        if (nextSceneIndex < scriptData.scenes.length) {
-          const nextScene = scriptData.scenes[nextSceneIndex];
+        if (nextSceneIndex < scenes.length) {
+          const nextScene = scenes[nextSceneIndex];
           dispatch({ type: 'SET_SELECTED_SCENE_ID', payload: nextScene.id });
         }
       }

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../../components/AuthContext';
 import AnimatedBackground from '../../components/AnimatedBackground';
 
-export default function SignIn() {
+export default function SignUp() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,20 +19,20 @@ export default function SignIn() {
     }
   }, [isAuthenticated, user, router]);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignUp = async () => {
     setIsLoading(true);
     try {
       login('Google');
       // The popup will handle the authentication flow
       // The useEffect above will redirect when authentication is successful
     } catch (error) {
-      console.error('Sign in failed:', error);
+      console.error('Sign up failed:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
@@ -40,7 +40,7 @@ export default function SignIn() {
       // The popup will handle the authentication flow
       // The useEffect above will redirect when authentication is successful
     } catch (error) {
-      console.error('Sign in failed:', error);
+      console.error('Sign up failed:', error);
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +48,7 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Section - Sign In Form */}
+      {/* Left Section - Sign Up Form */}
       <div className="w-1/2 flex items-center justify-center p-12">
         <div className="max-w-md w-full">
           {/* Header/Logo */}
@@ -67,11 +67,11 @@ export default function SignIn() {
 
           {/* Main Heading */}
           <h1 className="text-3xl font-bold text-white mb-8">
-            Sign in to bring your next viral idea to life.
+            Sign up to bring your next viral idea to life.
           </h1>
 
-          {/* Sign In Form */}
-          <form onSubmit={handleSignIn} className="space-y-6">
+          {/* Sign Up Form */}
+          <form onSubmit={handleSignUp} className="space-y-6">
             {/* Email Input */}
             <div>
               <input
@@ -101,24 +101,24 @@ export default function SignIn() {
               </a>
             </div>
 
-            {/* Sign In Button */}
+            {/* Sign Up Button */}
             <button
               type="submit"
               disabled={isLoading}
               className="w-full py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
             >
-              {isLoading ? 'Signing in...' : 'Sign in'}
+              {isLoading ? 'Signing up...' : 'Sign up'}
             </button>
 
-            {/* Sign Up Link */}
+            {/* Sign In Link */}
             <div className="text-center">
               <p className="text-gray-400 text-sm">
-                Don't have an account?{' '}
+                Already have an account?{' '}
                 <a
-                  href="/signup"
+                  href="/signin"
                   className="text-white font-semibold hover:text-gray-300"
                 >
-                  Sign up
+                  Sign in
                 </a>
               </p>
             </div>
@@ -141,10 +141,10 @@ export default function SignIn() {
               </div>
             </div>
 
-            {/* Google Sign In Button */}
+            {/* Google Sign Up Button */}
             <button
               type="button"
-              onClick={handleGoogleSignIn}
+              onClick={handleGoogleSignUp}
               disabled={isLoading}
               className="w-full flex items-center justify-center space-x-3 bg-white text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-50 transition-all font-semibold border border-gray-300 shadow-sm"
             >
@@ -176,7 +176,7 @@ export default function SignIn() {
             {/* Legal Text */}
             <div className="text-left">
               <p className="text-gray-400 text-xs">
-                By clicking on sign in, you agree to our{' '}
+                By clicking on sign up, you agree to our{' '}
                 <a href="#" className="text-blue-400 hover:text-blue-300">
                   Terms of Service
                 </a>{' '}

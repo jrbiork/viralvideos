@@ -4,6 +4,26 @@ exports.handler = void 0;
 const client_s3_1 = require("@aws-sdk/client-s3");
 const s3_request_presigner_1 = require("@aws-sdk/s3-request-presigner");
 const s3 = new client_s3_1.S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
+function extractSubtitleContent(assContent) {
+    const lines = assContent.split('\n');
+    const subtitleLines = [];
+    for (const line of lines) {
+        if (line.startsWith('Dialogue:')) {
+            const parts = line.split(',');
+            if (parts.length >= 10) {
+                const textPart = parts.slice(9).join(',');
+                const cleanText = textPart
+                    .replace(/\\[^\\]*\\/g, '')
+                    .replace(/^\s+|\s+$/g, '')
+                    .replace(/\\N/g, ' ');
+                if (cleanText && cleanText.length > 0) {
+                    subtitleLines.push(cleanText);
+                }
+            }
+        }
+    }
+    return subtitleLines;
+}
 const handler = async (event) => {
     try {
         let request;
@@ -52,9 +72,9 @@ const handler = async (event) => {
             return {
                 statusCode: 200,
                 body: JSON.stringify({
-                    script: null,
                     assFiles: {},
                     mediaFiles: {},
+                    subtitleFiles: [],
                     message: 'No files found',
                 }),
             };
@@ -62,31 +82,37 @@ const handler = async (event) => {
         const result = {
             assFiles: {},
             mediaFiles: {},
+            subtitleFiles: [],
         };
         for (const object of listResponse.Contents) {
             if (!object.Key)
                 continue;
             const fileName = object.Key.split('/').pop() || '';
             console.log('📄 Processing file:', fileName);
+            const getObjectCommand = new client_s3_1.GetObjectCommand({
+                Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+                Key: object.Key,
+            });
             if (fileName.endsWith('.script.txt')) {
-                console.log('📄 Fetching script content:', object.Key);
-                const getObjectCommand = new client_s3_1.GetObjectCommand({
-                    Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-                    Key: object.Key,
-                });
                 const scriptObject = await s3.send(getObjectCommand);
                 const scriptContent = await scriptObject.Body?.transformToString();
                 if (scriptContent) {
-                    result.script = JSON.parse(scriptContent);
-                    console.log('✅ Successfully fetched script with', result.script.scenes?.length || 0, 'scenes');
+                    const scriptData = JSON.parse(scriptContent);
+                    result.scenesCount = scriptData.sceneCount || 0;
+                }
+            }
+            if (fileName.endsWith('.subtitle.json')) {
+                console.log('📄 Fetching subtitle JSON content:', object.Key);
+                const subtitleObject = await s3.send(getObjectCommand);
+                const subtitleContent = await subtitleObject.Body?.transformToString();
+                if (subtitleContent) {
+                    const subtitleData = JSON.parse(subtitleContent);
+                    result.subtitleFiles.push({ [fileName]: subtitleData.fullText });
+                    console.log('✅ Successfully fetched subtitle JSON file:', fileName);
                 }
             }
             else if (fileName.endsWith('.ass')) {
                 console.log('📄 Fetching ASS content:', object.Key);
-                const getObjectCommand = new client_s3_1.GetObjectCommand({
-                    Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-                    Key: object.Key,
-                });
                 const assObject = await s3.send(getObjectCommand);
                 const assContent = await assObject.Body?.transformToString();
                 if (assContent) {
@@ -98,10 +124,6 @@ const handler = async (event) => {
                 fileName.endsWith('.mp3') ||
                 fileName.endsWith('.mp4')) {
                 console.log('🔗 Generating signed URL for:', object.Key);
-                const getObjectCommand = new client_s3_1.GetObjectCommand({
-                    Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-                    Key: object.Key,
-                });
                 const signedUrl = await (0, s3_request_presigner_1.getSignedUrl)(s3, getObjectCommand, {
                     expiresIn: 3600,
                 });
@@ -110,16 +132,17 @@ const handler = async (event) => {
             }
         }
         console.log('✅ Successfully processed all files');
-        console.log('📄 Script files:', result.script ? 1 : 0);
         console.log('📄 ASS files:', Object.keys(result.assFiles).length);
         console.log('📄 Media files:', Object.keys(result.mediaFiles).length);
+        console.log('📄 Subtitle JSON files:', result.subtitleFiles.length);
         return {
             statusCode: 200,
             body: JSON.stringify({
-                script: result.script,
+                scenesCount: result.scenesCount,
                 assFiles: result.assFiles,
                 mediaFiles: result.mediaFiles,
-                message: `Found ${result.script ? 1 : 0} script, ${Object.keys(result.assFiles).length} ASS files, and ${Object.keys(result.mediaFiles).length} media files`,
+                subtitleFiles: result.subtitleFiles,
+                message: `Found ${Object.keys(result.assFiles).length} ASS files, ${Object.keys(result.mediaFiles).length} media files, and ${result.subtitleFiles.length} subtitle JSON files`,
                 timestamp: timestamp,
             }),
         };

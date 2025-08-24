@@ -3,20 +3,20 @@ import { useAuthenticatedFetch } from '../components/useAuthenticatedFetch';
 
 // Define the state interface
 export interface ScriptPollingState {
-  isLoadingScript: boolean;
+  isLoadingSubtitles: boolean;
   pollingCount: number;
   currentTimestamp: string;
-  scriptData: any;
+  subtitleFiles: { [key: string]: string }[];
   mediaFiles: { [key: string]: string };
   assFiles: { [key: string]: string };
 }
 
 // Define action types
 export type ScriptPollingAction =
-  | { type: 'SET_LOADING_SCRIPT'; payload: boolean }
+  | { type: 'SET_LOADING_SUBTITLES'; payload: boolean }
   | { type: 'SET_POLLING_COUNT'; payload: number }
   | { type: 'SET_CURRENT_TIMESTAMP'; payload: string }
-  | { type: 'SET_SCRIPT_DATA'; payload: any }
+  | { type: 'SET_SUBTITLE_FILES'; payload: { [key: string]: string }[] }
   | { type: 'SET_MEDIA_FILES'; payload: { [key: string]: string } }
   | { type: 'SET_ASS_FILES'; payload: { [key: string]: string } }
   | { type: 'INCREMENT_POLLING_COUNT' }
@@ -24,10 +24,10 @@ export type ScriptPollingAction =
 
 // Initial state
 const initialState: ScriptPollingState = {
-  isLoadingScript: false,
+  isLoadingSubtitles: false,
   pollingCount: 0,
   currentTimestamp: '',
-  scriptData: null,
+  subtitleFiles: [],
   mediaFiles: {},
   assFiles: {},
 };
@@ -38,14 +38,14 @@ function scriptPollingReducer(
   action: ScriptPollingAction,
 ): ScriptPollingState {
   switch (action.type) {
-    case 'SET_LOADING_SCRIPT':
-      return { ...state, isLoadingScript: action.payload };
+    case 'SET_LOADING_SUBTITLES':
+      return { ...state, isLoadingSubtitles: action.payload };
     case 'SET_POLLING_COUNT':
       return { ...state, pollingCount: action.payload };
     case 'SET_CURRENT_TIMESTAMP':
       return { ...state, currentTimestamp: action.payload };
-    case 'SET_SCRIPT_DATA':
-      return { ...state, scriptData: action.payload };
+    case 'SET_SUBTITLE_FILES':
+      return { ...state, subtitleFiles: action.payload };
     case 'SET_MEDIA_FILES':
       return { ...state, mediaFiles: action.payload };
     case 'SET_ASS_FILES':
@@ -66,7 +66,7 @@ export function useScriptPolling() {
   const fetchPreviewData = async (timestamp?: string): Promise<boolean> => {
     // Only set loading true on the first fetch
     if (state.pollingCount === 0) {
-      dispatch({ type: 'SET_LOADING_SCRIPT', payload: true });
+      dispatch({ type: 'SET_LOADING_SUBTITLES', payload: true });
     }
 
     try {
@@ -79,10 +79,14 @@ export function useScriptPolling() {
       const data = await authenticatedFetch(
         `/api/fetch-data-preview?${params.toString()}`,
       );
+      console.log('data fetch preview:', data);
 
-      // Check if we have script data
-      if (data.script) {
-        dispatch({ type: 'SET_SCRIPT_DATA', payload: data.script });
+      // Check if we have data
+      if (data) {
+        // Store subtitle files
+        if (data.subtitleFiles) {
+          dispatch({ type: 'SET_SUBTITLE_FILES', payload: data.subtitleFiles });
+        }
 
         // Store media files
         if (data.mediaFiles) {
@@ -94,34 +98,45 @@ export function useScriptPolling() {
           dispatch({ type: 'SET_ASS_FILES', payload: data.assFiles });
         }
 
-        // Check if we have all MP4 scenes with signed URLs
-        const expectedScenes = data.script.scenes?.length || 0;
-        const mp4Files = Object.keys(data.mediaFiles || {}).filter((key) =>
-          key.endsWith('.mp4'),
-        );
+        // Check if we have all subtitle JSON files
+        const subtitleFilesArray = data.subtitleFiles || [];
 
-        console.log(
-          `Found ${mp4Files.length} MP4 files out of ${expectedScenes} expected scenes`,
-        );
+        // Count the total number of subtitle JSON files across all objects
+        let subtitleJsonFileCount = 0;
+        subtitleFilesArray.forEach((subtitleFile: any) => {
+          Object.keys(subtitleFile).forEach((key) => {
+            if (key.endsWith('.subtitle.json')) {
+              subtitleJsonFileCount++;
+            }
+          });
+        });
+
+        console.log(`Found ${subtitleJsonFileCount} subtitle JSON files`);
         console.log('Script data received:', data.script);
-        console.log('Media files received:', data.mediaFiles);
+        console.log('Subtitle files received:', data.subtitleFiles);
 
-        if (mp4Files.length >= expectedScenes && expectedScenes > 0) {
-          // All MP4 scenes are ready
-          dispatch({ type: 'SET_LOADING_SCRIPT', payload: false });
-          console.log('✅ All MP4 scenes have signed URLs, stopping polling');
+        // If we have subtitle files, check if we have a reasonable number (3 or more)
+        // This indicates that the subtitle generation is complete
+        if (subtitleJsonFileCount === data.scenesCount) {
+          // All subtitle JSON files are ready
+          dispatch({ type: 'SET_LOADING_SUBTITLES', payload: false });
+          console.log(
+            '✅ All subtitle JSON files have been fetched, stopping polling',
+          );
           return true; // Indicate success
         } else {
-          // Still waiting for MP4 files
+          // Still waiting for subtitle JSON files
           console.log(
-            `Waiting for MP4 files. Polling attempt ${state.pollingCount + 1}`,
+            `Waiting for subtitle JSON files. Polling attempt ${
+              state.pollingCount + 1
+            }`,
           );
           return false; // Continue polling
         }
       } else {
-        // No script found yet
+        // No data found yet
         console.log(
-          `No script found yet. Polling attempt ${state.pollingCount + 1}`,
+          `No data found yet. Polling attempt ${state.pollingCount + 1}`,
         );
         return false; // Indicate no data yet
       }
@@ -129,7 +144,7 @@ export function useScriptPolling() {
       console.error('Error fetching preview data:', error);
       // Only set error and stop loading on actual errors, not when data is not ready
       if (state.pollingCount === 0) {
-        dispatch({ type: 'SET_LOADING_SCRIPT', payload: false });
+        dispatch({ type: 'SET_LOADING_SUBTITLES', payload: false });
       }
       return false; // Indicate failure
     }
@@ -138,7 +153,7 @@ export function useScriptPolling() {
   const startPolling = async (timestamp: string) => {
     dispatch({ type: 'SET_CURRENT_TIMESTAMP', payload: timestamp });
     dispatch({ type: 'SET_POLLING_COUNT', payload: 0 });
-    dispatch({ type: 'SET_LOADING_SCRIPT', payload: true }); // Set loading immediately when polling starts
+    dispatch({ type: 'SET_LOADING_SUBTITLES', payload: true }); // Set loading immediately when polling starts
 
     const pollInterval = setInterval(async () => {
       dispatch({ type: 'INCREMENT_POLLING_COUNT' });
