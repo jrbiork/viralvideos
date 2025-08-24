@@ -238,8 +238,6 @@ async function processVideoGeneration(
       narrationResult.subtitles,
     );
 
-
-
     // Step 6: Combine video clips, audio, and subtitles
     const finalVideo = await combineVideoAndAudio(
       request.userId,

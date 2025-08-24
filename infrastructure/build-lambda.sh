@@ -62,4 +62,10 @@ cd lambda/fetch-data-preview
 npm run build
 cd ../..
 
+# Build delete-video Lambda
+echo "📦 Building delete-video..."
+cd lambda/delete-video
+npm run build
+cd ../..
+
 echo "✅ Lambda build completed!"

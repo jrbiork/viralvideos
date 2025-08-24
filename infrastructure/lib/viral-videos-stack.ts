@@ -276,6 +276,19 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    // Lambda function for deleting videos
+    const deleteVideoLambda = new lambda.Function(this, 'DeleteVideoLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/delete-video')),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(1),
+      memorySize: 128,
+      environment: {
+        VIDEO_BUCKET_NAME: videoBucket.bucketName,
+      },
+    });
+
     // Lambda function for generating story breakdowns
     const generateStoryBreakdownLambda = new lambda.Function(
       this,
@@ -418,6 +431,20 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda integration for deleting videos
+    const deleteVideoIntegration = new apigateway.LambdaIntegration(
+      deleteVideoLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            queryStringParameters: {
+              timestamp: "$input.params('timestamp')",
+            },
+          }),
+        },
+      },
+    );
+
     // Lambda integration for generating story breakdowns
     const generateStoryBreakdownIntegration = new apigateway.LambdaIntegration(
       generateStoryBreakdownLambda,
@@ -504,6 +531,14 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    const deleteVideoResource = api.root.addResource('delete-video');
+    deleteVideoResource.addMethod('DELETE', deleteVideoIntegration, {
+      authorizer: jwtAuthorizer,
+      requestParameters: {
+        'method.request.querystring.timestamp': true,
+      },
+    });
+
     // CloudWatch Log Group for Lambda
     new logs.LogGroup(this, 'VideoGenerationLogGroup', {
       logGroupName: `/aws/lambda/${videoGenerationLambda.functionName}`,
@@ -537,6 +572,12 @@ export class ViralVideosStack extends cdk.Stack {
 
     new logs.LogGroup(this, 'UpsertUserLogGroup', {
       logGroupName: `/aws/lambda/${upsertUserLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'DeleteVideoLogGroup', {
+      logGroupName: `/aws/lambda/${deleteVideoLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });

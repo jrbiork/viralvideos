@@ -130,15 +130,19 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
 
     if (confirm('Are you sure you want to delete this video?')) {
       try {
-        await authenticatedFetch(`/api/delete-video?key=${video.key}`, {
-          method: 'DELETE',
-        });
+        await authenticatedFetch(
+          `/api/delete-video?timestamp=${video.timestamp}`,
+          {
+            method: 'DELETE',
+          },
+        );
         setVideos(videos.filter((v) => v.key !== video.key));
         if (selectedVideo?.key === video.key) {
           setSelectedVideo(null);
         }
       } catch (error) {
         console.error('Error deleting video:', error);
+        alert('Failed to delete video. Please try again.');
       }
     }
   };

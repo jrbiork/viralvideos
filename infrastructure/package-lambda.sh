@@ -13,6 +13,7 @@ mkdir -p dist/generate-story-breakdown
 mkdir -p dist/generate-audio
 mkdir -p dist/generate-images
 mkdir -p dist/fetch-data-preview
+mkdir -p dist/delete-video
 
 # Copy built JavaScript files
 echo "📋 Copying video-generation files..."
@@ -51,6 +52,9 @@ cp lambda/generate-images/*.js dist/generate-images/
 
 echo "📋 Copying fetch-data-preview files..."
 cp lambda/fetch-data-preview/*.js dist/fetch-data-preview/
+
+echo "📋 Copying delete-video files..."
+cp lambda/delete-video/*.js dist/delete-video/
 
 
 
@@ -107,6 +111,12 @@ cd ../..
 
 echo "📦 Installing dependencies for fetch-data-preview..."
 cd dist/fetch-data-preview
+cp ../../lambda/package.json .
+npm install --production
+cd ../..
+
+echo "📦 Installing dependencies for delete-video..."
+cd dist/delete-video
 cp ../../lambda/package.json .
 npm install --production
 cd ../..
