@@ -62,7 +62,7 @@ export const handler = async (
 
     // Step 1: Generate narration with word-level timestamps
     console.log('🎤 Generating narration...');
-    const narrationResult = await generateNarration(
+    const { subtitles, narrationUrls } = await generateNarration(
       scenes,
       userId,
       timestamp,
@@ -70,52 +70,44 @@ export const handler = async (
     );
 
     console.log('🎤 Narration generated successfully:', {
-      audioKeys: narrationResult.audioKeys,
-      subtitleCount: narrationResult.subtitles.length,
+      subtitleCount: subtitles.length,
+      narrationUrls,
     });
 
     // Step 2: Generate subtitles using the narration result
     console.log('📝 Generating subtitles...');
-    let subtitleKeys = await generateSubtitles(
+    let subtitleUrls = await generateSubtitles(
       scenes,
       userId,
       timestamp,
-      narrationResult.subtitles,
+      subtitles,
     );
 
-    console.log('📝 Subtitles generated successfully:', subtitleKeys);
+    console.log('📝 Subtitles generated successfully:', subtitleUrls);
 
     // Broadcast subtitle files completed event
-    await broadcastSubtitleFilesCompleted(userId, timestamp, subtitleKeys);
+    await broadcastSubtitleFilesCompleted(userId, timestamp, subtitleUrls);
 
-    // Generate pre-signed URLs for each scene
+    // Use the pre-generated signed URLs for each scene
     const results = [];
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      const audioKey = narrationResult.audioKeys[i];
-      const subtitleKey = subtitleKeys[i];
+      const audioKey = 'audio.mp3';
+      const subtitleUrlObj = subtitleUrls[i];
+      const narrationUrlObj = narrationUrls[i];
 
-      // Generate pre-signed URL for audio
-      const audioCommand = new GetObjectCommand({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Key: audioKey,
-      });
-      const audioUrl = await getSignedUrl(s3, audioCommand, {
-        expiresIn: 3600,
-      }); // 1 hour
+      // Extract the signed URLs from the objects
+      const subtitleUrl = Object.values(subtitleUrlObj)[0];
+      const audioUrl = Object.values(narrationUrlObj)[0];
 
-      // Fetch ASS file content
-      const subtitleCommand = new GetObjectCommand({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Key: subtitleKey,
-      });
-      const assObject = await s3.send(subtitleCommand);
-      const assFileContent = await assObject.Body?.transformToString();
+      // Fetch ASS file content from the signed URL
+      const assResponse = await fetch(subtitleUrl);
+      const assFileContent = await assResponse.text();
 
       results.push({
         sceneId: scene.id,
         audioKey: audioKey.replace(`${userId}/`, ''),
-        assKey: subtitleKey.replace(`${userId}/`, ''),
+        assKey: audioKey.replace(`${userId}/`, '').replace('.mp3', '.ass'),
         audioUrl,
         assFileContent,
       });
@@ -148,7 +140,7 @@ export const handler = async (
 async function broadcastSubtitleFilesCompleted(
   userId: string,
   timestamp: string,
-  subtitleKeys: string[],
+  subtitleUrls: Array<{ [key: string]: string }>,
 ): Promise<void> {
   try {
     const subtitleMessage = {
@@ -156,7 +148,7 @@ async function broadcastSubtitleFilesCompleted(
       data: {
         userId,
         timestamp,
-        subtitleFiles: subtitleKeys,
+        subtitleFiles: subtitleUrls,
       },
     };
 

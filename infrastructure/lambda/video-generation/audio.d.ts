@@ -10,8 +10,10 @@ export interface SubtitleData {
     fullText: string;
 }
 export interface NarrationResult {
-    audioKeys: string[];
     subtitles: SubtitleData[];
+    narrationUrls: Array<{
+        [key: string]: string;
+    }>;
 }
 /**
  * Adjusts audio duration to match target duration using FFmpeg

@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import OpenAI from 'openai';
 import { adjustAudioDuration } from './util/narrationHelper';
 import { Scene } from './script';
@@ -19,8 +24,8 @@ export interface SubtitleData {
 }
 
 export interface NarrationResult {
-  audioKeys: string[];
   subtitles: SubtitleData[];
+  narrationUrls: Array<{ [key: string]: string }>; // Format: [{ "timestamp.scene-id.mp3": "signed-url" }]
 }
 
 /**
@@ -158,10 +163,29 @@ export async function generateNarration(
     const audioKeys = results.map((result) => result.audioKey);
     const subtitles = results.map((result) => result.subtitleData);
 
+    // Generate signed URLs for all audio files with filename mapping
+    const narrationUrls = await Promise.all(
+      audioKeys.map(async (audioKey) => {
+        const signedUrl = await getSignedUrl(
+          s3,
+          new GetObjectCommand({
+            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+            Key: audioKey,
+          }),
+          { expiresIn: 36000 }, // 10 hours expiration
+        );
+
+        // Extract filename without user prefix (e.g., "1004.scene-1.mp3")
+        const filename = audioKey.replace(`${userId}/`, '');
+
+        return { [filename]: signedUrl };
+      }),
+    );
+
     console.log(
       `✅ Generated narration for ${results.length} scenes in parallel`,
     );
-    return { audioKeys, subtitles };
+    return { subtitles, narrationUrls };
   } catch (error) {
     console.error('❌ Error in generateNarration:', error);
     throw error;

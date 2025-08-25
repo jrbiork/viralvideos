@@ -22,6 +22,7 @@ export interface SubtitleData {
 export interface NarrationResult {
   audioKeys: string[];
   subtitles: SubtitleData[];
+  narrationUrls: Array<{ [key: string]: string }>; // Format: [{ "timestamp.scene-id.mp3": "signed-url" }]
 }
 
 export async function fetchAudioFilesForTimestamp(
@@ -43,7 +44,7 @@ export async function fetchAudioFilesForTimestamp(
 
     if (!response.Contents || response.Contents.length === 0) {
       console.log('📭 No audio files found for the given timestamp');
-      return { audioKeys: [], subtitles: [] };
+      return { audioKeys: [], subtitles: [], narrationUrls: [] };
     }
 
     // Filter for audio files and sort by scene number
@@ -112,14 +113,33 @@ export async function fetchAudioFilesForTimestamp(
       }
     }
 
+    // Generate signed URLs for all audio files with filename mapping
+    const narrationUrls = await Promise.all(
+      audioKeys.map(async (audioKey) => {
+        const signedUrl = await getSignedUrl(
+          s3,
+          new GetObjectCommand({
+            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+            Key: audioKey,
+          }),
+          { expiresIn: 36000 }, // 10 hours expiration
+        );
+
+        // Extract filename without user prefix (e.g., "1004.scene-1.mp3")
+        const filename = audioKey.replace(`${userId}/`, '');
+
+        return { [filename]: signedUrl };
+      }),
+    );
+
     console.log(
       `✅ Fetched ${audioKeys.length} audio files and ${subtitles.length} subtitle sets`,
     );
 
-    return { audioKeys, subtitles };
+    return { audioKeys, subtitles, narrationUrls };
   } catch (error) {
     console.error('❌ Error fetching audio files from S3:', error);
-    return { audioKeys: [], subtitles: [] };
+    return { audioKeys: [], subtitles: [], narrationUrls: [] };
   }
 }
 

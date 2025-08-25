@@ -11,6 +11,9 @@ export interface SubtitleData {
 export interface NarrationResult {
     audioKeys: string[];
     subtitles: SubtitleData[];
+    narrationUrls: Array<{
+        [key: string]: string;
+    }>;
 }
 export declare function fetchAudioFilesForTimestamp(userId: string, timestamp: string): Promise<NarrationResult>;
 export declare function getAudioSignedUrl(audioKey: string): Promise<string | null>;

@@ -17,8 +17,8 @@ export interface Scene {
 }
 
 // Utility function to add IDs to scenes
-export function addSceneIds(scenes: any[]): Scene[] {
-  return scenes.map((scene: any, idx: number) => ({
+export function addSceneIds(scenes: Scene[]): Scene[] {
+  return scenes.map((scene: Scene, idx: number) => ({
     ...scene,
     id: idx,
   }));

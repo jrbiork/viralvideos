@@ -76,7 +76,8 @@ async function processVideoGeneration(
     const scriptKey = `${request.userId}/${timestamp}.script.txt`;
     const existingScript = await getObjectFromS3(scriptKey);
 
-    let scenes, voiceToneInstruction;
+    let scenes: Scene[] = [];
+    let voiceToneInstruction: string = '';
 
     if (existingScript) {
       console.log(
@@ -90,11 +91,6 @@ async function processVideoGeneration(
       );
 
       // Step 1: Generate script/story breakdown using GPT-4
-      await broadcastVideoProgress(
-        request.userId,
-        timestamp,
-        'Generating story breakdown1',
-      );
 
       const storyBreakdown = await generateStoryBreakdown(
         request.prompt,
@@ -106,12 +102,6 @@ async function processVideoGeneration(
       );
       scenes = storyBreakdown.scenes;
       voiceToneInstruction = storyBreakdown.voiceToneInstruction;
-
-      await broadcastVideoProgress(
-        request.userId,
-        timestamp,
-        'Story breakdown completed',
-      );
     }
 
     if (!scenes || scenes.length === 0) {
@@ -120,6 +110,15 @@ async function processVideoGeneration(
     }
 
     console.log('🎥 Story breakdown generated:', scenes);
+
+    await broadcastVideoProgress(
+      request.userId,
+      timestamp,
+      'Story breakdown completed',
+      {
+        scenes,
+      },
+    );
 
     broadcastVideoProgress(request.userId, timestamp, 'Generating images');
 
@@ -133,11 +132,6 @@ async function processVideoGeneration(
 
       // Step 2: Generate images for each scene in parallel
       console.log('🎨 Generating images for each scene in parallel...');
-      await broadcastVideoProgress(
-        request.userId,
-        timestamp,
-        'Generating images',
-      );
 
       try {
         const imagePromises = scenes.map(async (scene: any, i: number) => {
@@ -160,12 +154,18 @@ async function processVideoGeneration(
         });
 
         // Wait for all images to be generated
-        imageUrls = await Promise.all(imagePromises);
+        const generatedImageUrls = await Promise.all(imagePromises);
 
-        if (imageUrls.length === 0) {
+        if (generatedImageUrls.length === 0) {
           console.log('❌ Error: No images were generated');
           throw new Error('No images were generated');
         }
+
+        // Convert generated image URLs to the new format
+        imageUrls = generatedImageUrls.map((imageUrl, index) => {
+          const filename = `${timestamp}.scene-${scenes[index].id}.jpg`;
+          return { [filename]: imageUrl };
+        });
 
         console.log(
           `🎥 Generated ${imageUrls.length} images in parallel:`,
@@ -177,7 +177,14 @@ async function processVideoGeneration(
       }
     }
 
-    await broadcastVideoProgress(request.userId, timestamp, 'Images generated');
+    console.log('🖼️ Image URLs generated:', imageUrls);
+
+    await broadcastVideoProgress(
+      request.userId,
+      timestamp,
+      'Images generated',
+      imageUrls,
+    );
 
     console.log('🎥 No existing audio files found, generating new narration');
 
@@ -185,25 +192,35 @@ async function processVideoGeneration(
     await broadcastVideoProgress(
       request.userId,
       timestamp,
-      'Generating audio narration',
+      'Generating subtitles and audio',
     );
 
-    let narrationResult = await generateNarration(
+    const { subtitles, narrationUrls } = await generateNarration(
       scenes,
       request.userId,
       timestamp,
       voiceToneInstruction,
     );
 
+    const subtitleUrls = await generateSubtitles(
+      scenes,
+      request.userId,
+      timestamp,
+      subtitles,
+    );
+
+    console.log('📝 Subtitle URLs generated:', subtitleUrls);
+    console.log('🎤 Narration URLs generated:', narrationUrls);
+
     await broadcastVideoProgress(
       request.userId,
       timestamp,
-      'Audio narration completed',
-    );
-
-    console.log(
-      '🎥 Audio narration generated:',
-      JSON.stringify(narrationResult, null, 2),
+      'Audio and Subtitles completed',
+      {
+        imageUrls,
+        subtitleUrls,
+        narrationUrls,
+      },
     );
 
     // Step 4: Generate video clips from images
@@ -252,7 +269,7 @@ async function processVideoGeneration(
       'Generating video effects',
     );
 
-    const videoEffectsKeys = await generateVideoEffects(
+    const videoEffectsUrls = await generateVideoEffects(
       scenes,
       request.userId,
       timestamp,
@@ -262,49 +279,19 @@ async function processVideoGeneration(
       request.userId,
       timestamp,
       'Video effects completed',
-    );
-    console.log('videoEffectsKeys:', videoEffectsKeys);
-
-    // Broadcast media files completed event
-    await broadcastMediaFilesCompleted(
-      request.userId,
-      timestamp,
-      videoEffectsKeys,
-      imageUrls,
+      {
+        imageUrls,
+        videoEffectsUrls,
+      },
     );
 
-    // Step 5: Generate subtitles based on word-level timestamps
-    await broadcastVideoProgress(
-      request.userId,
-      timestamp,
-      'Generating subtitles',
-    );
-
-    const subtitleKeys = await generateSubtitles(
-      scenes,
-      request.userId,
-      timestamp,
-      narrationResult.subtitles,
-    );
-
-    await broadcastVideoProgress(
-      request.userId,
-      timestamp,
-      'Subtitles completed',
-    );
-
-    // Broadcast subtitle files completed event
-    await broadcastSubtitleFilesCompleted(
-      request.userId,
-      timestamp,
-      subtitleKeys,
-    );
+    console.log('🎬 Video effects URLs generated:', videoEffectsUrls);
 
     // Step 6: Combine video clips, audio, and subtitles
     await broadcastVideoProgress(
       request.userId,
       timestamp,
-      'Combining final video',
+      'Combining final video started',
     );
 
     const finalVideo = await combineVideoAndAudio(
@@ -335,13 +322,6 @@ async function processVideoGeneration(
       await sqs.send(deleteCommand);
     }
 
-    // Send completion update
-    await broadcastVideoProgress(
-      request.userId,
-      timestamp,
-      'Video generation completed',
-    );
-
     // Broadcast video generation completed event
     await broadcastVideoGenerationCompleted(
       request.userId,
@@ -350,7 +330,6 @@ async function processVideoGeneration(
     );
 
     return {
-      videoKey,
       message: 'Video generated successfully',
     };
   } catch (error) {
@@ -399,7 +378,7 @@ async function broadcastVideoProgress(
 async function broadcastSubtitleFilesCompleted(
   userId: string,
   timestamp: string,
-  subtitleKeys: string[],
+  subtitleUrls: Array<{ [key: string]: string }>,
 ): Promise<void> {
   try {
     const subtitleMessage = {
@@ -407,7 +386,7 @@ async function broadcastSubtitleFilesCompleted(
       data: {
         userId,
         timestamp,
-        subtitleFiles: subtitleKeys,
+        subtitleFiles: subtitleUrls,
       },
     };
 
@@ -429,8 +408,8 @@ async function broadcastSubtitleFilesCompleted(
 async function broadcastMediaFilesCompleted(
   userId: string,
   timestamp: string,
-  videoEffectsKeys: string[],
-  imageUrls: string[],
+  videoEffectsUrls: Array<{ [key: string]: string }>,
+  imageUrls: Array<{ [key: string]: string }>,
 ): Promise<void> {
   try {
     const mediaMessage = {
@@ -439,7 +418,7 @@ async function broadcastMediaFilesCompleted(
         userId,
         timestamp,
         mediaFiles: {
-          videoEffects: videoEffectsKeys,
+          videoEffects: videoEffectsUrls,
           images: imageUrls,
         },
         assFiles: {}, // This will be populated by the frontend when needed

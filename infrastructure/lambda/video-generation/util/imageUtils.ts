@@ -8,7 +8,9 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 export async function getImageUrls(
   userId: string,
   timestamp: string,
-): Promise<string[]> {
+): Promise<Array<{ [key: string]: string }>> {
+  // Format: [{ "timestamp.scene-id.jpg": "signed-url" }]
+  // Returns an array of objects where each object maps filename to signed URL
   const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
   try {
@@ -37,17 +39,22 @@ export async function getImageUrls(
       return sceneA - sceneB;
     });
 
-    // Generate pre-signed URLs for each image
+    // Generate pre-signed URLs for each image with filename mapping
     const imageUrls = await Promise.all(
       sortedObjects.map(async (obj) => {
-        if (!obj.Key) return '';
+        if (!obj.Key) return {};
 
         const command = new GetObjectCommand({
           Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
           Key: obj.Key,
         });
 
-        return await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour expiration
+        const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour expiration
+
+        // Extract filename without user prefix (e.g., "1004.scene-1.jpg")
+        const filename = obj.Key.replace(`${userId}/`, '');
+
+        return { [filename]: signedUrl };
       }),
     );
 

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import VideoPreview from '../../components/VideoPreview';
+
 import MainLayout from '../../components/MainLayout';
 import ProgressSteps from '../../components/ProgressSteps';
 import VideoCreator from '../../components/VideoCreator';
@@ -97,6 +97,57 @@ export default function GeneratePage() {
   // Handle video generation progress updates
   const handleVideoGenerationProgress = (data: any) => {
     console.log('Video generation progress:', data);
+
+    // Handle media files that might be included in progress updates
+    if (
+      data.imageUrls ||
+      data.subtitleUrls ||
+      data.narrationUrls ||
+      data.videoEffectsUrls
+    ) {
+      const mediaFiles: { [key: string]: string } = {};
+
+      // Handle images - array of objects: [{ "timestamp.scene-id.jpg": "signed-url" }]
+      if (data.imageUrls && Array.isArray(data.imageUrls)) {
+        data.imageUrls.forEach((imageObj: { [key: string]: string }) => {
+          Object.assign(mediaFiles, imageObj);
+        });
+      }
+
+      // Handle video effects - array of objects: [{ "timestamp.scene-id.mp4": "signed-url" }]
+      if (data.videoEffectsUrls && Array.isArray(data.videoEffectsUrls)) {
+        data.videoEffectsUrls.forEach((videoObj: { [key: string]: string }) => {
+          Object.assign(mediaFiles, videoObj);
+        });
+      }
+
+      // Handle subtitle files - array of objects: [{ "timestamp.scene-id.ass": "signed-url" }]
+      if (data.subtitleUrls && Array.isArray(data.subtitleUrls)) {
+        const subtitleFiles = data.subtitleUrls.map(
+          (subtitleObj: { [key: string]: string }) => {
+            return subtitleObj;
+          },
+        );
+
+        setVideoGenerationState((prev) => ({
+          ...prev,
+          isLoadingSubtitles: true,
+          currentTimestamp: data.timestamp || prev.currentTimestamp,
+          mediaFiles: { ...prev.mediaFiles, ...mediaFiles },
+          subtitleFiles: subtitleFiles,
+        }));
+        return;
+      }
+
+      setVideoGenerationState((prev) => ({
+        ...prev,
+        isLoadingSubtitles: true,
+        currentTimestamp: data.timestamp || prev.currentTimestamp,
+        mediaFiles: { ...prev.mediaFiles, ...mediaFiles },
+      }));
+      return;
+    }
+
     setVideoGenerationState((prev) => ({
       ...prev,
       isLoadingSubtitles: true,
@@ -139,19 +190,60 @@ export default function GeneratePage() {
   // Handle subtitle files ready
   const handleSubtitleFilesReady = (data: any) => {
     console.log('Subtitle files ready:', data);
-    setVideoGenerationState((prev) => ({
-      ...prev,
-      subtitleFiles: data.subtitleFiles || prev.subtitleFiles,
-    }));
+
+    // The backend now sends subtitleFiles as an array of objects: [{ "timestamp.scene-id.ass": "signed-url" }]
+    if (data.subtitleFiles && Array.isArray(data.subtitleFiles)) {
+      // Keep the array structure as expected by the state
+      const subtitleFiles = data.subtitleFiles.map(
+        (subtitleObj: { [key: string]: string }) => {
+          // Each subtitleObj is like { "1004.scene-1.ass": "signed-url" }
+          return subtitleObj;
+        },
+      );
+
+      console.log('Converted subtitle files:', subtitleFiles);
+
+      setVideoGenerationState((prev) => ({
+        ...prev,
+        subtitleFiles: subtitleFiles,
+      }));
+    }
   };
 
   // Handle media files ready
   const handleMediaFilesReady = (data: any) => {
     console.log('Media files ready:', data);
+
+    // Convert the backend data structure to the expected frontend structure
+    const mediaFiles: { [key: string]: string } = {};
+
+    // Handle video effects (scene videos) - now an array of objects: [{ "timestamp.scene-id.mp4": "signed-url" }]
+    if (
+      data.mediaFiles?.videoEffects &&
+      Array.isArray(data.mediaFiles.videoEffects)
+    ) {
+      data.mediaFiles.videoEffects.forEach(
+        (videoObj: { [key: string]: string }) => {
+          // Each videoObj is like { "1004.scene-1.mp4": "signed-url" }
+          Object.assign(mediaFiles, videoObj);
+        },
+      );
+    }
+
+    // Handle images - now an array of objects: [{ "timestamp.scene-id.jpg": "signed-url" }]
+    if (data.mediaFiles?.images && Array.isArray(data.mediaFiles.images)) {
+      data.mediaFiles.images.forEach((imageObj: { [key: string]: string }) => {
+        // Each imageObj is like { "1004.scene-1.jpg": "signed-url" }
+        Object.assign(mediaFiles, imageObj);
+      });
+    }
+
+    console.log('Converted media files:', mediaFiles);
+
     setVideoGenerationState((prev) => ({
       ...prev,
-      mediaFiles: { ...prev.mediaFiles, ...data.mediaFiles },
-      assFiles: { ...prev.assFiles, ...data.assFiles },
+      mediaFiles: { ...prev.mediaFiles, ...mediaFiles },
+      assFiles: { ...prev.assFiles, ...(data.assFiles || {}) },
     }));
   };
 
@@ -184,31 +276,6 @@ export default function GeneratePage() {
   };
 
   const scenes = createScenesFromSubtitleFiles();
-
-  // Debug video URLs
-  useEffect(() => {
-    if (scenes.length > 0 && videoGenerationState.mediaFiles) {
-      console.log(
-        '🎬 Available video files:',
-        Object.keys(videoGenerationState.mediaFiles).filter((key) =>
-          key.includes('.mp4'),
-        ),
-      );
-      scenes.forEach((scene, index) => {
-        const videoKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp4`;
-        console.log(
-          `🎬 Scene ${index} video:`,
-          videoKey,
-          'URL:',
-          videoGenerationState.mediaFiles[videoKey],
-        );
-      });
-    }
-  }, [
-    scenes,
-    videoGenerationState.mediaFiles,
-    videoGenerationState.currentTimestamp,
-  ]);
 
   // Auto-select first scene when script data is loaded
   useEffect(() => {

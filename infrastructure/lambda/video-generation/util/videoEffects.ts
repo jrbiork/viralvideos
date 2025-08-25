@@ -54,7 +54,8 @@ export async function generateVideoEffects(
   scenes: Scene[],
   userId: string,
   timestamp: string,
-): Promise<string[]> {
+): Promise<Array<{ [key: string]: string }>> {
+  // Format: [{ "timestamp.scene-id.mp4": "signed-url" }]
   try {
     console.log('🎬 Generating video effects for scenes...');
 
@@ -73,7 +74,7 @@ export async function generateVideoEffects(
         }
 
         // Generate video with blur in/out and camera movement
-        const videoKey = await generateSceneVideo(
+        const videoSignedUrl = await generateSceneVideo(
           imageUrl,
           scene,
           i,
@@ -81,8 +82,11 @@ export async function generateVideoEffects(
           timestamp,
         );
 
-        console.log(`✅ Scene ${i + 1} video generated: ${videoKey}`);
-        return videoKey;
+        // Extract filename without user prefix (e.g., "1004.scene-1.mp4")
+        const filename = `${timestamp}.scene-${scene.id}.mp4`;
+
+        console.log(`✅ Scene ${i + 1} video generated: ${filename}`);
+        return { [filename]: videoSignedUrl };
       } catch (error) {
         console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
         throw new Error(
@@ -91,17 +95,17 @@ export async function generateVideoEffects(
       }
     });
 
-    const videoKeys = (await Promise.all(videoPromises)).filter(
-      (key): key is string => key !== null,
+    const videoUrls = (await Promise.all(videoPromises)).filter(
+      (urlObj): urlObj is { [key: string]: string } => urlObj !== null,
     );
 
-    if (videoKeys.length === 0) {
+    if (videoUrls.length === 0) {
       console.log('❌ Error: No videos were generated');
       throw new Error('No videos were generated');
     }
 
-    console.log(`✅ Generated ${videoKeys.length} video clips with effects`);
-    return videoKeys;
+    console.log(`✅ Generated ${videoUrls.length} video clips with effects`);
+    return videoUrls;
   } catch (error) {
     console.error('❌ Error in generateVideoEffects:', error);
     throw error;
@@ -305,7 +309,19 @@ async function generateSceneVideo(
     }
 
     console.log(`✅ Video uploaded to S3: ${videoKey}`);
-    return videoKey;
+
+    // Generate signed URL for the uploaded video
+    const videoSignedUrl = await getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+        Key: videoKey,
+      }),
+      { expiresIn: 36000 }, // 10 hours expiration
+    );
+
+    console.log(`✅ Video signed URL generated for scene ${sceneIndex + 1}`);
+    return videoSignedUrl;
   } catch (error) {
     console.error(
       `❌ Error generating video for scene ${sceneIndex + 1}:`,

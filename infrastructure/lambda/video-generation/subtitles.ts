@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Scene } from './script';
 import { SubtitleData } from './audio';
 import {
@@ -15,9 +20,10 @@ export async function generateSubtitles(
   userId: string,
   timestamp: string,
   subtitleData?: SubtitleData[],
-): Promise<string[]> {
+): Promise<Array<{ [key: string]: string }>> {
+  // Format: [{ "timestamp.scene-id.ass": "signed-url" }]
   try {
-    const subtitleKeys: string[] = [];
+    const subtitleUrls: Array<{ [key: string]: string }> = [];
     let currentTime = 0;
 
     for (let i = 0; i < scenes.length; i++) {
@@ -63,11 +69,24 @@ export async function generateSubtitles(
         }),
       );
 
-      subtitleKeys.push(assSubtitleKey);
+      // Generate signed URL for the uploaded subtitle file
+      const subtitleSignedUrl = await getSignedUrl(
+        s3,
+        new GetObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: assSubtitleKey,
+        }),
+        { expiresIn: 36000 }, // 10 hours expiration
+      );
+
+      // Extract filename without user prefix (e.g., "1004.scene-1.ass")
+      const filename = assSubtitleKey.replace(`${userId}/`, '');
+
+      subtitleUrls.push({ [filename]: subtitleSignedUrl });
       currentTime += scene.duration;
     }
 
-    return subtitleKeys;
+    return subtitleUrls;
   } catch (error) {
     console.error('❌ Error in generateSubtitles:', error);
     throw error;
