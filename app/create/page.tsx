@@ -12,8 +12,8 @@ import AddSceneButton from '../../components/AddSceneButton';
 import ExportVideo from '../../components/ExportVideo';
 import { parseColoredText, parseAssFile } from '../../lib/subtitle-utils';
 import { useVideoGeneration } from '../../hooks/useVideoGeneration';
-import { useScriptPolling } from '../../hooks/useScriptPolling';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import VideoSkeleton from '../../components/VideoSkeleton';
 
 export default function GeneratePage() {
@@ -30,17 +30,21 @@ export default function GeneratePage() {
     timestamp: '',
   });
 
+  // WebSocket-based state for video generation progress
+  const [videoGenerationState, setVideoGenerationState] = useState({
+    isLoadingSubtitles: false,
+    currentTimestamp: '',
+    subtitleFiles: [] as { [key: string]: string }[],
+    mediaFiles: {} as { [key: string]: string },
+    assFiles: {} as { [key: string]: string },
+  });
+
   // Custom hooks
   const {
     state: generationState,
     generateVideo,
     isAuthenticated,
   } = useVideoGeneration();
-  const {
-    state: pollingState,
-    dispatch: pollingDispatch,
-    startPolling,
-  } = useScriptPolling();
   const {
     state: sceneState,
     dispatch: sceneDispatch,
@@ -56,19 +60,114 @@ export default function GeneratePage() {
     setupVideoEventListeners,
   } = useSceneManagement();
 
+  // WebSocket hook for real-time updates
+  const { isConnected } = useWebSocket({
+    onMessage: (message) => {
+      console.log('WebSocket message received:', message);
+
+      // Handle different message types
+      switch (message.action) {
+        case 'video_generation_progress':
+          handleVideoGenerationProgress(message.data);
+          break;
+        case 'video_generation_completed':
+          handleVideoGenerationComplete(message.data);
+          break;
+        case 'subtitle_files_completed':
+          handleSubtitleFilesReady(message.data);
+          break;
+        case 'media_files_completed':
+          handleMediaFilesReady(message.data);
+          break;
+        default:
+          console.log('Unknown WebSocket message type:', message.action);
+      }
+    },
+    onConnect: () => {
+      console.log('WebSocket connected');
+    },
+    onDisconnect: () => {
+      console.log('WebSocket disconnected');
+    },
+    onError: (error) => {
+      console.error('WebSocket error:', error);
+    },
+  });
+
+  // Handle video generation progress updates
+  const handleVideoGenerationProgress = (data: any) => {
+    console.log('Video generation progress:', data);
+    setVideoGenerationState((prev) => ({
+      ...prev,
+      isLoadingSubtitles: true,
+      currentTimestamp: data.timestamp || prev.currentTimestamp,
+    }));
+  };
+
+  // Handle video generation completion
+  const handleVideoGenerationComplete = (data: any) => {
+    console.log('Video generation complete:', data);
+    setVideoGenerationState((prev) => ({
+      ...prev,
+      isLoadingSubtitles: false,
+      currentTimestamp: data.timestamp || prev.currentTimestamp,
+    }));
+
+    // Show browser notification when video generation is completed
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Your video is ready!', {
+        body: 'Your video has been generated successfully!',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+      });
+    } else if (
+      'Notification' in window &&
+      Notification.permission !== 'denied'
+    ) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification('Your video is ready!', {
+            body: 'Your video has been generated successfully!',
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+          });
+        }
+      });
+    }
+  };
+
+  // Handle subtitle files ready
+  const handleSubtitleFilesReady = (data: any) => {
+    console.log('Subtitle files ready:', data);
+    setVideoGenerationState((prev) => ({
+      ...prev,
+      subtitleFiles: data.subtitleFiles || prev.subtitleFiles,
+    }));
+  };
+
+  // Handle media files ready
+  const handleMediaFilesReady = (data: any) => {
+    console.log('Media files ready:', data);
+    setVideoGenerationState((prev) => ({
+      ...prev,
+      mediaFiles: { ...prev.mediaFiles, ...data.mediaFiles },
+      assFiles: { ...prev.assFiles, ...data.assFiles },
+    }));
+  };
+
   // Example video URL
   const exampleVideoUrl = '/assets/example.mp4';
 
   // Create scenes from subtitleFiles data
   const createScenesFromSubtitleFiles = () => {
     if (
-      !pollingState.subtitleFiles ||
-      pollingState.subtitleFiles.length === 0
+      !videoGenerationState.subtitleFiles ||
+      videoGenerationState.subtitleFiles.length === 0
     ) {
       return [];
     }
 
-    return pollingState.subtitleFiles.map(
+    return videoGenerationState.subtitleFiles.map(
       (subtitleFile: any, index: number) => {
         // Extract the subtitle content from the object
         const fileName = Object.keys(subtitleFile)[0];
@@ -88,24 +187,28 @@ export default function GeneratePage() {
 
   // Debug video URLs
   useEffect(() => {
-    if (scenes.length > 0 && pollingState.mediaFiles) {
+    if (scenes.length > 0 && videoGenerationState.mediaFiles) {
       console.log(
         '🎬 Available video files:',
-        Object.keys(pollingState.mediaFiles).filter((key) =>
+        Object.keys(videoGenerationState.mediaFiles).filter((key) =>
           key.includes('.mp4'),
         ),
       );
       scenes.forEach((scene, index) => {
-        const videoKey = `${pollingState.currentTimestamp}.scene-${index}.mp4`;
+        const videoKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp4`;
         console.log(
           `🎬 Scene ${index} video:`,
           videoKey,
           'URL:',
-          pollingState.mediaFiles[videoKey],
+          videoGenerationState.mediaFiles[videoKey],
         );
       });
     }
-  }, [scenes, pollingState.mediaFiles, pollingState.currentTimestamp]);
+  }, [
+    scenes,
+    videoGenerationState.mediaFiles,
+    videoGenerationState.currentTimestamp,
+  ]);
 
   // Auto-select first scene when script data is loaded
   useEffect(() => {
@@ -119,7 +222,7 @@ export default function GeneratePage() {
     // Prevent infinite loops by checking if we've already handled this state
     if (
       autoPlayRef.current.selectedSceneId === sceneState.selectedSceneId &&
-      autoPlayRef.current.timestamp === pollingState.currentTimestamp
+      autoPlayRef.current.timestamp === videoGenerationState.currentTimestamp
     ) {
       return;
     }
@@ -128,19 +231,19 @@ export default function GeneratePage() {
       scenesLength: scenes.length,
       selectedSceneId: sceneState.selectedSceneId,
       autoAdvanceEnabled: sceneState.autoAdvanceEnabled,
-      currentTimestamp: pollingState.currentTimestamp,
+      currentTimestamp: videoGenerationState.currentTimestamp,
     });
 
     if (scenes.length > 0 && sceneState.selectedSceneId !== null) {
       // Update ref to prevent loops
       autoPlayRef.current = {
         selectedSceneId: sceneState.selectedSceneId,
-        timestamp: pollingState.currentTimestamp,
+        timestamp: videoGenerationState.currentTimestamp,
       };
 
-      handleAutoPlay(scenes, pollingState.currentTimestamp);
+      handleAutoPlay(scenes, videoGenerationState.currentTimestamp);
     }
-  }, [sceneState.selectedSceneId, pollingState.currentTimestamp]);
+  }, [sceneState.selectedSceneId, videoGenerationState.currentTimestamp]);
 
   // Handle URL query parameters for step and timestamp
   useEffect(() => {
@@ -156,19 +259,38 @@ export default function GeneratePage() {
       }
     }
 
-    // Handle timestamp and polling
+    // Handle timestamp and WebSocket subscription
     if (timestampFromUrl) {
-      // If step=2 is specified and we don't have subtitle files yet, start polling immediately
-      if (stepFromUrl === '2' && !pollingState.subtitleFiles.length) {
-        startPolling(timestampFromUrl);
+      // If step=2 is specified and we don't have subtitle files yet, subscribe to updates
+      if (stepFromUrl === '2' && !videoGenerationState.subtitleFiles.length) {
+        setVideoGenerationState((prev) => ({
+          ...prev,
+          currentTimestamp: timestampFromUrl,
+          isLoadingSubtitles: true,
+        }));
+
+        // WebSocket updates are now automatic
       }
     }
-  }, [pollingState.currentTimestamp, pollingState.subtitleFiles]);
+  }, [
+    videoGenerationState.currentTimestamp,
+    videoGenerationState.subtitleFiles,
+    isConnected,
+  ]);
+
+  // Subscribe to WebSocket updates when connected
+  // WebSocket connection is now automatic - no subscription needed
 
   const handleGenerateVideo = async (script: string, duration: number) => {
     await generateVideo(script, duration, (timestamp) => {
       setCurrentStep(2);
-      startPolling(timestamp);
+      setVideoGenerationState((prev) => ({
+        ...prev,
+        currentTimestamp: timestamp,
+        isLoadingSubtitles: true,
+      }));
+
+      // WebSocket updates are now automatic
     });
   };
 
@@ -185,7 +307,7 @@ export default function GeneratePage() {
   };
 
   const handleRegenerateAudio = async (sceneId: number) => {
-    if (!scenes.length || !pollingState.currentTimestamp) {
+    if (!scenes.length || !videoGenerationState.currentTimestamp) {
       console.error('No scenes or timestamp available');
       return;
     }
@@ -222,11 +344,12 @@ export default function GeneratePage() {
           scenes: [updatedScene], // Send the scene with updated narration
           instructions: 'Speak in a cheerful and positive tone',
           timestamp:
-            pollingState.currentTimestamp || queryParams.get('timestamp'),
+            videoGenerationState.currentTimestamp ||
+            queryParams.get('timestamp'),
         }),
       });
       console.log('Regenerating audio response:', response);
-      console.log('Regenerating pollingState:', pollingState);
+      console.log('Regenerating videoGenerationState:', videoGenerationState);
 
       if (!response.ok) {
         throw new Error(`Failed to regenerate audio: ${response.statusText}`);
@@ -235,26 +358,21 @@ export default function GeneratePage() {
       const result = await response.json();
       console.log('Audio regeneration result:', result);
 
-      // Update the polling state with the new audio/subtitles
+      // Update the video generation state with the new audio/subtitles
       if (result.data && result.data.length > 0) {
         const audioData = result.data[0];
-        pollingState.mediaFiles[audioData.audioKey] = audioData.audioUrl;
-        pollingState.assFiles[audioData.assKey] = audioData.assFileContent;
 
-        // Force a re-render of just the video components by updating the polling state
-        // This will cause only the video components to re-initialize with new data
-        const updatedMediaFiles = { ...pollingState.mediaFiles };
-        const updatedAssFiles = { ...pollingState.assFiles };
-
-        // Update the polling state directly to trigger re-render
-        pollingDispatch({
-          type: 'SET_MEDIA_FILES',
-          payload: updatedMediaFiles,
-        });
-        pollingDispatch({
-          type: 'SET_ASS_FILES',
-          payload: updatedAssFiles,
-        });
+        setVideoGenerationState((prev) => ({
+          ...prev,
+          mediaFiles: {
+            ...prev.mediaFiles,
+            [audioData.audioKey]: audioData.audioUrl,
+          },
+          assFiles: {
+            ...prev.assFiles,
+            [audioData.assKey]: audioData.assFileContent,
+          },
+        }));
 
         // Force refresh of the video player to use new subtitles
         // If this scene is currently selected, update the current subtitle immediately
@@ -281,9 +399,10 @@ export default function GeneratePage() {
           if (videoElement) {
             console.log('🔄 Found video element, updating dataset...');
             // Update the video element's dataset with the new ASS files
-            videoElement.dataset.assFiles = JSON.stringify(
-              pollingState.assFiles,
-            );
+            videoElement.dataset.assFiles = JSON.stringify({
+              ...videoGenerationState.assFiles,
+              [audioData.assKey]: audioData.assFileContent,
+            });
             console.log('🔄 Dataset updated, triggering timeupdate event...');
 
             // Force the video to trigger a timeupdate event to refresh subtitles
@@ -315,7 +434,7 @@ export default function GeneratePage() {
       }
 
       // TODO: Update the UI to reflect the new audio/subtitles
-      // This might involve refreshing the polling state or updating specific files
+      // This might involve refreshing the video generation state or updating specific files
     } catch (error) {
       console.error('Error regenerating audio:', error);
       alert('Failed to regenerate audio. Please try again.');
@@ -341,13 +460,18 @@ export default function GeneratePage() {
     if (scenes.length > 0) {
       setCurrentStep(2);
     } else {
-      // If no scenes, start polling with the current timestamp
-      if (pollingState.currentTimestamp) {
+      // If no scenes, start WebSocket subscription with the current timestamp
+      if (videoGenerationState.currentTimestamp) {
         setCurrentStep(2);
-        startPolling(pollingState.currentTimestamp);
+        setVideoGenerationState((prev) => ({
+          ...prev,
+          isLoadingSubtitles: true,
+        }));
+
+        // WebSocket updates are now automatic
       } else {
         // Fallback: try to fetch without timestamp
-        // This would need to be implemented in the polling hook
+        // This would need to be implemented in the WebSocket hook
         setCurrentStep(2);
       }
     }
@@ -373,19 +497,19 @@ export default function GeneratePage() {
           </div>
         )}
 
-      {currentStep === 2 && pollingState.isLoadingSubtitles && (
+      {currentStep === 2 && videoGenerationState.isLoadingSubtitles && (
         <div className="flex justify-center items-center h-full">
           <VideoSkeleton />
         </div>
       )}
 
       {currentStep === 2 &&
-        !pollingState.isLoadingSubtitles &&
+        !videoGenerationState.isLoadingSubtitles &&
         scenes.length > 0 && (
           <>
             {scenes.map((scene: any, index: number) => {
-              const videoKey = `${pollingState.currentTimestamp}.scene-${index}.mp4`;
-              const assKey = `${pollingState.currentTimestamp}.scene-${index}.ass`;
+              const videoKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp4`;
+              const assKey = `${videoGenerationState.currentTimestamp}.scene-${index}.ass`;
               const isVisible = sceneState.selectedSceneId === scene.id;
 
               // Debug logging
@@ -395,7 +519,7 @@ export default function GeneratePage() {
                 'videoKey:',
                 videoKey,
                 'URL:',
-                pollingState.mediaFiles[videoKey],
+                videoGenerationState.mediaFiles[videoKey],
               );
 
               // Find the correct index for the selected scene
@@ -409,8 +533,10 @@ export default function GeneratePage() {
                   key={scene.id}
                   className={isVisibleByIndex ? 'block' : 'hidden'}
                 >
-                  {pollingState.mediaFiles[videoKey] &&
-                    pollingState.mediaFiles[videoKey].startsWith('http') && (
+                  {videoGenerationState.mediaFiles[videoKey] &&
+                    videoGenerationState.mediaFiles[videoKey].startsWith(
+                      'http',
+                    ) && (
                       <div className="relative flex justify-center">
                         <video
                           ref={(videoRef) => {
@@ -419,8 +545,8 @@ export default function GeneratePage() {
                                 videoRef,
                                 scene,
                                 scenes,
-                                pollingState.assFiles,
-                                pollingState.currentTimestamp,
+                                videoGenerationState.assFiles,
+                                videoGenerationState.currentTimestamp,
                                 index,
                               );
                             }
@@ -442,7 +568,7 @@ export default function GeneratePage() {
                               '🎬 Video loaded data for scene:',
                               index,
                               'URL:',
-                              pollingState.mediaFiles[videoKey],
+                              videoGenerationState.mediaFiles[videoKey],
                             );
                           }}
                           onPlay={(event) => {
@@ -461,7 +587,7 @@ export default function GeneratePage() {
                           style={{ width: '60%', height: 'auto' }}
                           controls
                           preload="auto"
-                          src={pollingState.mediaFiles[videoKey]}
+                          src={videoGenerationState.mediaFiles[videoKey]}
                         />
 
                         {/* Subtitles Overlay */}
@@ -511,13 +637,13 @@ export default function GeneratePage() {
 
             {/* Scene Audio - Hidden Controls */}
             {scenes.map((scene: any, index: number) => {
-              const audioKey = `${pollingState.currentTimestamp}.scene-${index}.mp3`;
-              return pollingState.mediaFiles[audioKey] ? (
+              const audioKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp3`;
+              return videoGenerationState.mediaFiles[audioKey] ? (
                 <audio
                   key={scene.id}
                   id={`audio-${scene.id}`}
                   className="hidden"
-                  src={pollingState.mediaFiles[audioKey]}
+                  src={videoGenerationState.mediaFiles[audioKey]}
                 />
               ) : null;
             })}
@@ -550,6 +676,8 @@ export default function GeneratePage() {
       backgroundColor={currentStep === 1 ? '#090526' : '#0F0A1E'}
       progressSteps={<ProgressSteps currentStep={currentStep} />}
     >
+      {/* WebSocket Status for Testing */}
+
       <div className="flex flex-col justify-start p-4">
         <div
           className="relative overflow-hidden"
@@ -591,7 +719,7 @@ export default function GeneratePage() {
           >
             {/* Scene Cards Container */}
             <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4">
-              {pollingState.isLoadingSubtitles && (
+              {videoGenerationState.isLoadingSubtitles && (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center">
                     <div className="flex items-center justify-center space-x-2 mb-2">
@@ -605,7 +733,7 @@ export default function GeneratePage() {
               )}
 
               {/* Scene Cards */}
-              {pollingState.isLoadingSubtitles
+              {videoGenerationState.isLoadingSubtitles
                 ? // Show skeleton placeholders while loading script
                   Array.from({ length: 3 }).map((_, index) => (
                     <EditSceneSkeleton key={index} />
@@ -622,8 +750,9 @@ export default function GeneratePage() {
                       {/* Scene Cards */}
                       {scenes.map((scene: any, index: number) => {
                         // Get the image URL for this scene
-                        const imageKey = `${pollingState.currentTimestamp}.scene-${index}.jpg`;
-                        const imageUrl = pollingState.mediaFiles[imageKey];
+                        const imageKey = `${videoGenerationState.currentTimestamp}.scene-${index}.jpg`;
+                        const imageUrl =
+                          videoGenerationState.mediaFiles[imageKey];
 
                         return (
                           <div key={scene.id}>
@@ -637,7 +766,7 @@ export default function GeneratePage() {
                                   sceneId,
                                   scenes,
                                   (updatedScenes) => {
-                                    // Update the subtitleFiles in polling state
+                                    // Update the subtitleFiles in video generation state
                                     console.log(
                                       'Scenes updated:',
                                       updatedScenes,
@@ -647,18 +776,18 @@ export default function GeneratePage() {
                                     const updatedSubtitleFiles =
                                       updatedScenes.map(
                                         (scene: any, index: number) => {
-                                          const fileName = `${pollingState.currentTimestamp}.scene-${index}.subtitle.json`;
+                                          const fileName = `${videoGenerationState.currentTimestamp}.scene-${index}.subtitle.json`;
                                           return {
                                             [fileName]: scene.narration,
                                           };
                                         },
                                       );
 
-                                    // Update the subtitleFiles in polling state
-                                    pollingDispatch({
-                                      type: 'SET_SUBTITLE_FILES',
-                                      payload: updatedSubtitleFiles,
-                                    });
+                                    // Update the subtitleFiles in video generation state
+                                    setVideoGenerationState((prev) => ({
+                                      ...prev,
+                                      subtitleFiles: updatedSubtitleFiles,
+                                    }));
                                   },
                                 )
                               }

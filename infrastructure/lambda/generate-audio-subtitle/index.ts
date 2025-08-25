@@ -1,9 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { generateNarration } from './common/narration';
-import { generateSubtitles } from './common/subtitles';
-import { Scene } from './common/script';
+import { generateNarration } from '../video-generation/audio';
+import { generateSubtitles } from '../video-generation/subtitles';
+import { Scene } from '../video-generation/script';
+import { broadcastMessage } from '../websocket-broadcast';
 
 interface RequestBody {
   scenes: Scene[];
@@ -84,6 +85,9 @@ export const handler = async (
 
     console.log('📝 Subtitles generated successfully:', subtitleKeys);
 
+    // Broadcast subtitle files completed event
+    await broadcastSubtitleFilesCompleted(userId, timestamp, subtitleKeys);
+
     // Generate pre-signed URLs for each scene
     const results = [];
     for (let i = 0; i < scenes.length; i++) {
@@ -139,3 +143,33 @@ export const handler = async (
     };
   }
 };
+
+// Helper function to broadcast subtitle files completed event
+async function broadcastSubtitleFilesCompleted(
+  userId: string,
+  timestamp: string,
+  subtitleKeys: string[],
+): Promise<void> {
+  try {
+    const subtitleMessage = {
+      action: 'subtitle_files_completed',
+      data: {
+        userId,
+        timestamp,
+        subtitleFiles: subtitleKeys,
+      },
+    };
+
+    const domainName = process.env.WEBSOCKET_DOMAIN_NAME;
+    const stage = process.env.WEBSOCKET_STAGE || 'prod';
+
+    if (domainName) {
+      await broadcastMessage(subtitleMessage, domainName, stage, userId);
+      console.log(`📡 WebSocket subtitle files completed broadcast`);
+    } else {
+      console.log(`📡 WebSocket not configured, skipping subtitle broadcast`);
+    }
+  } catch (error) {
+    console.error('Error broadcasting subtitle files completed:', error);
+  }
+}

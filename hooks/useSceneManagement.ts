@@ -99,6 +99,8 @@ export function useSceneManagement() {
   };
 
   const handleSceneSelection = (sceneId: number) => {
+    // Clear subtitle state when selecting a new scene
+    dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
     dispatch({ type: 'SET_SELECTED_SCENE_ID', payload: sceneId });
   };
 
@@ -135,6 +137,8 @@ export function useSceneManagement() {
   // Auto-select first scene when scenes are loaded
   const autoSelectFirstScene = (scenes: any[]) => {
     if (scenes && scenes.length > 0 && state.selectedSceneId === null) {
+      // Clear subtitle state when auto-selecting first scene
+      dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
       dispatch({
         type: 'SET_SELECTED_SCENE_ID',
         payload: scenes[0].id,

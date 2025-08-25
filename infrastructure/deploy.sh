@@ -4,6 +4,12 @@ set -e
 
 echo "🚀 Starting full deployment of Viral Videos infrastructure..."
 
+
+# Set AWS profile
+export AWS_PROFILE=rubens
+echo "🔧 Using AWS profile: $AWS_PROFILE"
+
+
 # Check if we're in the right directory
 if [ ! -f "cdk.json" ]; then
     echo "❌ Error: cdk.json not found. Please run this script from the infrastructure directory."
@@ -28,9 +34,9 @@ npm run build
 echo "🔨 Building Lambda functions..."
 ./build-lambda.sh
 
-# Package Lambda functions
-echo "📦 Packaging Lambda functions..."
-./package-lambda.sh
+# Bundle Lambda functions with dependencies
+echo "📦 Bundling Lambda functions..."
+./bundle-lambda.sh
 
 # Deploy the stack
 echo "🚀 Deploying CDK stack..."

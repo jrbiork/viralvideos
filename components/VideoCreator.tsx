@@ -221,31 +221,6 @@ export default function VideoCreator({
               onClick={() => {
                 const duration = parseInt(selectedDuration.replace('s', ''));
                 onGenerateVideo(script, duration);
-
-                // Show browser notification for testing
-                if (
-                  'Notification' in window &&
-                  Notification.permission === 'granted'
-                ) {
-                  new Notification('Your video is ready!', {
-                    body: 'Your video has been generated successfully!',
-                    icon: '/favicon.ico',
-                    badge: '/favicon.ico',
-                  });
-                } else if (
-                  'Notification' in window &&
-                  Notification.permission !== 'denied'
-                ) {
-                  Notification.requestPermission().then((permission) => {
-                    if (permission === 'granted') {
-                      new Notification('Your video is ready!', {
-                        body: 'Your video has been generated successfully!',
-                        icon: '/favicon.ico',
-                        badge: '/favicon.ico',
-                      });
-                    }
-                  });
-                }
               }}
               disabled={isGenerating || !script.trim() || wordCount < 10}
               className={`px-6 py-3 text-base font-semibold flex items-center justify-center space-x-2 transition-all duration-300 ${

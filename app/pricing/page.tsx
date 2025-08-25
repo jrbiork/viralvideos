@@ -64,7 +64,7 @@ export default function Pricing() {
     setShowPromotion(false);
     const mostPopularSpan = document.querySelector(
       '.bg-gradient-to-r.from-purple-400.to-blue-500',
-    );
+    ) as HTMLElement;
     if (mostPopularSpan) {
       const elementPosition = mostPopularSpan.getBoundingClientRect().top;
       const windowHeight = window.innerHeight;

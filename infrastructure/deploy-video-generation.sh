@@ -20,21 +20,20 @@ fi
 echo "📦 Installing dependencies..."
 npm install
 
-# Build only the video-generation Lambda
-echo "🔨 Building video-generation Lambda..."
-cd lambda/video-generation
+# Build all lambdas (which includes video-generation)
+echo "🔨 Building all lambdas..."
+cd lambda
 npm run build
-cd ../..
+cd ..
 
 # Create deployment directory for video-generation
 echo "📦 Packaging video-generation Lambda..."
 mkdir -p dist/video-generation
 
-# Copy built JavaScript files
+# Copy built JavaScript files from dist directory
 echo "📋 Copying video-generation files..."
-cp lambda/video-generation/*.js dist/video-generation/
-cp -r lambda/video-generation/util dist/video-generation/
-cp -r lambda/common dist/video-generation/
+cp lambda/dist/video-generation/*.js dist/video-generation/
+cp -r lambda/dist/video-generation/util dist/video-generation/ 2>/dev/null || true
 cp lambda/package.json dist/video-generation/
 
 # Install production dependencies

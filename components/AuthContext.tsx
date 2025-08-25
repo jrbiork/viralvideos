@@ -214,7 +214,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     window.onbeforeunload = () => {
       cleanup();
       if (originalOnBeforeUnload) {
-        return originalOnBeforeUnload.call(window);
+        return originalOnBeforeUnload.call(window, new Event('beforeunload'));
       }
     };
   };

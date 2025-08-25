@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
 
 interface UserDropdownProps {
@@ -8,6 +9,7 @@ interface UserDropdownProps {
 }
 
 export default function UserDropdown({ className = '' }: UserDropdownProps) {
+  const router = useRouter();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
   const [showDropdown, setShowDropdown] = useState(false);
   const [imageError, setImageError] = useState(false);

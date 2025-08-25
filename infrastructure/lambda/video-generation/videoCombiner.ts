@@ -4,24 +4,17 @@ import {
   GetObjectCommand,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
-const ffmpeg = require('fluent-ffmpeg');
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+const ffmpeg = require('fluent-ffmpeg');
 import {
   createASSStyleHeader,
   parseASSTime,
   formatASSTime,
-} from '../common/util/assUtils';
+} from './util/assUtils';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
-
-// Set FFmpeg paths for Lambda environment
-const ffmpegPath = '/opt/bin/ffmpeg';
-const ffprobePath = '/opt/bin/ffprobe';
-
-ffmpeg.setFfmpegPath(ffmpegPath);
-ffmpeg.setFfprobePath(ffprobePath);
 
 export interface Scene {
   description: string;
@@ -147,38 +140,43 @@ async function concatenateScenes(
 
   const finalOutputPath = path.join(os.tmpdir(), 'final-video.mp4');
 
-  const concatCommand = ffmpeg()
-    .input(fileListPath)
-    .inputOptions(['-f', 'concat', '-safe', '0'])
-    .outputOptions([
-      '-c:v',
-      'libx264',
-      '-preset',
-      'veryfast', // Use very fast preset for final concatenation
-      '-crf',
-      '23', // Better quality for final output
-      '-pix_fmt',
-      'yuv420p',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '128k',
-      '-threads',
-      '0', // Use all available CPU threads
-    ])
-    .output(finalOutputPath);
-
-  await new Promise<void>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     const timeout = setTimeout(() => {
       console.error('❌ Timeout concatenating scenes after 10 minutes');
       reject(new Error('Timeout concatenating scenes'));
     }, 10 * 60 * 1000); // 10 minute timeout
 
-    concatCommand
+    ffmpeg()
+      .input(fileListPath)
+      .inputOptions(['-f', 'concat', '-safe', '0'])
+      .outputOptions([
+        '-c:v',
+        'libx264',
+        '-preset',
+        'veryfast',
+        '-crf',
+        '23',
+        '-pix_fmt',
+        'yuv420p',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-threads',
+        '0',
+      ])
+      .output(finalOutputPath)
       .on('end', () => {
         clearTimeout(timeout);
         console.log('✅ All scenes concatenated successfully');
-        resolve();
+
+        // Clean up temporary files
+        combinedScenePaths.forEach((scenePath) => {
+          if (fs.existsSync(scenePath)) fs.unlinkSync(scenePath);
+        });
+        if (fs.existsSync(fileListPath)) fs.unlinkSync(fileListPath);
+
+        resolve(finalOutputPath);
       })
       .on('error', (err: any) => {
         clearTimeout(timeout);
@@ -187,14 +185,6 @@ async function concatenateScenes(
       })
       .run();
   });
-
-  // Clean up temporary files
-  combinedScenePaths.forEach((scenePath) => {
-    if (fs.existsSync(scenePath)) fs.unlinkSync(scenePath);
-  });
-  if (fs.existsSync(fileListPath)) fs.unlinkSync(fileListPath);
-
-  return finalOutputPath;
 }
 
 /**
@@ -274,61 +264,89 @@ async function processScene(
     `scene-${sceneIndex}-combined.mp4`,
   );
 
-  const ffmpegCommand = ffmpeg().input(videoPath);
-
-  if (audioPath) {
-    ffmpegCommand.input(audioPath);
-  }
-
-  // Add input options to ensure proper synchronization
-  ffmpegCommand.inputOptions(['-async', '1', '-itsoffset', '0']); // Audio sync and no time offset
-
-  const outputOptions = [
-    '-c:v',
-    'libx264',
-    '-preset',
-    'ultrafast', // Use fastest preset for intermediate processing
-    '-crf',
-    '28', // Higher CRF for faster encoding (lower quality but acceptable for intermediate)
-    '-pix_fmt',
-    'yuv420p',
-    '-c:a',
-    'aac',
-    '-b:a',
-    '128k',
-    '-map',
-    '0:v:0',
-    '-shortest', // Ensure output duration matches the shortest input
-    '-vsync',
-    '1', // Video sync method
-    '-threads',
-    '0', // Use all available CPU threads
-  ];
-
-  if (audioPath) {
-    outputOptions.push('-map', '1:a:0');
-  }
-
-  // Add subtitle overlay if available
-  if (subtitlePath && fs.existsSync(subtitlePath)) {
-    const subtitleFilter = `ass=${subtitlePath}:fontsdir=/opt/fonts`;
-    outputOptions.push('-vf', subtitleFilter);
-  }
-
-  ffmpegCommand.outputOptions(outputOptions);
-
-  await new Promise<void>((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     const timeout = setTimeout(() => {
       console.error(`❌ Timeout combining scene ${sceneIndex} after 5 minutes`);
       reject(new Error(`Timeout combining scene ${sceneIndex}`));
     }, 5 * 60 * 1000); // 5 minute timeout
 
-    ffmpegCommand
+    const command = ffmpeg()
+      .input(videoPath)
+      .inputOptions(['-async', '1', '-itsoffset', '0']);
+
+    if (audioPath) {
+      command.input(audioPath);
+    }
+
+    command.outputOptions([
+      '-c:v',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-crf',
+      '28',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '128k',
+      '-map',
+      '0:v:0',
+      '-shortest',
+      '-vsync',
+      '1',
+      '-threads',
+      '0',
+    ]);
+
+    if (audioPath) {
+      command.outputOptions(['-map', '1:a:0']);
+    }
+
+    // Add subtitle overlay if available
+    if (subtitlePath && fs.existsSync(subtitlePath)) {
+      const subtitleFilter = `ass=${subtitlePath}:fontsdir=/opt/fonts`;
+      command.outputOptions(['-vf', subtitleFilter]);
+    }
+
+    command
       .output(combinedScenePath)
-      .on('end', () => {
+      .on('end', async () => {
         clearTimeout(timeout);
         console.log(`✅ Scene ${sceneIndex} combined successfully`);
-        resolve();
+
+        // Save combined scene to S3 for testing purposes
+        try {
+          const combinedSceneBuffer = fs.readFileSync(combinedScenePath);
+          const combinedSceneKey = `${userId}/${timestamp}.scene-${sceneIndex}-combined.mp4`;
+
+          await s3.send(
+            new PutObjectCommand({
+              Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+              Key: combinedSceneKey,
+              Body: combinedSceneBuffer,
+              ContentType: 'video/mp4',
+            }),
+          );
+
+          console.log(
+            `💾 Scene ${sceneIndex} (ID: ${sceneId}) combined file saved to S3: ${combinedSceneKey}`,
+          );
+        } catch (error) {
+          console.warn(
+            `⚠️ Could not save combined scene ${sceneIndex} (ID: ${sceneId}) to S3:`,
+            error,
+          );
+        }
+
+        // Clean up individual scene files
+        if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
+        if (audioPath && fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
+        if (subtitlePath && fs.existsSync(subtitlePath))
+          fs.unlinkSync(subtitlePath);
+
+        resolve(combinedScenePath);
       })
       .on('error', (err: any) => {
         clearTimeout(timeout);
@@ -337,35 +355,4 @@ async function processScene(
       })
       .run();
   });
-
-  // Save combined scene to S3 for testing purposes
-  try {
-    const combinedSceneBuffer = fs.readFileSync(combinedScenePath);
-    const combinedSceneKey = `${userId}/${timestamp}.scene-${sceneIndex}-combined.mp4`;
-
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Key: combinedSceneKey,
-        Body: combinedSceneBuffer,
-        ContentType: 'video/mp4',
-      }),
-    );
-
-    console.log(
-      `💾 Scene ${sceneIndex} (ID: ${sceneId}) combined file saved to S3: ${combinedSceneKey}`,
-    );
-  } catch (error) {
-    console.warn(
-      `⚠️ Could not save combined scene ${sceneIndex} (ID: ${sceneId}) to S3:`,
-      error,
-    );
-  }
-
-  // Clean up individual scene files
-  if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath);
-  if (audioPath && fs.existsSync(audioPath)) fs.unlinkSync(audioPath);
-  if (subtitlePath && fs.existsSync(subtitlePath)) fs.unlinkSync(subtitlePath);
-
-  return combinedScenePath;
 }

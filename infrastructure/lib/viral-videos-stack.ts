@@ -7,6 +7,8 @@ import * as logs from 'aws-cdk-lib/aws-logs';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as apigatewayv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as apigatewayv2Integrations from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
@@ -94,6 +96,32 @@ export class ViralVideosStack extends cdk.Stack {
       pointInTimeRecovery: true,
     });
 
+    // DynamoDB WebSocket Connections Table
+    const websocketConnectionsTable = new dynamodb.Table(
+      this,
+      'WebSocketConnectionsTable',
+      {
+        tableName: 'viral-videos-websocket-connections',
+        partitionKey: {
+          name: 'connectionId',
+          type: dynamodb.AttributeType.STRING,
+        },
+        billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+        removalPolicy: cdk.RemovalPolicy.DESTROY, // For demo purposes
+        timeToLiveAttribute: 'ttl', // Auto-delete expired connections
+      },
+    );
+
+    // Add GSI for userId lookups
+    websocketConnectionsTable.addGlobalSecondaryIndex({
+      indexName: 'UserIdIndex',
+      partitionKey: {
+        name: 'userId',
+        type: dynamodb.AttributeType.STRING,
+      },
+      projectionType: dynamodb.ProjectionType.ALL,
+    });
+
     // Add GSI for username lookups
     usersTable.addGlobalSecondaryIndex({
       indexName: 'UsernameIndex',
@@ -124,11 +152,12 @@ export class ViralVideosStack extends cdk.Stack {
 
     // Grant DynamoDB permissions to Lambda
     usersTable.grantReadWriteData(lambdaRole);
+    websocketConnectionsTable.grantReadWriteData(lambdaRole);
 
     // Create FFmpeg Lambda Layer
     const ffmpegLayer = new lambda.LayerVersion(this, 'FFmpegLayer', {
       code: lambda.Code.fromAsset(
-        path.join(__dirname, '../lambda/ffmpeg-layer'),
+        path.join(__dirname, '../layers/ffmpeg-layer'),
       ),
       compatibleRuntimes: [lambda.Runtime.NODEJS_20_X],
       description: 'FFmpeg binaries for video processing',
@@ -159,6 +188,10 @@ export class ViralVideosStack extends cdk.Stack {
           PATH: '/opt/bin:/usr/local/bin:/usr/bin/:/bin',
           FONTCONFIG_PATH: '/opt/etc/fonts',
           FONTCONFIG_FILE: '/opt/etc/fonts/fonts.conf',
+          WEBSOCKET_DOMAIN_NAME:
+            'mlpiz7uok5.execute-api.us-east-1.amazonaws.com',
+          WEBSOCKET_STAGE: 'prod',
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },
       },
     );
@@ -191,6 +224,19 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Create a separate role for JWT authorizer to avoid circular dependencies
+    const jwtAuthorizerRole = new iam.Role(this, 'JWTAuthorizerRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          'service-role/AWSLambdaBasicExecutionRole',
+        ),
+      ],
+    });
+
+    // Grant DynamoDB permissions to JWT authorizer
+    usersTable.grantReadData(jwtAuthorizerRole);
+
     // Lambda function for JWT authorization
     const jwtAuthorizerLambda = new lambda.Function(
       this,
@@ -201,7 +247,7 @@ export class ViralVideosStack extends cdk.Stack {
         code: lambda.Code.fromAsset(
           path.join(__dirname, '../dist/jwt-authorizer'),
         ),
-        role: lambdaRole,
+        role: jwtAuthorizerRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
         environment: {
@@ -230,26 +276,6 @@ export class ViralVideosStack extends cdk.Stack {
         USERS_TABLE_NAME: usersTable.tableName,
       },
     });
-
-    // Lambda function for fetching data preview
-    const fetchDataPreviewLambda = new lambda.Function(
-      this,
-      'FetchDataPreviewLambda',
-      {
-        runtime: lambda.Runtime.NODEJS_20_X,
-        handler: 'index.handler',
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, '../dist/fetch-data-preview'),
-        ),
-        role: lambdaRole,
-        timeout: cdk.Duration.minutes(1),
-        memorySize: 128,
-        environment: {
-          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
-          USERS_TABLE_NAME: usersTable.tableName,
-        },
-      },
-    );
 
     // Lambda function for user management
     const getUserLambda = new lambda.Function(this, 'GetUserLambda', {
@@ -289,25 +315,6 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
-    // Lambda function for generating story breakdowns
-    const generateStoryBreakdownLambda = new lambda.Function(
-      this,
-      'GenerateStoryBreakdownLambda',
-      {
-        runtime: lambda.Runtime.NODEJS_20_X,
-        handler: 'index.handler',
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, '../dist/generate-story-breakdown'),
-        ),
-        role: lambdaRole,
-        timeout: cdk.Duration.minutes(2),
-        memorySize: 256,
-        environment: {
-          OPENAI_API_KEY: openaiApiKey,
-        },
-      },
-    );
-
     // Lambda function for generating audio narration
     const generateAudioSubtitleLambda = new lambda.Function(
       this,
@@ -324,26 +331,9 @@ export class ViralVideosStack extends cdk.Stack {
         environment: {
           OPENAI_API_KEY: openaiApiKey,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
-        },
-      },
-    );
-
-    // Lambda function for generating images
-    const generateImagesLambda = new lambda.Function(
-      this,
-      'GenerateImagesLambda',
-      {
-        runtime: lambda.Runtime.NODEJS_20_X,
-        handler: 'index.handler',
-        code: lambda.Code.fromAsset(
-          path.join(__dirname, '../dist/generate-images'),
-        ),
-        role: lambdaRole,
-        timeout: cdk.Duration.minutes(10),
-        memorySize: 1024,
-        environment: {
-          RUNWAY_API_KEY: runwayApiKey,
-          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+          WEBSOCKET_DOMAIN_NAME:
+            'mlpiz7uok5.execute-api.us-east-1.amazonaws.com',
+          WEBSOCKET_STAGE: 'prod',
         },
       },
     );
@@ -396,18 +386,6 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    // Lambda integration for fetching scripts
-    const fetchDataPreviewIntegration = new apigateway.LambdaIntegration(
-      fetchDataPreviewLambda,
-      {
-        requestTemplates: {
-          'application/json': JSON.stringify({
-            body: "$util.escapeJavaScript($input.json('$'))",
-          }),
-        },
-      },
-    );
-
     // Lambda integration for get user
     const getUserIntegration = new apigateway.LambdaIntegration(getUserLambda, {
       requestTemplates: {
@@ -445,16 +423,140 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    // Lambda integration for generating story breakdowns
-    const generateStoryBreakdownIntegration = new apigateway.LambdaIntegration(
-      generateStoryBreakdownLambda,
+    // WebSocket Lambda Functions
+    const websocketConnectLambda = new lambda.Function(
+      this,
+      'WebSocketConnectLambda',
       {
-        requestTemplates: {
-          'application/json': JSON.stringify({
-            body: "$util.escapeJavaScript($input.json('$'))",
-          }),
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/websocket-connect'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        environment: {
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+          USERS_TABLE_NAME: usersTable.tableName,
+          COGNITO_USER_POOL_ID:
+            process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
+          COGNITO_CLIENT_ID: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID || '',
+          COGNITO_REGION: process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1',
+          JWT_AUTHORIZER_LAMBDA_ARN: jwtAuthorizerLambda.functionArn,
         },
       },
+    );
+
+    // Grant WebSocket connect lambda permission to invoke JWT authorizer
+    // Add permission directly to the lambda role to avoid circular dependency
+    lambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['lambda:InvokeFunction'],
+        resources: [jwtAuthorizerLambda.functionArn],
+      }),
+    );
+
+    const websocketDisconnectLambda = new lambda.Function(
+      this,
+      'WebSocketDisconnectLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/websocket-disconnect'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        environment: {
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+        },
+      },
+    );
+
+    const websocketMessageLambda = new lambda.Function(
+      this,
+      'WebSocketMessageLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/websocket-message'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        environment: {
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+          USERS_TABLE_NAME: usersTable.tableName,
+        },
+      },
+    );
+
+    // WebSocket broadcast lambda for broadcasting messages to all connected clients
+    const websocketBroadcastLambda = new lambda.Function(
+      this,
+      'WebSocketBroadcastLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/websocket-broadcast'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 128,
+        environment: {
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+        },
+      },
+    );
+
+    // WebSocket API Gateway v2
+    const websocketApi = new apigatewayv2.WebSocketApi(this, 'WebSocketApi', {
+      apiName: 'Viral Videos WebSocket API',
+      description: 'WebSocket API for real-time video generation updates',
+      connectRouteOptions: {
+        integration: new apigatewayv2Integrations.WebSocketLambdaIntegration(
+          'ConnectHandler',
+          websocketConnectLambda,
+        ),
+      },
+      disconnectRouteOptions: {
+        integration: new apigatewayv2Integrations.WebSocketLambdaIntegration(
+          'DisconnectHandler',
+          websocketDisconnectLambda,
+        ),
+      },
+      defaultRouteOptions: {
+        integration: new apigatewayv2Integrations.WebSocketLambdaIntegration(
+          'MessageHandler',
+          websocketMessageLambda,
+        ),
+      },
+    });
+
+    const websocketStage = new apigatewayv2.WebSocketStage(
+      this,
+      'WebSocketStage',
+      {
+        webSocketApi: websocketApi,
+        stageName: 'prod',
+        autoDeploy: true,
+      },
+    );
+
+    // Grant WebSocket API permissions to Lambda functions
+    lambdaRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ['execute-api:ManageConnections'],
+        resources: [
+          `arn:aws:execute-api:${this.region}:${this.account}:${websocketApi.apiId}/*`,
+        ],
+      }),
     );
 
     // Lambda integration for generating audio and subtitles
@@ -469,9 +571,9 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    // Lambda integration for generating images
-    const generateImagesIntegration = new apigateway.LambdaIntegration(
-      generateImagesLambda,
+    // Lambda integration for WebSocket broadcasting
+    const websocketBroadcastIntegration = new apigateway.LambdaIntegration(
+      websocketBroadcastLambda,
       {
         requestTemplates: {
           'application/json': JSON.stringify({
@@ -492,22 +594,6 @@ export class ViralVideosStack extends cdk.Stack {
       authorizer: jwtAuthorizer,
     });
 
-    const fetchDataPreviewResource = api.root.addResource('fetch-data-preview');
-    fetchDataPreviewResource.addMethod('GET', fetchDataPreviewIntegration, {
-      authorizer: jwtAuthorizer,
-    });
-
-    const generateStoryBreakdownResource = api.root.addResource(
-      'generate-story-breakdown',
-    );
-    generateStoryBreakdownResource.addMethod(
-      'POST',
-      generateStoryBreakdownIntegration,
-      {
-        authorizer: jwtAuthorizer,
-      },
-    );
-
     const generateAudioSubtitleResource = api.root.addResource(
       'generate-audio-subtitle',
     );
@@ -518,11 +604,6 @@ export class ViralVideosStack extends cdk.Stack {
         authorizer: jwtAuthorizer,
       },
     );
-
-    const generateImagesResource = api.root.addResource('generate-images');
-    generateImagesResource.addMethod('POST', generateImagesIntegration, {
-      authorizer: jwtAuthorizer,
-    });
 
     const userManagementResource = api.root.addResource('user');
     userManagementResource.addMethod('POST', upsertUserIntegration, {
@@ -545,6 +626,17 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    const websocketBroadcastResource = api.root.addResource(
+      'websocket-broadcast',
+    );
+    websocketBroadcastResource.addMethod(
+      'POST',
+      websocketBroadcastIntegration,
+      {
+        authorizer: jwtAuthorizer,
+      },
+    );
+
     // CloudWatch Log Group for Lambda
     new logs.LogGroup(this, 'VideoGenerationLogGroup', {
       logGroupName: `/aws/lambda/${videoGenerationLambda.functionName}`,
@@ -560,12 +652,6 @@ export class ViralVideosStack extends cdk.Stack {
 
     new logs.LogGroup(this, 'FetchVideosLogGroup', {
       logGroupName: `/aws/lambda/${fetchVideosLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'FetchDataPreviewLogGroup', {
-      logGroupName: `/aws/lambda/${fetchDataPreviewLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -590,6 +676,12 @@ export class ViralVideosStack extends cdk.Stack {
 
     new logs.LogGroup(this, 'JWTAuthorizerLogGroup', {
       logGroupName: `/aws/lambda/${jwtAuthorizerLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'WebSocketBroadcastLogGroup', {
+      logGroupName: `/aws/lambda/${websocketBroadcastLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -673,6 +765,16 @@ export class ViralVideosStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'ApiGatewayEndpoint', {
       value: `${api.url}generate-video`,
       description: 'API Gateway endpoint for video generation',
+    });
+
+    new cdk.CfnOutput(this, 'WebSocketApiUrl', {
+      value: websocketStage.url,
+      description: 'WebSocket API Gateway URL',
+    });
+
+    new cdk.CfnOutput(this, 'WebSocketConnectionsTableName', {
+      value: websocketConnectionsTable.tableName,
+      description: 'DynamoDB table for WebSocket connections',
     });
 
     new cdk.CfnOutput(this, 'FetchVideosEndpoint', {
