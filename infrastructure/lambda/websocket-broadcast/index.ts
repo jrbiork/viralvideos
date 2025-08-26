@@ -3,13 +3,38 @@ import {
   DynamoDBClient,
   QueryCommand,
   DeleteItemCommand,
-  ScanCommand,
 } from '@aws-sdk/client-dynamodb';
 import { marshall, unmarshall } from '@aws-sdk/util-dynamodb';
 import {
   ApiGatewayManagementApiClient,
   PostToConnectionCommand,
 } from '@aws-sdk/client-apigatewaymanagementapi';
+
+// Types for video generation progress messages
+interface VideoProgressMessage {
+  action:
+    | 'script_created'
+    | 'image_created'
+    | 'audio_subtitle_created'
+    | 'video_scene_created'
+    | 'video_completed';
+  data: {
+    userId: string;
+    timestamp: string;
+    message?: string;
+    scenes?: any[];
+    imageUrls?: any[];
+    subtitleUrls?: any[];
+    narrationUrls?: any[];
+    videoEffectsUrls?: any[];
+    videoKey?: string;
+    [key: string]: any;
+  };
+}
+
+interface GenericMessage {
+  [key: string]: any;
+}
 
 const dynamodb = new DynamoDBClient({ region: process.env.AWS_REGION });
 const connectionsTableName = process.env.WEBSOCKET_CONNECTIONS_TABLE_NAME!;
@@ -33,7 +58,13 @@ export const handler = async (
       };
     }
 
-    await broadcastMessage(message, domainName, stage, userId);
+    // Handle video generation progress messages with specific action mapping
+    if (message.action && message.data) {
+      await broadcastVideoProgressMessage(message, domainName, stage, userId);
+    } else {
+      // Handle generic messages
+      await broadcastMessage(message, domainName, stage, userId);
+    }
 
     return {
       statusCode: 200,
@@ -48,8 +79,8 @@ export const handler = async (
   }
 };
 
-async function broadcastMessage(
-  message: any,
+async function broadcastVideoProgressMessage(
+  message: VideoProgressMessage,
   domainName: string,
   stage: string,
   userId: string,
@@ -58,42 +89,91 @@ async function broadcastMessage(
   const apiGateway = new ApiGatewayManagementApiClient({ endpoint });
 
   try {
-    // First, let's scan the table to see what connections exist for this userId
-    console.log(`Scanning table for userId: ${userId}`);
-    const scanParams = {
+    // Use GSI UserIdIndex to query by userId
+    console.log(`Querying GSI for userId: ${userId}`);
+    const queryParams = {
       TableName: connectionsTableName,
-      FilterExpression: 'userId = :userId',
+      IndexName: 'UserIdIndex',
+      KeyConditionExpression: 'userId = :userId',
       ExpressionAttributeValues: marshall({
         ':userId': userId,
       }),
     };
 
-    const scanResult = await dynamodb.send(new ScanCommand(scanParams));
-    console.log('Scan result:', JSON.stringify(scanResult, null, 2));
+    const result = await dynamodb.send(new QueryCommand(queryParams));
+    console.log('GSI Query result:', JSON.stringify(result, null, 2));
 
-    let connections: any[] = [];
+    const connections =
+      result.Items?.map((item: any) => unmarshall(item)) || [];
+    console.log(
+      `Found ${connections.length} connections via GSI for userId: ${userId}`,
+    );
 
-    if (scanResult.Items && scanResult.Items.length > 0) {
-      console.log(
-        `Found ${scanResult.Items.length} connections via scan for userId: ${userId}`,
-      );
-      connections = scanResult.Items.map((item: any) => unmarshall(item));
-    } else {
-      // Try using the GSI as fallback
-      console.log('No connections found via scan, trying GSI...');
-      const queryParams = {
-        TableName: connectionsTableName,
-        IndexName: 'UserIdIndex',
-        KeyConditionExpression: 'userId = :userId',
-        ExpressionAttributeValues: marshall({
-          ':userId': userId,
-        }),
-      };
+    console.log(
+      `Broadcasting video progress to ${connections.length} connections for userId: ${userId}`,
+      message,
+    );
 
-      const result = await dynamodb.send(new QueryCommand(queryParams));
-      console.log('GSI Query result:', JSON.stringify(result, null, 2));
-      connections = result.Items?.map((item: any) => unmarshall(item)) || [];
-    }
+    // Send message to each connection for the userId
+    const promises = connections.map(async (connection) => {
+      try {
+        await apiGateway.send(
+          new PostToConnectionCommand({
+            ConnectionId: connection.connectionId,
+            Data: JSON.stringify(message),
+          }),
+        );
+      } catch (error) {
+        console.error(
+          `Error sending to connection ${connection.connectionId}:`,
+          error,
+        );
+        // Remove stale connection
+        await dynamodb.send(
+          new DeleteItemCommand({
+            TableName: connectionsTableName,
+            Key: marshall({ connectionId: connection.connectionId }),
+          }),
+        );
+      }
+    });
+
+    await Promise.all(promises);
+  } catch (error) {
+    console.error('Error broadcasting video progress message:', error);
+    throw error;
+  }
+}
+
+async function broadcastMessage(
+  message: GenericMessage,
+  domainName: string,
+  stage: string,
+  userId: string,
+): Promise<void> {
+  const endpoint = `https://${domainName}/${stage}`;
+  const apiGateway = new ApiGatewayManagementApiClient({ endpoint });
+
+  try {
+    // Use GSI UserIdIndex to query by userId
+    console.log(`Querying GSI for userId: ${userId}`);
+    const queryParams = {
+      TableName: connectionsTableName,
+      IndexName: 'UserIdIndex',
+      KeyConditionExpression: 'userId = :userId',
+      ExpressionAttributeValues: marshall({
+        ':userId': userId,
+      }),
+    };
+
+    const result = await dynamodb.send(new QueryCommand(queryParams));
+    console.log('GSI Query result:', JSON.stringify(result, null, 2));
+
+    const connections =
+      result.Items?.map((item: any) => unmarshall(item)) || [];
+    console.log(
+      `Found ${connections.length} connections via GSI for userId: ${userId}`,
+    );
 
     console.log(
       `Broadcasting to ${connections.length} connections for userId: ${userId}`,
@@ -131,4 +211,4 @@ async function broadcastMessage(
 }
 
 // Export for use by other Lambda functions
-export { broadcastMessage };
+export { broadcastMessage, broadcastVideoProgressMessage };

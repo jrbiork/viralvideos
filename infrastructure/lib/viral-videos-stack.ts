@@ -270,6 +270,7 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
+
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
         VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,

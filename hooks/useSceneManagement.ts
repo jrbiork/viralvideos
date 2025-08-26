@@ -258,26 +258,13 @@ export function useSceneManagement() {
     const updateSubtitle = () => {
       // Get the latest assFiles from the video element
       const latestAssFiles = JSON.parse(videoRef.dataset.assFiles || '{}');
-      const assKey = `${currentTimestamp}.scene-${scene.id}.ass`;
+      const assKey = `${currentTimestamp}.scene-${sceneIndex}.ass`;
       const assContent = latestAssFiles[assKey];
       const subtitles = assContent ? parseAssFile(assContent) : [];
-
-      console.log('🔍 updateSubtitle - assKey:', assKey);
-      console.log(
-        '🔍 updateSubtitle - assContent length:',
-        assContent ? assContent.length : 0,
-      );
-      console.log('🔍 updateSubtitle - subtitles count:', subtitles.length);
 
       const currentTime = videoRef.currentTime;
       const currentSub = subtitles.find(
         (sub) => currentTime >= sub.start && currentTime <= sub.end,
-      );
-
-      console.log('🔍 updateSubtitle - currentTime:', currentTime);
-      console.log(
-        '🔍 updateSubtitle - currentSub:',
-        currentSub ? currentSub.coloredText : 'none',
       );
 
       dispatch({
@@ -329,6 +316,11 @@ export function useSceneManagement() {
     });
 
     videoRef.addEventListener('timeupdate', updateSubtitle);
+
+    // Set initial subtitle when video is ready
+    videoRef.addEventListener('loadeddata', () => {
+      updateSubtitle();
+    });
 
     videoRef.addEventListener('ended', () => {
       // Reset auto-playing flag

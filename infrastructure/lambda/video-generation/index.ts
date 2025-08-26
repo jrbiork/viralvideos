@@ -5,7 +5,7 @@ import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 
 import { generateImage } from './image';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
-import { generateSubtitles } from './subtitles';
+import { generateSubtitles, generateSubtitleContent } from './subtitles';
 import { addSceneIds } from './script';
 import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { getImageUrls } from './util/imageUtils';
@@ -61,13 +61,6 @@ async function processVideoGeneration(
     // Use timestamp from request body
     const timestamp = request.timestamp;
 
-    // Send initial progress update
-    await broadcastVideoProgress(
-      request.userId,
-      timestamp,
-      'Video generation started',
-    );
-
     const sceneDuration = Math.floor(
       request.totalDuration / request.sceneCount,
     );
@@ -111,16 +104,15 @@ async function processVideoGeneration(
 
     console.log('🎥 Story breakdown generated:', scenes);
 
-    await broadcastVideoProgress(
+    await broadcastProgress(
+      'script_created',
       request.userId,
       timestamp,
-      'Story breakdown completed',
       {
         scenes,
       },
+      'Story breakdown completed',
     );
-
-    broadcastVideoProgress(request.userId, timestamp, 'Generating images');
 
     // Check if there are already images generated in the s3 bucket for the timestamp
     let imageUrls = await getImageUrls(request.userId, timestamp);
@@ -179,21 +171,17 @@ async function processVideoGeneration(
 
     console.log('🖼️ Image URLs generated:', imageUrls);
 
-    await broadcastVideoProgress(
+    await broadcastProgress(
+      'image_created',
       request.userId,
       timestamp,
-      'Images generated',
       imageUrls,
+      'Images generated',
     );
 
     console.log('🎥 No existing audio files found, generating new narration');
 
     // Step 3: Generate audio narration with word-level timestamps
-    await broadcastVideoProgress(
-      request.userId,
-      timestamp,
-      'Generating subtitles and audio',
-    );
 
     const { subtitles, narrationUrls } = await generateNarration(
       scenes,
@@ -202,25 +190,30 @@ async function processVideoGeneration(
       voiceToneInstruction,
     );
 
-    const subtitleUrls = await generateSubtitles(
+    const subtitleContent = await generateSubtitleContent(
       scenes,
       request.userId,
       timestamp,
       subtitles,
     );
 
-    console.log('📝 Subtitle URLs generated:', subtitleUrls);
+    console.log('📝 Subtitle content generated:', subtitleContent);
     console.log('🎤 Narration URLs generated:', narrationUrls);
 
-    await broadcastVideoProgress(
+    await broadcastProgress(
+      'audio_subtitle_created',
       request.userId,
       timestamp,
-      'Audio and Subtitles completed',
       {
-        imageUrls,
-        subtitleUrls,
+        subtitles: subtitles.map((subtitle) => ({
+          [`${timestamp}.scene-${subtitle.sceneIndex}.subtitle`]: {
+            text: subtitle.fullText,
+          },
+        })),
+        subtitleContent,
         narrationUrls,
       },
+      'Audio and Subtitles completed',
     );
 
     // Step 4: Generate video clips from images
@@ -263,11 +256,6 @@ async function processVideoGeneration(
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 
     // Step 4: Generate video effects and camera movement using the images
-    await broadcastVideoProgress(
-      request.userId,
-      timestamp,
-      'Generating video effects',
-    );
 
     const videoEffectsUrls = await generateVideoEffects(
       scenes,
@@ -275,22 +263,24 @@ async function processVideoGeneration(
       timestamp,
     );
 
-    await broadcastVideoProgress(
+    await broadcastProgress(
+      'video_scene_created',
       request.userId,
       timestamp,
-      'Video effects completed',
       {
-        imageUrls,
         videoEffectsUrls,
       },
+      'Video effects completed',
     );
 
     console.log('🎬 Video effects URLs generated:', videoEffectsUrls);
 
     // Step 6: Combine video clips, audio, and subtitles
-    await broadcastVideoProgress(
+    await broadcastProgress(
+      'video_scene_created',
       request.userId,
       timestamp,
+      undefined,
       'Combining final video started',
     );
 
@@ -298,12 +288,6 @@ async function processVideoGeneration(
       request.userId,
       timestamp,
       scenes,
-    );
-
-    await broadcastVideoProgress(
-      request.userId,
-      timestamp,
-      'Final video combined',
     );
 
     if (!finalVideo) {
@@ -323,10 +307,12 @@ async function processVideoGeneration(
     }
 
     // Broadcast video generation completed event
-    await broadcastVideoGenerationCompleted(
+    await broadcastProgress(
+      'video_completed',
       request.userId,
       timestamp,
-      videoKey,
+      { videoKey },
+      'Video generation completed',
     );
 
     return {
@@ -339,15 +325,21 @@ async function processVideoGeneration(
 }
 
 // Helper function to broadcast video generation progress via WebSocket
-async function broadcastVideoProgress(
+async function broadcastProgress(
+  action:
+    | 'script_created'
+    | 'image_created'
+    | 'audio_subtitle_created'
+    | 'video_scene_created'
+    | 'video_completed',
   userId: string,
   timestamp: string,
-  message: string,
   data?: any,
+  message?: string,
 ): Promise<void> {
   try {
     const progressMessage = {
-      action: 'video_generation_progress',
+      action,
       data: {
         userId,
         timestamp,
@@ -362,110 +354,14 @@ async function broadcastVideoProgress(
 
     if (domainName) {
       await broadcastMessage(progressMessage, domainName, stage, userId);
-      console.log(`📡 WebSocket progress broadcast: ${message}`);
+      console.log(`📡 WebSocket progress broadcast: ${action} - ${message}`);
     } else {
       console.log(
-        `📡 WebSocket not configured, skipping broadcast: ${message}`,
+        `📡 WebSocket not configured, skipping broadcast: ${action} - ${message}`,
       );
     }
   } catch (error) {
     console.error('Error broadcasting video progress:', error);
     // Don't throw error to avoid breaking the main process
-  }
-}
-
-// Helper function to broadcast subtitle files completed event
-async function broadcastSubtitleFilesCompleted(
-  userId: string,
-  timestamp: string,
-  subtitleUrls: Array<{ [key: string]: string }>,
-): Promise<void> {
-  try {
-    const subtitleMessage = {
-      action: 'subtitle_files_completed',
-      data: {
-        userId,
-        timestamp,
-        subtitleFiles: subtitleUrls,
-      },
-    };
-
-    const domainName = process.env.WEBSOCKET_DOMAIN_NAME;
-    const stage = process.env.WEBSOCKET_STAGE || 'prod';
-
-    if (domainName) {
-      await broadcastMessage(subtitleMessage, domainName, stage, userId);
-      console.log(`📡 WebSocket subtitle files completed broadcast`);
-    } else {
-      console.log(`📡 WebSocket not configured, skipping subtitle broadcast`);
-    }
-  } catch (error) {
-    console.error('Error broadcasting subtitle files completed:', error);
-  }
-}
-
-// Helper function to broadcast media files completed event
-async function broadcastMediaFilesCompleted(
-  userId: string,
-  timestamp: string,
-  videoEffectsUrls: Array<{ [key: string]: string }>,
-  imageUrls: Array<{ [key: string]: string }>,
-): Promise<void> {
-  try {
-    const mediaMessage = {
-      action: 'media_files_completed',
-      data: {
-        userId,
-        timestamp,
-        mediaFiles: {
-          videoEffects: videoEffectsUrls,
-          images: imageUrls,
-        },
-        assFiles: {}, // This will be populated by the frontend when needed
-      },
-    };
-
-    const domainName = process.env.WEBSOCKET_DOMAIN_NAME;
-    const stage = process.env.WEBSOCKET_STAGE || 'prod';
-
-    if (domainName) {
-      await broadcastMessage(mediaMessage, domainName, stage, userId);
-      console.log(`📡 WebSocket media files completed broadcast`);
-    } else {
-      console.log(`📡 WebSocket not configured, skipping media broadcast`);
-    }
-  } catch (error) {
-    console.error('Error broadcasting media files completed:', error);
-  }
-}
-
-// Helper function to broadcast video generation completed event
-async function broadcastVideoGenerationCompleted(
-  userId: string,
-  timestamp: string,
-  videoKey: string,
-): Promise<void> {
-  try {
-    const completionMessage = {
-      action: 'video_generation_completed',
-      data: {
-        userId,
-        timestamp,
-        videoKey,
-        message: 'Video generation completed successfully',
-      },
-    };
-
-    const domainName = process.env.WEBSOCKET_DOMAIN_NAME;
-    const stage = process.env.WEBSOCKET_STAGE || 'prod';
-
-    if (domainName) {
-      await broadcastMessage(completionMessage, domainName, stage, userId);
-      console.log(`📡 WebSocket video generation completed broadcast`);
-    } else {
-      console.log(`📡 WebSocket not configured, skipping completion broadcast`);
-    }
-  } catch (error) {
-    console.error('Error broadcasting video generation completed:', error);
   }
 }

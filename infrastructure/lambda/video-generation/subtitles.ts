@@ -93,6 +93,56 @@ export async function generateSubtitles(
   }
 }
 
+export async function generateSubtitleContent(
+  scenes: Scene[],
+  userId: string,
+  timestamp: string,
+  subtitleData?: SubtitleData[],
+): Promise<Array<{ [key: string]: string }>> {
+  // Format: [{ "timestamp.scene-id.ass": "ass-content" }]
+  try {
+    const subtitleContent: Array<{ [key: string]: string }> = [];
+    let currentTime = 0;
+
+    for (let i = 0; i < scenes.length; i++) {
+      const scene = scenes[i];
+      let assContent: string;
+
+      // Check if we have word-level subtitle data for this scene
+      const sceneSubtitleData = subtitleData?.find(
+        (data) => data.sceneIndex === i,
+      );
+
+      if (sceneSubtitleData && sceneSubtitleData.words.length > 0) {
+        // Use word-timed karaoke subtitle
+        assContent = createWordTimedKaraokeASSSubtitle(
+          sceneSubtitleData.words,
+          0, // Start from 0 for each scene
+        );
+      } else {
+        // Fallback to simple subtitle
+        assContent = createSimpleASSSubtitle(
+          i + 1,
+          0, // Start from 0 for each scene
+          scene.duration,
+          scene.narration,
+        );
+      }
+
+      // Extract filename (e.g., "1004.scene-1.ass")
+      const filename = `${timestamp}.scene-${scene.id}.ass`;
+
+      subtitleContent.push({ [filename]: assContent });
+      currentTime += scene.duration;
+    }
+
+    return subtitleContent;
+  } catch (error) {
+    console.error('❌ Error in generateSubtitleContent:', error);
+    throw error;
+  }
+}
+
 function createSimpleASSSubtitle(
   index: number,
   startTime: number,
