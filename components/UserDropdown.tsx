@@ -71,7 +71,6 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
                 setImageError(true);
               }}
               onLoad={() => {
-                console.log('Image loaded successfully');
                 setImageError(false);
               }}
             />

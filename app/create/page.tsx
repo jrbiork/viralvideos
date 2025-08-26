@@ -67,8 +67,6 @@ export default function GeneratePage() {
   // WebSocket hook for real-time updates
   const { isConnected } = useWebSocket({
     onMessage: (message) => {
-      console.log('WebSocket message received:', message);
-
       // Handle different message types
       switch (message.action) {
         case 'script_created':
@@ -87,14 +85,15 @@ export default function GeneratePage() {
           handleVideoCompleted(message.data);
           break;
         default:
-          console.log('Unknown WebSocket message type:', message.action);
+          // Unknown message type
+          break;
       }
     },
     onConnect: () => {
-      console.log('WebSocket connected');
+      // WebSocket connected
     },
     onDisconnect: () => {
-      console.log('WebSocket disconnected');
+      // WebSocket disconnected
     },
     onError: (error) => {
       console.error('WebSocket error:', error);
@@ -103,7 +102,6 @@ export default function GeneratePage() {
 
   // Handle script creation
   const handleScriptCreated = (data: any) => {
-    console.log('Script created:', data);
     setVideoGenerationState((prev) => ({
       ...prev,
       currentTimestamp: data.timestamp || prev.currentTimestamp,
@@ -114,8 +112,6 @@ export default function GeneratePage() {
 
   // Handle image creation
   const handleImageCreated = (data: any) => {
-    console.log('Images created:', data);
-
     const mediaFiles: { [key: string]: string } = {};
 
     // Handle images - data structure: {0: {"timestamp.scene-0.jpg": "url"}, 1: {"timestamp.scene-1.jpg": "url"}, ...}
@@ -137,8 +133,6 @@ export default function GeneratePage() {
 
   // Handle audio and subtitle creation
   const handleAudioSubtitleCreated = (data: any) => {
-    console.log('Audio and subtitles created:', data);
-
     const mediaFiles: { [key: string]: string } = {};
     let subtitleFiles: any[] = [];
 
@@ -183,8 +177,6 @@ export default function GeneratePage() {
 
   // Handle video scene creation
   const handleVideoSceneCreated = (data: any) => {
-    console.log('Video scenes created:', data);
-
     const mediaFiles: { [key: string]: string } = {};
 
     // Handle video effects - array of objects: [{ "timestamp.scene-id.mp4": "signed-url" }]
@@ -204,7 +196,6 @@ export default function GeneratePage() {
 
   // Handle video completion
   const handleVideoCompleted = (data: any) => {
-    console.log('Video completed:', data);
     setVideoGenerationState((prev) => ({
       ...prev,
       currentTimestamp: data.timestamp || prev.currentTimestamp,
@@ -321,34 +312,22 @@ export default function GeneratePage() {
   const urlParamsProcessedRef = useRef(false);
 
   useEffect(() => {
-    console.log(
-      '🔍 URL params useEffect called - processed ref:',
-      urlParamsProcessedRef.current,
-    );
-    console.log('🔍 Component render count check');
-
     if (urlParamsProcessedRef.current) {
-      console.log('⏭️ Skipping URL params handling called - already processed');
       return;
     }
 
     // Set the ref immediately to prevent multiple executions
     urlParamsProcessedRef.current = true;
-    console.log('🔒 Ref set to true immediately');
 
     const handleUrlParams = async () => {
-      console.log('🚀 Starting URL params processing...');
       const urlParams = new URLSearchParams(window.location.search);
       const timestampFromUrl = urlParams.get('timestamp');
       const stepFromUrl = urlParams.get('step');
-
-      console.log('📋 URL params found:', { timestampFromUrl, stepFromUrl });
 
       // Set step from URL if provided
       if (stepFromUrl) {
         const stepNumber = parseInt(stepFromUrl);
         if (stepNumber >= 1 && stepNumber <= 3) {
-          console.log('📝 Setting current step to:', stepNumber);
           setCurrentStep(stepNumber);
         }
       }
@@ -360,14 +339,11 @@ export default function GeneratePage() {
       ) {
         // If step=2 is specified
         if (stepFromUrl === '2') {
-          console.log('🎬 Processing step=2 with timestamp:', timestampFromUrl);
           setVideoGenerationState((prev) => ({
             ...prev,
             currentTimestamp: timestampFromUrl,
             isLoadingSubtitles: true,
           }));
-
-          console.log('🌐 Making API call to generate-video called...');
 
           // call generate-video api
           await fetch('/api/generate-video', {
@@ -381,12 +357,8 @@ export default function GeneratePage() {
               step: 2,
             }),
           });
-
-          console.log('✅ API call completed');
         }
       }
-
-      console.log('🏁 URL params handling completed');
     };
 
     handleUrlParams();
@@ -410,12 +382,10 @@ export default function GeneratePage() {
 
   const handleGenerateScript = async (prompt: string) => {
     // This function is now handled by the VideoCreator component
-    console.log('Script generated:', prompt);
   };
 
   const handleUpdatePreview = () => {
     // TODO: Implement preview update logic
-    console.log('Updating preview with edited scenes:', scenes);
     // Transition to step 3
     setCurrentStep(3);
   };
@@ -445,9 +415,6 @@ export default function GeneratePage() {
         narration: sceneState.editedNarration || scene.narration,
       };
 
-      console.log('Regenerating audio for scene:', sceneId);
-      console.log('Using narration:', updatedScene.narration);
-
       // Call the generate-audio-subtitle API
       const response = await fetch('/api/generate-audio-subtitle', {
         method: 'POST',
@@ -462,15 +429,12 @@ export default function GeneratePage() {
             queryParams.get('timestamp'),
         }),
       });
-      console.log('Regenerating audio response:', response);
-      console.log('Regenerating videoGenerationState:', videoGenerationState);
 
       if (!response.ok) {
         throw new Error(`Failed to regenerate audio: ${response.statusText}`);
       }
 
       const result = await response.json();
-      console.log('Audio regeneration result:', result);
 
       // Update the video generation state with the new audio/subtitles
       if (result.data && result.data.length > 0) {
@@ -491,15 +455,6 @@ export default function GeneratePage() {
         // Force refresh of the video player to use new subtitles
         // If this scene is currently selected, update the current subtitle immediately
         if (sceneState.selectedSceneId === sceneId) {
-          console.log(
-            '🔄 Regenerating audio for currently selected scene:',
-            sceneId,
-          );
-          console.log(
-            '🔄 New ASS content length:',
-            audioData.assFileContent.length,
-          );
-
           // Clear the current subtitle first
           sceneDispatch({
             type: 'SET_CURRENT_SUBTITLE',
@@ -511,19 +466,16 @@ export default function GeneratePage() {
             'video',
           ) as HTMLVideoElement;
           if (videoElement) {
-            console.log('🔄 Found video element, updating dataset...');
             // Update the video element's dataset with the new ASS files
             videoElement.dataset.assFiles = JSON.stringify({
               ...videoGenerationState.assFiles,
               [audioData.assKey]: audioData.assFileContent,
             });
-            console.log('🔄 Dataset updated, triggering timeupdate event...');
 
             // Force the video to trigger a timeupdate event to refresh subtitles
             // This will make the video event listeners use the updated ASS content
             const timeUpdateEvent = new Event('timeupdate');
             videoElement.dispatchEvent(timeUpdateEvent);
-            console.log('🔄 Timeupdate event dispatched');
 
             // Also directly update the subtitle with the new content
             const newSubtitles = parseAssFile(audioData.assFileContent);
@@ -532,17 +484,11 @@ export default function GeneratePage() {
               (sub: any) => currentTime >= sub.start && currentTime <= sub.end,
             );
             if (currentSub) {
-              console.log(
-                '🔄 Directly updating subtitle to:',
-                currentSub.coloredText,
-              );
               sceneDispatch({
                 type: 'SET_CURRENT_SUBTITLE',
                 payload: currentSub.coloredText,
               });
             }
-          } else {
-            console.log('🔄 No video element found');
           }
         }
       }
@@ -623,16 +569,6 @@ export default function GeneratePage() {
             const videoKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp4`;
             const assKey = `${videoGenerationState.currentTimestamp}.scene-${index}.ass`;
             const isVisible = sceneState.selectedSceneId === scene.id;
-
-            // Debug logging
-            console.log(
-              '🎬 Scene',
-              index,
-              'videoKey:',
-              videoKey,
-              'URL:',
-              videoGenerationState.mediaFiles[videoKey],
-            );
 
             // Find the correct index for the selected scene
             const selectedSceneIndex = scenes.findIndex(
@@ -836,10 +772,6 @@ export default function GeneratePage() {
                                   scenes,
                                   (updatedScenes) => {
                                     // Update the subtitleFiles in video generation state
-                                    console.log(
-                                      'Scenes updated:',
-                                      updatedScenes,
-                                    );
 
                                     // Create updated subtitleFiles from the updated scenes
                                     const updatedSubtitleFiles =

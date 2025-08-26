@@ -39,8 +39,6 @@ export default function EditScene({
   const isEditing = editingScene === scene.id;
   const isRegenerating = regeneratingSceneId === scene.id;
 
-  console.log('scene editscene', scene);
-
   return (
     <div className="mb-4">
       {/* Scene Label */}

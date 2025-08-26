@@ -15,13 +15,13 @@ export default function WebSocketStatus({
   const { isConnected, isConnecting, connect, disconnect, ping } = useWebSocket(
     {
       onMessage: (message) => {
-        console.log('WebSocket message received:', message);
+        // WebSocket message received
       },
       onConnect: () => {
-        console.log('WebSocket connected');
+        // WebSocket connected
       },
       onDisconnect: () => {
-        console.log('WebSocket disconnected');
+        // WebSocket disconnected
       },
       onError: (error) => {
         console.error('WebSocket error:', error);

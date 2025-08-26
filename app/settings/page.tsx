@@ -23,7 +23,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isCancelling, setIsCancelling] = useState(false);
-  const [activeTab, setActiveTab] = useState<'personal' | 'subscription'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'subscription'>(
+    'personal',
+  );
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
   useEffect(() => {
@@ -320,7 +322,6 @@ export default function SettingsPage() {
                       <button
                         onClick={() => {
                           // This would handle sign out
-                          console.log('Sign out clicked');
                         }}
                         className="w-full px-4 py-2 border border-slate-600 text-slate-300 hover:bg-slate-700 rounded-lg font-medium transition-colors duration-200"
                       >
@@ -387,7 +388,9 @@ export default function SettingsPage() {
                                 : 'bg-red-600 hover:bg-red-700 text-white'
                             }`}
                           >
-                            {isCancelling ? 'Cancelling...' : 'Cancel Subscription'}
+                            {isCancelling
+                              ? 'Cancelling...'
+                              : 'Cancel Subscription'}
                           </button>
                         </div>
                       )}
