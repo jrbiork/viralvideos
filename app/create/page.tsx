@@ -107,6 +107,7 @@ export default function GeneratePage() {
       currentTimestamp: data.timestamp || prev.currentTimestamp,
       scenes: data.scenes || [],
       isLoadingScript: false,
+      isLoadingVideoScenes: true, // Start loading video scenes after script is created
     }));
   };
 
@@ -738,8 +739,8 @@ export default function GeneratePage() {
               )}
 
               {/* Scene Cards */}
-              {videoGenerationState.isLoadingScript
-                ? // Show skeleton placeholders while loading script
+              {videoGenerationState.isLoadingVideoScenes
+                ? // Show skeleton placeholders while loading video scenes
                   Array.from({ length: 3 }).map((_, index) => (
                     <EditSceneSkeleton key={index} />
                   ))
