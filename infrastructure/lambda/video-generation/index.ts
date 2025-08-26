@@ -298,6 +298,14 @@ async function processVideoGeneration(
 
       // Step 6: Upload to S3
       const videoKey = await uploadToS3(finalVideo, request.userId, timestamp);
+
+      await broadcastProgress(
+        'video_completed',
+        request.userId,
+        timestamp,
+        {},
+        'Video generated successfully',
+      );
     }
 
     // If this was triggered by SQS, delete the message from the queue
@@ -308,15 +316,6 @@ async function processVideoGeneration(
       });
       await sqs.send(deleteCommand);
     }
-
-    // Broadcast video generation completed event
-    await broadcastProgress(
-      'video_completed',
-      request.userId,
-      timestamp,
-      null,
-      'Video generation completed',
-    );
 
     return {
       message: 'Video generated successfully',

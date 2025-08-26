@@ -33,6 +33,7 @@ export default function GeneratePage() {
   // WebSocket-based state for video generation progress
   const [videoGenerationState, setVideoGenerationState] = useState({
     isLoadingScript: true,
+    isLoadingVideoScenes: true,
     currentTimestamp: '',
     subtitleFiles: [] as { [key: string]: string }[],
     mediaFiles: {} as { [key: string]: string },
@@ -107,7 +108,7 @@ export default function GeneratePage() {
       ...prev,
       currentTimestamp: data.timestamp || prev.currentTimestamp,
       scenes: data.scenes || [],
-      isLoadingScript: true,
+      isLoadingScript: false,
     }));
   };
 
@@ -195,7 +196,7 @@ export default function GeneratePage() {
 
     setVideoGenerationState((prev) => ({
       ...prev,
-      isLoadingScript: false, // Set to false when video scenes are ready
+      isLoadingVideoScenes: false, // Set to false when video scenes are created
       currentTimestamp: data.timestamp || prev.currentTimestamp,
       mediaFiles: { ...prev.mediaFiles, ...mediaFiles },
     }));
@@ -317,23 +318,37 @@ export default function GeneratePage() {
   }, [sceneState.selectedSceneId, videoGenerationState.currentTimestamp]);
 
   // Handle URL query parameters for step and timestamp
-  const urlParamsHandledRef = useRef(false);
+  const urlParamsProcessedRef = useRef(false);
 
   useEffect(() => {
-    if (urlParamsHandledRef.current) {
-      console.log('Skipping URL params handling - already processed');
+    console.log(
+      '🔍 URL params useEffect called - processed ref:',
+      urlParamsProcessedRef.current,
+    );
+    console.log('🔍 Component render count check');
+
+    if (urlParamsProcessedRef.current) {
+      console.log('⏭️ Skipping URL params handling called - already processed');
       return;
     }
 
+    // Set the ref immediately to prevent multiple executions
+    urlParamsProcessedRef.current = true;
+    console.log('🔒 Ref set to true immediately');
+
     const handleUrlParams = async () => {
+      console.log('🚀 Starting URL params processing...');
       const urlParams = new URLSearchParams(window.location.search);
       const timestampFromUrl = urlParams.get('timestamp');
       const stepFromUrl = urlParams.get('step');
+
+      console.log('📋 URL params found:', { timestampFromUrl, stepFromUrl });
 
       // Set step from URL if provided
       if (stepFromUrl) {
         const stepNumber = parseInt(stepFromUrl);
         if (stepNumber >= 1 && stepNumber <= 3) {
+          console.log('📝 Setting current step to:', stepNumber);
           setCurrentStep(stepNumber);
         }
       }
@@ -345,11 +360,14 @@ export default function GeneratePage() {
       ) {
         // If step=2 is specified
         if (stepFromUrl === '2') {
+          console.log('🎬 Processing step=2 with timestamp:', timestampFromUrl);
           setVideoGenerationState((prev) => ({
             ...prev,
             currentTimestamp: timestampFromUrl,
             isLoadingSubtitles: true,
           }));
+
+          console.log('🌐 Making API call to generate-video called...');
 
           // call generate-video api
           await fetch('/api/generate-video', {
@@ -363,15 +381,16 @@ export default function GeneratePage() {
               step: 2,
             }),
           });
+
+          console.log('✅ API call completed');
         }
       }
 
-      urlParamsHandledRef.current = true;
-      console.log('URL params handling completed');
+      console.log('🏁 URL params handling completed');
     };
 
     handleUrlParams();
-  }, []); // Run only once on mount
+  }, []); // Empty dependency array - run only once
 
   // Subscribe to WebSocket updates when connected
   // WebSocket connection is now automatic - no subscription needed
@@ -592,7 +611,7 @@ export default function GeneratePage() {
           </div>
         )}
 
-      {currentStep === 2 && videoGenerationState.isLoadingScript && (
+      {currentStep === 2 && videoGenerationState.isLoadingVideoScenes && (
         <div className="flex justify-center items-center h-full">
           <VideoSkeleton />
         </div>
