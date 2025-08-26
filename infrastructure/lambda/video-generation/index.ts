@@ -9,16 +9,17 @@ import { generateSubtitles, generateSubtitleContent } from './subtitles';
 import { addSceneIds } from './script';
 import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { getImageUrls } from './util/imageUtils';
-import { generateVideoEffects } from './util/videoEffects';
+import { generateVideoEffects, getVideoEffectUrls } from './util/videoEffects';
 import { combineVideoAndAudio } from './videoCombiner';
 import { broadcastMessage } from '../websocket-broadcast';
 
 interface VideoGenerationRequest {
-  prompt: string;
+  prompt?: string;
   userId: string;
   timestamp: string;
   totalDuration: number;
   sceneCount: number;
+  step: number;
 }
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
@@ -82,6 +83,11 @@ async function processVideoGeneration(
       console.log(
         '🎥 No existing script found, generating new story breakdown',
       );
+
+      if (!request.prompt) {
+        console.log('❌ Error: No prompt provided');
+        throw new Error('No prompt provided');
+      }
 
       // Step 1: Generate script/story breakdown using GPT-4
 
@@ -182,7 +188,6 @@ async function processVideoGeneration(
     console.log('🎥 No existing audio files found, generating new narration');
 
     // Step 3: Generate audio narration with word-level timestamps
-
     const { subtitles, narrationUrls } = await generateNarration(
       scenes,
       request.userId,
@@ -257,10 +262,13 @@ async function processVideoGeneration(
 
     // Step 4: Generate video effects and camera movement using the images
 
-    const videoEffectsUrls = await generateVideoEffects(
-      scenes,
+    // check if there are already all the video effects generated in the s3 bucket for the timestamp
+    let videoEffectsUrls = [];
+
+    videoEffectsUrls = await getVideoEffectUrls(
       request.userId,
       timestamp,
+      scenes,
     );
 
     await broadcastProgress(
@@ -276,26 +284,21 @@ async function processVideoGeneration(
     console.log('🎬 Video effects URLs generated:', videoEffectsUrls);
 
     // Step 6: Combine video clips, audio, and subtitles
-    await broadcastProgress(
-      'video_scene_created',
-      request.userId,
-      timestamp,
-      undefined,
-      'Combining final video started',
-    );
+    // lets add a request.step param that will only run this combineVideoAudio if step === 3
+    if (request.step === 3) {
+      const finalVideo = await combineVideoAndAudio(
+        request.userId,
+        timestamp,
+        scenes,
+      );
 
-    const finalVideo = await combineVideoAndAudio(
-      request.userId,
-      timestamp,
-      scenes,
-    );
+      if (!finalVideo) {
+        throw new Error('Failed to combine video, audio, and subtitles');
+      }
 
-    if (!finalVideo) {
-      throw new Error('Failed to combine video, audio, and subtitles');
+      // Step 6: Upload to S3
+      const videoKey = await uploadToS3(finalVideo, request.userId, timestamp);
     }
-
-    // Step 6: Upload to S3
-    const videoKey = await uploadToS3(finalVideo, request.userId, timestamp);
 
     // If this was triggered by SQS, delete the message from the queue
     if (record && process.env.VIDEO_QUEUE_URL) {
@@ -311,7 +314,7 @@ async function processVideoGeneration(
       'video_completed',
       request.userId,
       timestamp,
-      { videoKey },
+      null,
       'Video generation completed',
     );
 

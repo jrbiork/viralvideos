@@ -2,6 +2,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import axios from 'axios';
@@ -48,6 +49,65 @@ function resolveFfmpegPath(): string {
       candidates.join(', ') +
       '. Ensure your Lambda layer provides ffmpeg (common path: /opt/bin/ffmpeg) or set FFMPEG_PATH.',
   );
+}
+
+export async function getVideoEffectUrls(
+  userId: string,
+  timestamp: string,
+  scenes: Scene[],
+): Promise<Array<{ [key: string]: string }>> {
+  // Check if video effects already exist by listing S3 objects with prefix timestamp.scene- and suffix .mp4
+  const s3Client = new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1',
+  });
+  const listCommand = new ListObjectsV2Command({
+    Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+    Prefix: `${userId}/${timestamp}.scene-`,
+  });
+
+  try {
+    const listResult = await s3Client.send(listCommand);
+    const existingVideoFiles =
+      listResult.Contents?.filter((obj: any) => obj.Key?.endsWith('.mp4')) ||
+      [];
+
+    if (existingVideoFiles.length > 0) {
+      console.log(
+        '🎥 Video effects already generated for the timestamp:',
+        existingVideoFiles.length,
+        'files found',
+      );
+
+      // Generate signed URLs for existing video files
+      const signedUrlPromises = existingVideoFiles.map(async (obj: any) => {
+        if (!obj.Key) return null;
+
+        const getObjectCommand = new GetObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: obj.Key,
+        });
+
+        const signedUrl = await getSignedUrl(s3Client, getObjectCommand, {
+          expiresIn: 36000, // 10 hours
+        });
+
+        // Extract filename without user prefix (e.g., "1004.scene-1.mp4")
+        const filename = obj.Key.replace(`${userId}/`, '');
+
+        return { [filename]: signedUrl };
+      });
+
+      return (await Promise.all(signedUrlPromises)).filter(
+        (urlObj: any): urlObj is { [key: string]: string } => urlObj !== null,
+      );
+    } else {
+      return await generateVideoEffects(scenes, userId, timestamp);
+    }
+  } catch (error) {
+    console.error('Error checking existing video effects:', error);
+    // Fallback to generating new video effects
+    return await generateVideoEffects(scenes, userId, timestamp);
+  }
 }
 
 export async function generateVideoEffects(

@@ -16,7 +16,10 @@ export type VideoGenerationAction =
   | { type: 'SET_GENERATING'; payload: boolean }
   | { type: 'SET_GENERATED_VIDEO_URL'; payload: string | null }
   | { type: 'SET_SELECTED_GALLERY_VIDEO'; payload: any }
-  | { type: 'SET_GENERATION_STATUS'; payload: 'idle' | 'queued' | 'processing' | 'completed' | 'error' }
+  | {
+      type: 'SET_GENERATION_STATUS';
+      payload: 'idle' | 'queued' | 'processing' | 'completed' | 'error';
+    }
   | { type: 'SET_STATUS_MESSAGE'; payload: string }
   | { type: 'SET_HAS_STARTED_PROCESS'; payload: boolean }
   | { type: 'RESET_GENERATION_STATE' };
@@ -32,7 +35,10 @@ const initialState: VideoGenerationState = {
 };
 
 // Reducer function
-function videoGenerationReducer(state: VideoGenerationState, action: VideoGenerationAction): VideoGenerationState {
+function videoGenerationReducer(
+  state: VideoGenerationState,
+  action: VideoGenerationAction,
+): VideoGenerationState {
   switch (action.type) {
     case 'SET_GENERATING':
       return { ...state, isGenerating: action.payload };
@@ -57,16 +63,24 @@ export function useVideoGeneration() {
   const [state, dispatch] = useReducer(videoGenerationReducer, initialState);
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
-  const generateVideo = async (script: string, duration: number, onSuccess?: (timestamp: string) => void) => {
+  const generateVideo = async (
+    script: string,
+    duration: number,
+    onSuccess?: (timestamp: string) => void,
+  ) => {
     if (!isAuthenticated) return;
 
     dispatch({ type: 'SET_HAS_STARTED_PROCESS', payload: true });
     dispatch({ type: 'SET_GENERATING', payload: true });
     dispatch({ type: 'SET_GENERATED_VIDEO_URL', payload: null });
     dispatch({ type: 'SET_GENERATION_STATUS', payload: 'queued' });
-    dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Queuing video generation request...' });
+    dispatch({
+      type: 'SET_STATUS_MESSAGE',
+      payload: 'Queuing video generation request...',
+    });
 
     try {
+      console.log('generateVideo called');
       const timestamp = '1004'; // format(new Date(), 'MMddyyHHmmss');
       const data = await authenticatedFetch('/api/generate-video', {
         method: 'POST',
@@ -75,15 +89,22 @@ export function useVideoGeneration() {
           timestamp,
           totalDuration: duration,
           sceneCount: duration === 60 || duration === 30 ? 6 : 3,
+          step: 1,
         },
       });
 
       dispatch({ type: 'SET_GENERATION_STATUS', payload: 'processing' });
-      dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Video is being generated... This may take a few minutes.' });
+      dispatch({
+        type: 'SET_STATUS_MESSAGE',
+        payload: 'Video is being generated... This may take a few minutes.',
+      });
 
       // Simulate completion and transition to step 2
       dispatch({ type: 'SET_GENERATION_STATUS', payload: 'completed' });
-      dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Video generated successfully!' });
+      dispatch({
+        type: 'SET_STATUS_MESSAGE',
+        payload: 'Video generated successfully!',
+      });
 
       // Update URL with timestamp query parameter
       const url = new URL(window.location.href);
@@ -96,7 +117,10 @@ export function useVideoGeneration() {
     } catch (error) {
       console.error('Error queuing video generation:', error);
       dispatch({ type: 'SET_GENERATION_STATUS', payload: 'error' });
-      dispatch({ type: 'SET_STATUS_MESSAGE', payload: 'Failed to queue video generation. Please try again.' });
+      dispatch({
+        type: 'SET_STATUS_MESSAGE',
+        payload: 'Failed to queue video generation. Please try again.',
+      });
       alert('Failed to queue video generation. Please try again.');
     } finally {
       dispatch({ type: 'SET_GENERATING', payload: false });

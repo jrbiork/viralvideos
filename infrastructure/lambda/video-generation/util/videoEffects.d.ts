@@ -4,6 +4,9 @@ export interface Scene {
     narration: string;
     id: number;
 }
+export declare function getVideoEffectUrls(userId: string, timestamp: string, scenes: Scene[]): Promise<Array<{
+    [key: string]: string;
+}>>;
 export declare function generateVideoEffects(scenes: Scene[], userId: string, timestamp: string): Promise<Array<{
     [key: string]: string;
 }>>;

@@ -305,13 +305,6 @@ export default function GeneratePage() {
       return;
     }
 
-    console.log('🎬 Auto-play effect triggered:', {
-      scenesLength: scenes.length,
-      selectedSceneId: sceneState.selectedSceneId,
-      autoAdvanceEnabled: sceneState.autoAdvanceEnabled,
-      currentTimestamp: videoGenerationState.currentTimestamp,
-    });
-
     if (scenes.length > 0 && sceneState.selectedSceneId !== null) {
       // Update ref to prevent loops
       autoPlayRef.current = {
@@ -324,37 +317,61 @@ export default function GeneratePage() {
   }, [sceneState.selectedSceneId, videoGenerationState.currentTimestamp]);
 
   // Handle URL query parameters for step and timestamp
+  const urlParamsHandledRef = useRef(false);
+
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const timestampFromUrl = urlParams.get('timestamp');
-    const stepFromUrl = urlParams.get('step');
-
-    // Set step from URL if provided
-    if (stepFromUrl) {
-      const stepNumber = parseInt(stepFromUrl);
-      if (stepNumber >= 1 && stepNumber <= 3) {
-        setCurrentStep(stepNumber);
-      }
+    if (urlParamsHandledRef.current) {
+      console.log('Skipping URL params handling - already processed');
+      return;
     }
 
-    // Handle timestamp and WebSocket subscription
-    if (timestampFromUrl) {
-      // If step=2 is specified and we don't have subtitle files yet, subscribe to updates
-      if (stepFromUrl === '2' && !videoGenerationState.subtitleFiles.length) {
-        setVideoGenerationState((prev) => ({
-          ...prev,
-          currentTimestamp: timestampFromUrl,
-          isLoadingSubtitles: true,
-        }));
+    const handleUrlParams = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const timestampFromUrl = urlParams.get('timestamp');
+      const stepFromUrl = urlParams.get('step');
 
-        // WebSocket updates are now automatic
+      // Set step from URL if provided
+      if (stepFromUrl) {
+        const stepNumber = parseInt(stepFromUrl);
+        if (stepNumber >= 1 && stepNumber <= 3) {
+          setCurrentStep(stepNumber);
+        }
       }
-    }
-  }, [
-    videoGenerationState.currentTimestamp,
-    videoGenerationState.subtitleFiles,
-    isConnected,
-  ]);
+
+      // Handle timestamp and WebSocket subscription
+      if (
+        timestampFromUrl &&
+        timestampFromUrl !== videoGenerationState.currentTimestamp
+      ) {
+        // If step=2 is specified
+        if (stepFromUrl === '2') {
+          setVideoGenerationState((prev) => ({
+            ...prev,
+            currentTimestamp: timestampFromUrl,
+            isLoadingSubtitles: true,
+          }));
+
+          // call generate-video api
+          await fetch('/api/generate-video', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              prompt: 'test',
+              timestamp: timestampFromUrl,
+              step: 2,
+            }),
+          });
+        }
+      }
+
+      urlParamsHandledRef.current = true;
+      console.log('URL params handling completed');
+    };
+
+    handleUrlParams();
+  }, []); // Run only once on mount
 
   // Subscribe to WebSocket updates when connected
   // WebSocket connection is now automatic - no subscription needed
@@ -753,7 +770,7 @@ export default function GeneratePage() {
             {/* Scene Cards Container */}
             <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4">
               {videoGenerationState.isLoadingScript && (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex items-center justify-center">
                   <div className="text-center">
                     <div className="flex items-center justify-center space-x-2 mb-2">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
