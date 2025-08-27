@@ -1,10 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
 import { generateNarration } from '../video-generation/audio';
-import { generateSubtitles } from '../video-generation/subtitles';
+import { generateSubtitleContent } from '../video-generation/subtitles';
 import { Scene } from '../video-generation/script';
 import { broadcastMessage } from '../websocket-broadcast';
+import { broadcastProgress } from '../video-generation';
 
 interface RequestBody {
   scenes: Scene[];
@@ -12,8 +12,6 @@ interface RequestBody {
   timestamp: string;
   voiceToneInstruction?: string;
 }
-
-const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export const handler = async (
   event: APIGatewayProxyEvent,
@@ -58,68 +56,48 @@ export const handler = async (
 
     console.log(
       `🎤 Processing ${scenes.length} scenes for user ${userId}, timestamp ${timestamp}`,
+      scenes,
     );
 
-    // Step 1: Generate narration with word-level timestamps
-    console.log('🎤 Generating narration...');
+    // Step 3: Generate audio narration with word-level timestamps
     const { subtitles, narrationUrls } = await generateNarration(
       scenes,
       userId,
       timestamp,
-      voiceToneInstruction || 'Speak in a cheerful and positive tone',
+      voiceToneInstruction,
     );
 
-    console.log('🎤 Narration generated successfully:', {
-      subtitleCount: subtitles.length,
-      narrationUrls,
-    });
-
-    // Step 2: Generate subtitles using the narration result
-    console.log('📝 Generating subtitles...');
-    let subtitleUrls = await generateSubtitles(
+    const subtitleContent = await generateSubtitleContent(
       scenes,
       userId,
       timestamp,
       subtitles,
     );
 
-    console.log('📝 Subtitles generated successfully:', subtitleUrls);
+    console.log('📝 Subtitle content generated:', subtitleContent);
+    console.log('🎤 Narration URLs generated:', narrationUrls);
 
-    // Broadcast subtitle files completed event
-    await broadcastSubtitleFilesCompleted(userId, timestamp, subtitleUrls);
-
-    // Use the pre-generated signed URLs for each scene
-    const results = [];
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
-      const audioKey = 'audio.mp3';
-      const subtitleUrlObj = subtitleUrls[i];
-      const narrationUrlObj = narrationUrls[i];
-
-      // Extract the signed URLs from the objects
-      const subtitleUrl = Object.values(subtitleUrlObj)[0];
-      const audioUrl = Object.values(narrationUrlObj)[0];
-
-      // Fetch ASS file content from the signed URL
-      const assResponse = await fetch(subtitleUrl);
-      const assFileContent = await assResponse.text();
-
-      results.push({
-        sceneId: scene.id,
-        audioKey: audioKey.replace(`${userId}/`, ''),
-        assKey: audioKey.replace(`${userId}/`, '').replace('.mp3', '.ass'),
-        audioUrl,
-        assFileContent,
-      });
-    }
+    await broadcastProgress(
+      'audio_subtitle_created',
+      userId,
+      timestamp,
+      {
+        subtitles: subtitles.map((subtitle) => ({
+          [`${timestamp}.scene-${subtitle.sceneIndex}.subtitle`]: {
+            text: subtitle.fullText,
+          },
+        })),
+        subtitleContent,
+        narrationUrls,
+      },
+      'Audio and Subtitles completed',
+    );
 
     // Return success response
     return {
       statusCode: 200,
       body: JSON.stringify({
-        success: true,
         message: 'Audio and subtitles generated successfully',
-        data: results,
       }),
     };
   } catch (error) {
@@ -135,33 +113,3 @@ export const handler = async (
     };
   }
 };
-
-// Helper function to broadcast subtitle files completed event
-async function broadcastSubtitleFilesCompleted(
-  userId: string,
-  timestamp: string,
-  subtitleUrls: Array<{ [key: string]: string }>,
-): Promise<void> {
-  try {
-    const subtitleMessage = {
-      action: 'subtitle_files_completed',
-      data: {
-        userId,
-        timestamp,
-        subtitleFiles: subtitleUrls,
-      },
-    };
-
-    const domainName = process.env.WEBSOCKET_DOMAIN_NAME;
-    const stage = process.env.WEBSOCKET_STAGE || 'prod';
-
-    if (domainName) {
-      await broadcastMessage(subtitleMessage, domainName, stage, userId);
-      console.log(`📡 WebSocket subtitle files completed broadcast`);
-    } else {
-      console.log(`📡 WebSocket not configured, skipping subtitle broadcast`);
-    }
-  } catch (error) {
-    console.error('Error broadcasting subtitle files completed:', error);
-  }
-}

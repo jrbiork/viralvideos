@@ -335,6 +335,7 @@ export class ViralVideosStack extends cdk.Stack {
           WEBSOCKET_DOMAIN_NAME:
             'mlpiz7uok5.execute-api.us-east-1.amazonaws.com',
           WEBSOCKET_STAGE: 'prod',
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },
       },
     );
