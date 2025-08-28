@@ -33,6 +33,36 @@ export async function uploadToS3(
   }
 }
 
+export async function uploadJsonToS3(
+  jsonContent: string,
+  key: string,
+  bucketName?: string,
+): Promise<string> {
+  try {
+    const bucket = bucketName || process.env.VIDEO_PARTS_BUCKET_NAME;
+
+    if (!bucket) {
+      throw new Error(
+        'Bucket name not provided and VIDEO_PARTS_BUCKET_NAME not set',
+      );
+    }
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        Body: jsonContent,
+        ContentType: 'application/json',
+      }),
+    );
+
+    return key;
+  } catch (error) {
+    console.error('❌ Error uploading JSON to S3:', error);
+    throw error;
+  }
+}
+
 export async function getObjectFromS3(
   key: string,
   bucketName?: string,

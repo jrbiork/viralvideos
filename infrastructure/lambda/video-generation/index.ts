@@ -5,12 +5,13 @@ import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 
 import { generateImage } from './image';
 import { generateNarration, generateStoryBreakdown, Scene } from './narration';
-import { generateSubtitles, generateSubtitleContent } from './subtitles';
+import { generateSubtitles } from './subtitles';
 import { addSceneIds } from './script';
 import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { getImageUrls } from './util/imageUtils';
 import { generateVideoEffects, getVideoEffectUrls } from './util/videoEffects';
 import { combineVideoAndAudio } from './videoCombiner';
+import { createManifest } from './util/manifestUtils';
 import { broadcastMessage } from '../websocket-broadcast';
 
 interface VideoGenerationRequest {
@@ -73,6 +74,7 @@ async function processVideoGeneration(
     let scenes: Scene[] = [];
     let voiceToneInstruction: string = '';
 
+    // Step 1: Generate script/story breakdown using GPT-4
     if (existingScript) {
       console.log(
         '🎥 Script already generated for the timestamp, using existing script',
@@ -88,8 +90,6 @@ async function processVideoGeneration(
         console.log('❌ Error: No prompt provided');
         throw new Error('No prompt provided');
       }
-
-      // Step 1: Generate script/story breakdown using GPT-4
 
       const storyBreakdown = await generateStoryBreakdown(
         request.prompt,
@@ -120,6 +120,7 @@ async function processVideoGeneration(
       'Story breakdown completed',
     );
 
+    // Step 2: Generate images for each scene in parallel
     // Check if there are already images generated in the s3 bucket for the timestamp
     let imageUrls = await getImageUrls(request.userId, timestamp);
 
@@ -128,7 +129,6 @@ async function processVideoGeneration(
     } else {
       const seed = Math.floor(Math.random() * 1000000);
 
-      // Step 2: Generate images for each scene in parallel
       console.log('🎨 Generating images for each scene in parallel...');
 
       try {
@@ -187,7 +187,7 @@ async function processVideoGeneration(
 
     console.log('🎥 No existing audio files found, generating new narration');
 
-    // Step 3: Generate audio narration with word-level timestamps
+    // Step 3: Generate audio files with word-level timestamps
     const { subtitles, narrationUrls } = await generateNarration(
       scenes,
       request.userId,
@@ -195,14 +195,15 @@ async function processVideoGeneration(
       voiceToneInstruction,
     );
 
-    const subtitleContent = await generateSubtitleContent(
+    // Step 4: Generate subtitle file
+    const subtitleUrls = await generateSubtitles(
       scenes,
       request.userId,
       timestamp,
       subtitles,
     );
 
-    console.log('📝 Subtitle content generated:', subtitleContent);
+    console.log('📝 Subtitle URLs generated:', subtitleUrls);
     console.log('🎤 Narration URLs generated:', narrationUrls);
 
     await broadcastProgress(
@@ -215,13 +216,13 @@ async function processVideoGeneration(
             text: subtitle.fullText,
           },
         })),
-        subtitleContent,
+        subtitleUrls,
         narrationUrls,
       },
       'Audio and Subtitles completed',
     );
 
-    // Step 4: Generate video clips from images
+    // Step 5: Check existing video if not, generate video clips from images
     // console.log('🎥 Generating video clips from images...');
     // const videoClips: string[] = [];
 
@@ -283,30 +284,22 @@ async function processVideoGeneration(
 
     console.log('🎬 Video effects URLs generated:', videoEffectsUrls);
 
-    // Step 6: Combine video clips, audio, and subtitles
-    // lets add a request.step param that will only run this combineVideoAudio if step === 3
-    if (request.step === 3) {
-      const finalVideo = await combineVideoAndAudio(
-        request.userId,
-        timestamp,
-        scenes,
-      );
+    // Step 6: Combine video parts and upload to s3
+    const finalVideoUrl = await combineVideoAndAudio(
+      request.userId,
+      timestamp,
+      scenes,
+    );
 
-      if (!finalVideo) {
-        throw new Error('Failed to combine video, audio, and subtitles');
-      }
+    console.log('🎬 Video combined completed', finalVideoUrl);
 
-      // Step 6: Upload to S3
-      const videoKey = await uploadToS3(finalVideo, request.userId, timestamp);
-
-      await broadcastProgress(
-        'video_completed',
-        request.userId,
-        timestamp,
-        {},
-        'Video generated successfully',
-      );
-    }
+    await broadcastProgress(
+      'video_completed',
+      request.userId,
+      timestamp,
+      { finalVideoUrl },
+      'Video generated successfully',
+    );
 
     // If this was triggered by SQS, delete the message from the queue
     if (record && process.env.VIDEO_QUEUE_URL) {
@@ -316,6 +309,10 @@ async function processVideoGeneration(
       });
       await sqs.send(deleteCommand);
     }
+
+    // Step 7: Create manifest and upload to s3
+    await createManifest(request.userId, timestamp, scenes);
+    console.log('manifest created');
 
     return {
       message: 'Video generated successfully',
@@ -327,7 +324,7 @@ async function processVideoGeneration(
 }
 
 // Helper function to broadcast video generation progress via WebSocket
-async function broadcastProgress(
+export async function broadcastProgress(
   action:
     | 'script_created'
     | 'image_created'

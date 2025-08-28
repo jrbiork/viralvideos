@@ -1,0 +1,86 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.createManifest = createManifest;
+exports.getManifest = getManifest;
+exports.updateManifest = updateManifest;
+const s3Uploader_1 = require("./s3Uploader");
+async function createManifest(userId, timestamp, scenes) {
+    try {
+        const bucketName = process.env.VIDEO_PARTS_BUCKET_NAME || '';
+        const prefix = `${userId}/${timestamp}.scene-`;
+        const currentTime = Date.now().toString();
+        const manifest = {
+            schemaVersion: 1,
+            userId,
+            bucket: bucketName,
+            prefix,
+            generatedAt: timestamp,
+            updatedAt: currentTime,
+            sceneCount: scenes.length,
+            scenes: scenes.map((scene, index) => ({
+                sceneIndex: scene.id,
+                files: {
+                    mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
+                    mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
+                    combined: `${userId}/${timestamp}.scene-${scene.id}-combined.mp4`,
+                    jpg: `${userId}/${timestamp}.scene-${scene.id}.jpg`,
+                    subtitle: `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`,
+                    ass: `${userId}/${timestamp}.scene-${scene.id}.ass`,
+                },
+            })),
+        };
+        // Convert manifest to JSON string
+        const manifestJson = JSON.stringify(manifest, null, 2);
+        // Upload manifest to S3
+        const manifestKey = `${userId}/${timestamp}.manifest.json`;
+        const manifestUrl = await (0, s3Uploader_1.uploadJsonToS3)(manifestJson, manifestKey);
+        console.log('📋 Manifest created and uploaded:', manifestKey);
+        console.log('📋 Manifest URL:', manifestUrl);
+        return manifestUrl;
+    }
+    catch (error) {
+        console.error('❌ Error creating manifest:', error);
+        throw new Error(`Failed to create manifest: ${error}`);
+    }
+}
+async function getManifest(userId, timestamp) {
+    try {
+        const { getObjectFromS3 } = await Promise.resolve().then(() => require('./s3Uploader'));
+        const manifestKey = `${userId}/${timestamp}.manifest.json`;
+        const manifestData = await getObjectFromS3(manifestKey);
+        if (!manifestData) {
+            return null;
+        }
+        return JSON.parse(manifestData);
+    }
+    catch (error) {
+        console.error('❌ Error getting manifest:', error);
+        return null;
+    }
+}
+async function updateManifest(userId, timestamp, updates) {
+    try {
+        // Get existing manifest
+        const existingManifest = await getManifest(userId, timestamp);
+        if (!existingManifest) {
+            throw new Error('Manifest not found');
+        }
+        // Update manifest
+        const updatedManifest = {
+            ...existingManifest,
+            ...updates,
+            updatedAt: Date.now().toString(),
+        };
+        // Convert to JSON and upload
+        const manifestJson = JSON.stringify(updatedManifest, null, 2);
+        const manifestKey = `${userId}/${timestamp}.manifest.json`;
+        const manifestUrl = await (0, s3Uploader_1.uploadJsonToS3)(manifestJson, manifestKey);
+        console.log('📋 Manifest updated and uploaded');
+        return manifestUrl;
+    }
+    catch (error) {
+        console.error('❌ Error updating manifest:', error);
+        throw new Error(`Failed to update manifest: ${error}`);
+    }
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoibWFuaWZlc3RVdGlscy5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbIm1hbmlmZXN0VXRpbHMudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7QUE0QkEsd0NBOENDO0FBRUQsa0NBa0JDO0FBRUQsd0NBOEJDO0FBN0hELDZDQUEwRDtBQTJCbkQsS0FBSyxVQUFVLGNBQWMsQ0FDbEMsTUFBYyxFQUNkLFNBQWlCLEVBQ2pCLE1BQWU7SUFFZixJQUFJLENBQUM7UUFDSCxNQUFNLFVBQVUsR0FBRyxPQUFPLENBQUMsR0FBRyxDQUFDLHVCQUF1QixJQUFJLEVBQUUsQ0FBQztRQUM3RCxNQUFNLE1BQU0sR0FBRyxHQUFHLE1BQU0sSUFBSSxTQUFTLFNBQVMsQ0FBQztRQUMvQyxNQUFNLFdBQVcsR0FBRyxJQUFJLENBQUMsR0FBRyxFQUFFLENBQUMsUUFBUSxFQUFFLENBQUM7UUFFMUMsTUFBTSxRQUFRLEdBQWtCO1lBQzlCLGFBQWEsRUFBRSxDQUFDO1lBQ2hCLE1BQU07WUFDTixNQUFNLEVBQUUsVUFBVTtZQUNsQixNQUFNO1lBQ04sV0FBVyxFQUFFLFNBQVM7WUFDdEIsU0FBUyxFQUFFLFdBQVc7WUFDdEIsVUFBVSxFQUFFLE1BQU0sQ0FBQyxNQUFNO1lBQ3pCLE1BQU0sRUFBRSxNQUFNLENBQUMsR0FBRyxDQUFDLENBQUMsS0FBSyxFQUFFLEtBQUssRUFBRSxFQUFFLENBQUMsQ0FBQztnQkFDcEMsVUFBVSxFQUFFLEtBQUssQ0FBQyxFQUFFO2dCQUNwQixLQUFLLEVBQUU7b0JBQ0wsR0FBRyxFQUFFLEdBQUcsTUFBTSxJQUFJLFNBQVMsVUFBVSxLQUFLLENBQUMsRUFBRSxNQUFNO29CQUNuRCxHQUFHLEVBQUUsR0FBRyxNQUFNLElBQUksU0FBUyxVQUFVLEtBQUssQ0FBQyxFQUFFLE1BQU07b0JBQ25ELFFBQVEsRUFBRSxHQUFHLE1BQU0sSUFBSSxTQUFTLFVBQVUsS0FBSyxDQUFDLEVBQUUsZUFBZTtvQkFDakUsR0FBRyxFQUFFLEdBQUcsTUFBTSxJ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LE9BQU8sS0FBSyxFQUFFLENBQUM7UUFDZixPQUFPLENBQUMsS0FBSyxDQUFDLDRCQUE0QixFQUFFLEtBQUssQ0FBQyxDQUFDO1FBQ25ELE1BQU0sSUFBSSxLQUFLLENBQUMsOEJBQThCLEtBQUssRUFBRSxDQUFDLENBQUM7SUFDekQsQ0FBQztBQUNILENBQUMiLCJzb3VyY2VzQ29udGVudCI6WyJpbXBvcnQgeyBTY2VuZSB9IGZyb20gJy4uL25hcnJhdGlvbic7XG5pbXBvcnQgeyB1cGxvYWRUb1MzLCB1cGxvYWRKc29uVG9TMyB9IGZyb20gJy4vczNVcGxvYWRlcic7XG5cbmludGVyZmFjZSBNYW5pZmVzdEZpbGUge1xuICBtcDM6IHN0cmluZztcbiAgbXA0OiBzdHJpbmc7XG4gIGNvbWJpbmVkOiBzdHJpbmc7XG4gIGpwZzogc3RyaW5nO1xuICBzdWJ0aXRsZTogc3RyaW5nO1xuICBhc3M6IHN0cmluZztcbn1cblxuaW50ZXJmYWNlIE1hbmlmZXN0U2NlbmUge1xuICBzY2VuZUluZGV4OiBudW1iZXI7XG4gIGZpbGVzOiBNYW5pZmVzdEZpbGU7XG59XG5cbmludGVyZmFjZSBWaWRlb01hbmlmZXN0IHtcbiAgc2NoZW1hVmVyc2lvbjogbnVtYmVyO1xuICB1c2VySWQ6IHN0cmluZztcbiAgYnVja2V0OiBzdHJpbmc7XG4gIHByZWZpeDogc3RyaW5nO1xuICBnZW5lcmF0ZWRBdDogc3RyaW5nO1xuICB1cGRhdGVkQXQ6IHN0cmluZztcbiAgc2NlbmVDb3VudDogbnVtYmVyO1xuICBzY2VuZXM6IE1hbmlmZXN0U2NlbmVbXTtcbn1cblxuZXhwb3J0IGFzeW5jIGZ1bmN0aW9uIGNyZWF0ZU1hbmlmZXN0KFxuICB1c2VySWQ6IHN0cmluZyxcbiAgdGltZXN0YW1wOiBzdHJpbmcsXG4gIHNjZW5lczogU2NlbmVbXSxcbik6IFByb21pc2U8c3RyaW5nPiB7XG4gIHRyeSB7XG4gICAgY29uc3QgYnVja2V0TmFtZSA9IHByb2Nlc3MuZW52LlZJREVPX1BBUlRTX0JVQ0tFVF9OQU1FIHx8ICcnO1xuICAgIGNvbnN0IHByZWZpeCA9IGAke3VzZXJJZH0vJHt0aW1lc3RhbXB9LnNjZW5lLWA7XG4gICAgY29uc3QgY3VycmVudFRpbWUgPSBEYXRlLm5vdygpLnRvU3RyaW5nKCk7XG5cbiAgICBjb25zdCBtYW5pZmVzdDogVmlkZW9NYW5pZmVzdCA9IHtcbiAgICAgIHNjaGVtYVZlcnNpb246IDEsXG4gICAgICB1c2VySWQsXG4gICAgICBidWNrZXQ6IGJ1Y2tldE5hbWUsXG4gICAgICBwcmVmaXgsXG4gICAgICBnZW5lcmF0ZWRBdDogdGltZXN0YW1wLFxuICAgICAgdXBkYXRlZEF0OiBjdXJyZW50VGltZSxcbiAgICAgIHNjZW5lQ291bnQ6IHNjZW5lcy5sZW5ndGgsXG4gICAgICBzY2VuZXM6IHNjZW5lcy5tYXAoKHNjZW5lLCBpbmRleCkgPT4gKHtcbiAgICAgICAgc2NlbmVJbmRleDogc2NlbmUuaWQsXG4gICAgICAgIGZpbGVzOiB7XG4gICAgICAgICAgbXAzOiBgJHt1c2VySWR9LyR7dGltZXN0YW1wfS5zY2VuZS0ke3NjZW5lLmlkfS5tcDNgLFxuICAgICAgICAgIG1wNDogYCR7dXNlcklkfS8ke3RpbWVzdGFtcH0uc2NlbmUtJHtzY2VuZS5pZH0ubXA0YCxcbiAgICAgICAgICBjb21iaW5lZDogYCR7dXNlcklkfS8ke3RpbWVzdGFtcH0uc2NlbmUtJHtzY2VuZS5pZH0tY29tYmluZWQubXA0YCxcbiAgICAgICAgICBqcGc6IGAke3VzZXJJZH0vJHt0aW1lc3RhbXB9LnNjZW5lLSR7c2NlbmUuaWR9LmpwZ2AsXG4gICAgICAgICAgc3VidGl0bGU6IGAke3VzZXJJZH0vJHt0aW1lc3RhbXB9LnNjZW5lLSR7c2NlbmUuaWR9LnN1YnRpdGxlLmpzb25gLFxuICAgICAgICAgIGFzczogYCR7dXNlcklkfS8ke3RpbWVzdGFtcH0uc2NlbmUtJHtzY2VuZS5pZH0uYXNzYCxcbiAgICAgICAgfSxcbiAgICAgIH0pKSxcbiAgICB9O1xuXG4gICAgLy8gQ29udmVydCBtYW5pZmVzdCB0byBKU09OIHN0cmluZ1xuICAgIGNvbnN0IG1hbmlmZXN0SnNvbiA9IEpTT04uc3RyaW5naWZ5KG1hbmlmZXN0LCBudWxsLCAyKTtcblxuICAgIC8vIFVwbG9hZCBtYW5pZmVzdCB0byBTM1xuICAgIGNvbnN0IG1hbmlmZXN0S2V5ID0gYCR7dXNlcklkfS8ke3RpbWVzdGFtcH0ubWFuaWZlc3QuanNvbmA7XG4gICAgY29uc3QgbWFuaWZlc3RVcmwgPSBhd2FpdCB1cGxvYWRKc29uVG9TMyhtYW5pZmVzdEpzb24sIG1hbmlmZXN0S2V5KTtcblxuICAgIGNvbnNvbGUubG9nKCfwn5OLIE1hbmlmZXN0IGNyZWF0ZWQgYW5kIHVwbG9hZGVkOicsIG1hbmlmZXN0S2V5KTtcbiAgICBjb25zb2xlLmxvZygn8J+TiyBNYW5pZmVzdCBVUkw6JywgbWFuaWZlc3RVcmwpO1xuXG4gICAgcmV0dXJuIG1hbmlmZXN0VXJsO1xuICB9IGNhdGNoIChlcnJvcikge1xuICAgIGNvbnNvbGUuZXJyb3IoJ+KdjCBFcnJvciBjcmVhdGluZyBtYW5pZmVzdDonLCBlcnJvcik7XG4gICAgdGhyb3cgbmV3IEVycm9yKGBGYWlsZWQgdG8gY3JlYXRlIG1hbmlmZXN0OiAke2Vycm9yfWApO1xuICB9XG59XG5cbmV4cG9ydCBhc3luYyBmdW5jdGlvbiBnZXRNYW5pZmVzdChcbiAgdXNlcklkOiBzdHJpbmcsXG4gIHRpbWVzdGFtcDogc3RyaW5nLFxuKTogUHJvbWlzZTxWaWRlb01hbmlmZXN0IHwgbnVsbD4ge1xuICB0cnkge1xuICAgIGNvbnN0IHsgZ2V0T2JqZWN0RnJvbVMzIH0gPSBhd2FpdCBpbXBvcnQoJy4vczNVcGxvYWRlcicpO1xuICAgIGNvbnN0IG1hbmlmZXN0S2V5ID0gYCR7dXNlcklkfS8ke3RpbWVzdGFtcH0ubWFuaWZlc3QuanNvbmA7XG5cbiAgICBjb25zdCBtYW5pZmVzdERhdGEgPSBhd2FpdCBnZXRPYmplY3RGcm9tUzMobWFuaWZlc3RLZXkpO1xuICAgIGlmICghbWFuaWZlc3REYXRhKSB7XG4gICAgICByZXR1cm4gbnVsbDtcbiAgICB9XG5cbiAgICByZXR1cm4gSlNPTi5wYXJzZShtYW5pZmVzdERhdGEpIGFzIFZpZGVvTWFuaWZlc3Q7XG4gIH0gY2F0Y2ggKGVycm9yKSB7XG4gICAgY29uc29sZS5lcnJvcign4p2MIEVycm9yIGdldHRpbmcgbWFuaWZlc3Q6JywgZXJyb3IpO1xuICAgIHJldHVybiBudWxsO1xuICB9XG59XG5cbmV4cG9ydCBhc3luYyBmdW5jdGlvbiB1cGRhdGVNYW5pZmVzdChcbiAgdXNlcklkOiBzdHJpbmcsXG4gIHRpbWVzdGFtcDogc3RyaW5nLFxuICB1cGRhdGVzOiBQYXJ0aWFsPFZpZGVvTWFuaWZlc3Q+LFxuKTogUHJvbWlzZTxzdHJpbmc+IHtcbiAgdHJ5IHtcbiAgICAvLyBHZXQgZXhpc3RpbmcgbWFuaWZlc3RcbiAgICBjb25zdCBleGlzdGluZ01hbmlmZXN0ID0gYXdhaXQgZ2V0TWFuaWZlc3QodXNlcklkLCB0aW1lc3RhbXApO1xuICAgIGlmICghZXhpc3RpbmdNYW5pZmVzdCkge1xuICAgICAgdGhyb3cgbmV3IEVycm9yKCdNYW5pZmVzdCBub3QgZm91bmQnKTtcbiAgICB9XG5cbiAgICAvLyBVcGRhdGUgbWFuaWZlc3RcbiAgICBjb25zdCB1cGRhdGVkTWFuaWZlc3Q6IFZpZGVvTWFuaWZlc3QgPSB7XG4gICAgICAuLi5leGlzdGluZ01hbmlmZXN0LFxuICAgICAgLi4udXBkYXRlcyxcbiAgICAgIHVwZGF0ZWRBdDogRGF0ZS5ub3coKS50b1N0cmluZygpLFxuICAgIH07XG5cbiAgICAvLyBDb252ZXJ0IHRvIEpTT04gYW5kIHVwbG9hZFxuICAgIGNvbnN0IG1hbmlmZXN0SnNvbiA9IEpTT04uc3RyaW5naWZ5KHVwZGF0ZWRNYW5pZmVzdCwgbnVsbCwgMik7XG4gICAgY29uc3QgbWFuaWZlc3RLZXkgPSBgJHt1c2VySWR9LyR7dGltZXN0YW1wfS5tYW5pZmVzdC5qc29uYDtcbiAgICBjb25zdCBtYW5pZmVzdFVybCA9IGF3YWl0IHVwbG9hZEpzb25Ub1MzKG1hbmlmZXN0SnNvbiwgbWFuaWZlc3RLZXkpO1xuXG4gICAgY29uc29sZS5sb2coJ/Cfk4sgTWFuaWZlc3QgdXBkYXRlZCBhbmQgdXBsb2FkZWQnKTtcbiAgICByZXR1cm4gbWFuaWZlc3RVcmw7XG4gIH0gY2F0Y2ggKGVycm9yKSB7XG4gICAgY29uc29sZS5lcnJvcign4p2MIEVycm9yIHVwZGF0aW5nIG1hbmlmZXN0OicsIGVycm9yKTtcbiAgICB0aHJvdyBuZXcgRXJyb3IoYEZhaWxlZCB0byB1cGRhdGUgbWFuaWZlc3Q6ICR7ZXJyb3J9YCk7XG4gIH1cbn1cbiJdfQ==

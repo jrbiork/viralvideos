@@ -35,14 +35,13 @@ export default function GeneratePage() {
     isLoadingScript: true,
     isLoadingVideoScenes: true,
     currentTimestamp: '',
-    subtitleFiles: [] as { [key: string]: string }[],
     mediaFiles: {} as { [key: string]: string },
     assFiles: {} as { [key: string]: string },
-    subtitleTexts: {} as { [key: string]: string },
+    subtitles: {} as { [key: string]: string },
     scenes: [] as any[],
-    subtitles: [] as any[],
   });
 
+  console.log('videoGenerationState:', videoGenerationState);
   // Custom hooks
   const {
     state: generationState,
@@ -135,32 +134,46 @@ export default function GeneratePage() {
   // Handle audio and subtitle creation
   const handleAudioSubtitleCreated = (data: any) => {
     const mediaFiles: { [key: string]: string } = {};
-    let subtitleFiles: any[] = [];
+    let assFiles: { [key: string]: string } = {};
 
-    // Handle subtitle content - array of objects: [{ "timestamp.scene-id.ass": "ass-content" }]
-    if (data.subtitleContent && Array.isArray(data.subtitleContent)) {
-      subtitleFiles = data.subtitleContent.map(
-        (subtitleObj: { [key: string]: string }) => {
-          return subtitleObj;
-        },
-      );
+    // Handle ASS content - array of objects: [{ "timestamp.scene-id.ass": "ass-content" }]
+    if (data.assContents && Array.isArray(data.assContents)) {
+      // Store ASS files
+      data.assContents.forEach((assObj: { [key: string]: string }) => {
+        Object.assign(assFiles, assObj);
+      });
     }
 
-    // Handle narration URLs if present
+    // Handle subtitle URLs (ASS files) - array of objects: [{ "timestamp.scene-id.ass": "ass-url" }]
+    if (data.subtitleUrls && Array.isArray(data.subtitleUrls)) {
+      // Store ASS files
+      data.subtitleUrls.forEach((assObj: { [key: string]: string }) => {
+        Object.assign(assFiles, assObj);
+      });
+    }
+
+    // Handle audio URLs if present
+    if (data.audioUrls && Array.isArray(data.audioUrls)) {
+      data.audioUrls.forEach((audioObj: { [key: string]: string }) => {
+        Object.assign(mediaFiles, audioObj);
+      });
+    }
+
+    // Handle narration URLs (MP3 files) - array of objects: [{ "timestamp.scene-id.mp3": "mp3-url" }]
     if (data.narrationUrls && Array.isArray(data.narrationUrls)) {
-      data.narrationUrls.forEach((narrationObj: { [key: string]: string }) => {
-        Object.assign(mediaFiles, narrationObj);
+      data.narrationUrls.forEach((audioObj: { [key: string]: string }) => {
+        Object.assign(mediaFiles, audioObj);
       });
     }
 
     // Extract subtitle text from the subtitles array for editing
-    let subtitleTexts: { [key: string]: string } = {};
+    let subtitles: { [key: string]: string } = {};
     if (data.subtitles && Array.isArray(data.subtitles)) {
       data.subtitles.forEach((subtitleObj: any) => {
         const fileName = Object.keys(subtitleObj)[0];
         const subtitleData = subtitleObj[fileName];
         if (subtitleData && subtitleData.text) {
-          subtitleTexts[fileName] = subtitleData.text;
+          subtitles[fileName] = subtitleData.text;
         }
       });
     }
@@ -170,9 +183,8 @@ export default function GeneratePage() {
       isLoadingScript: false, // Set to false when audio/subtitles are ready
       currentTimestamp: data.timestamp || prev.currentTimestamp,
       mediaFiles: { ...prev.mediaFiles, ...mediaFiles },
-      subtitleFiles: subtitleFiles,
-      subtitleTexts: subtitleTexts, // Store subtitle texts for editing
-      subtitles: data.subtitles || [], // Store subtitles array for editing
+      subtitles: subtitles, // Store subtitle texts for editing
+      assFiles: { ...prev.assFiles, ...assFiles }, // Store ASS files
     }));
   };
 
@@ -226,26 +238,12 @@ export default function GeneratePage() {
     }
   };
 
-  // Custom handleEditScene that uses subtitle text from subtitles array
+  // Custom handleEditScene that uses subtitle text from subtitles
   const handleEditSceneWithSubtitle = (sceneId: number, narration: string) => {
-    // Try to get subtitle text from subtitles array first
+    // Try to get subtitle text from subtitles
     const subtitleKey = `${videoGenerationState.currentTimestamp}.scene-${sceneId}.subtitle`;
-    const subtitleData = videoGenerationState.subtitles?.find(
-      (subtitleObj: any) => Object.keys(subtitleObj)[0] === subtitleKey,
-    );
-
-    // Extract text from the subtitle data structure: {text: "actual text"}
-    let subtitleText = narration; // fallback
-    if (subtitleData) {
-      const subtitleContent = subtitleData[subtitleKey];
-      if (
-        subtitleContent &&
-        typeof subtitleContent === 'object' &&
-        'text' in subtitleContent
-      ) {
-        subtitleText = subtitleContent.text;
-      }
-    }
+    const subtitleText =
+      videoGenerationState.subtitles[subtitleKey] || narration;
 
     handleEditScene(sceneId, subtitleText);
   };
@@ -255,28 +253,27 @@ export default function GeneratePage() {
 
   // Create scenes from subtitles data
   const createScenesFromSubtitleFiles = () => {
-    if (
-      !videoGenerationState.subtitles ||
-      videoGenerationState.subtitles.length === 0
-    ) {
+    const subtitles = videoGenerationState.subtitles;
+    const subtitleKeys = Object.keys(subtitles);
+
+    if (subtitleKeys.length === 0) {
       return [];
     }
 
-    return videoGenerationState.subtitles.map(
-      (subtitleObj: any, index: number) => {
-        // Extract the subtitle text from the object structure: { "timestamp.scene-id.subtitle": { text: "actual text" } }
-        const subtitleKey = Object.keys(subtitleObj)[0];
-        const subtitleData = subtitleObj[subtitleKey];
-        const narration = subtitleData?.text || `Scene ${index + 1}`;
+    return subtitleKeys.map((subtitleKey, index) => {
+      // Extract the actual scene index from the subtitle key
+      const sceneIndexMatch = subtitleKey.match(/scene-(\d+)\./);
+      const sceneIndex = sceneIndexMatch ? parseInt(sceneIndexMatch[1]) : index;
 
-        return {
-          id: index,
-          description: `Scene ${index + 1}`,
-          narration: narration,
-          duration: 5, // Default duration
-        };
-      },
-    );
+      const narration = subtitles[subtitleKey] || `Scene ${sceneIndex + 1}`;
+
+      return {
+        id: sceneIndex,
+        description: `Scene ${sceneIndex + 1}`,
+        narration: narration,
+        duration: 5, // Default duration
+      };
+    });
   };
 
   const scenes = createScenesFromSubtitleFiles();
@@ -309,7 +306,7 @@ export default function GeneratePage() {
     }
   }, [sceneState.selectedSceneId, videoGenerationState.currentTimestamp]);
 
-  // Handle URL query parameters for step and timestamp
+  // Handle URL query parameters for step 2 - edit mode
   const urlParamsProcessedRef = useRef(false);
 
   useEffect(() => {
@@ -346,24 +343,155 @@ export default function GeneratePage() {
             isLoadingSubtitles: true,
           }));
 
-          // call generate-video api
-          await fetch('/api/generate-video', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+          // call fetch-preview api
+          const previewResponse = await fetch(
+            `/api/fetch-preview?timestamp=${timestampFromUrl}`,
+            {
+              method: 'GET',
             },
-            body: JSON.stringify({
-              prompt: 'test',
-              timestamp: timestampFromUrl,
-              step: 2,
-            }),
-          });
+          );
+
+          if (previewResponse.ok) {
+            const previewData = await previewResponse.json();
+
+            if (previewData.success && previewData.data) {
+              // Process the preview data and update state
+              const mediaFiles: { [key: string]: string } = {};
+              const subtitleFiles: any[] = [];
+              const subtitleTexts: { [key: string]: string } = {};
+              const subtitles: any[] = [];
+              const assFiles: { [key: string]: string } = {};
+
+              // Process each scene and fetch all content from pre-signed URLs
+              for (const [sceneKey, sceneData] of Object.entries(
+                previewData.data,
+              ) as [string, any][]) {
+                const sceneIndex = sceneKey
+                  .split('.')
+                  .pop()
+                  ?.replace('scene-', '');
+                if (sceneIndex !== undefined) {
+                  const index = parseInt(sceneIndex);
+
+                  // Add media files (pre-signed URLs)
+                  mediaFiles[`${timestampFromUrl}.scene-${index}.mp3`] =
+                    sceneData.audioUrl;
+                  mediaFiles[`${timestampFromUrl}.scene-${index}.mp4`] =
+                    sceneData.videoUrl;
+                  mediaFiles[`${timestampFromUrl}.scene-${index}.jpg`] =
+                    sceneData.imageUrl;
+
+                  // Fetch subtitle content through our API to avoid CORS
+                  let subtitleContent = '';
+                  try {
+                    console.log(
+                      `Fetching subtitle from: ${sceneData.subtitleUrl}`,
+                    );
+                    const subtitleResponse = await fetch('/api/fetch-content', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        url: sceneData.subtitleUrl,
+                        type: 'subtitle',
+                      }),
+                    });
+                    console.log(
+                      `Subtitle response status: ${subtitleResponse.status}`,
+                    );
+                    if (subtitleResponse.ok) {
+                      const subtitleData = await subtitleResponse.json();
+                      console.log(
+                        `Subtitle data for scene ${index}:`,
+                        subtitleData,
+                      );
+                      subtitleContent =
+                        subtitleData.fullText || subtitleData.text || '';
+                      console.log(
+                        `Extracted subtitle content: "${subtitleContent}"`,
+                      );
+                    } else {
+                      console.error(
+                        `Failed to fetch subtitle for scene ${index}: ${subtitleResponse.status}`,
+                      );
+                    }
+                  } catch (error) {
+                    console.error('Error fetching subtitle content:', error);
+                  }
+
+                  // Fetch ASS content through our API to avoid CORS
+                  let assContent = '';
+                  try {
+                    console.log(`Fetching ASS from: ${sceneData.assUrl}`);
+                    const assResponse = await fetch('/api/fetch-content', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        url: sceneData.assUrl,
+                        type: 'ass',
+                      }),
+                    });
+                    console.log(`ASS response status: ${assResponse.status}`);
+                    if (assResponse.ok) {
+                      const assData = await assResponse.json();
+                      assContent = assData.content || '';
+                      console.log(
+                        `ASS content length for scene ${index}: ${assContent.length}`,
+                      );
+                    } else {
+                      console.error(
+                        `Failed to fetch ASS for scene ${index}: ${assResponse.status}`,
+                      );
+                    }
+                  } catch (error) {
+                    console.error('Error fetching ASS content:', error);
+                  }
+
+                  // Add subtitle files with actual content
+                  subtitleFiles.push({
+                    [`${timestampFromUrl}.scene-${index}.subtitle.json`]:
+                      subtitleContent,
+                  });
+
+                  // Add subtitle texts for editing with actual content
+                  subtitleTexts[
+                    `${timestampFromUrl}.scene-${index}.subtitle.json`
+                  ] = subtitleContent;
+
+                  // Add subtitles array for editing with actual content
+                  subtitles.push({
+                    [`${timestampFromUrl}.scene-${index}.subtitle`]: {
+                      text: subtitleContent,
+                    },
+                  });
+
+                  // Add ASS files with actual content
+                  assFiles[`${timestampFromUrl}.scene-${index}.ass`] =
+                    assContent;
+                }
+              }
+
+              // Update the video generation state with the fetched data
+              setVideoGenerationState((prev) => ({
+                ...prev,
+                currentTimestamp: timestampFromUrl,
+                mediaFiles: { ...prev.mediaFiles, ...mediaFiles },
+                subtitles: subtitleTexts,
+                assFiles: assFiles,
+                isLoadingScript: false,
+                isLoadingVideoScenes: false, // Set to false since we have all the data
+              }));
+            }
+          }
         }
       }
     };
 
     handleUrlParams();
-  }, []); // Empty dependency array - run only once
+  }, []);
 
   // Subscribe to WebSocket updates when connected
   // WebSocket connection is now automatic - no subscription needed
@@ -590,25 +718,11 @@ export default function GeneratePage() {
                       <video
                         ref={(videoRef) => {
                           if (videoRef) {
-                            // Convert subtitleFiles array to object format
-                            const subtitleFilesObj =
-                              videoGenerationState.subtitleFiles.reduce(
-                                (
-                                  acc: { [key: string]: string },
-                                  subtitleFile: any,
-                                ) => {
-                                  const key = Object.keys(subtitleFile)[0];
-                                  acc[key] = subtitleFile[key];
-                                  return acc;
-                                },
-                                {},
-                              );
-
                             setupVideoEventListeners(
                               videoRef,
                               scene,
                               scenes,
-                              subtitleFilesObj,
+                              videoGenerationState.assFiles,
                               videoGenerationState.currentTimestamp,
                               index,
                             );

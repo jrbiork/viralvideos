@@ -4,6 +4,7 @@ import {
   GetObjectCommand,
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -115,7 +116,39 @@ export async function combineVideoAndAudio(
 
     console.log('🔍 finalOutputPath start:', finalOutputPath);
 
-    return finalOutputPath;
+    // Upload final video to S3
+    const finalVideoBuffer = fs.readFileSync(finalOutputPath);
+    const finalVideoKey = `${userId}/${timestamp}-final-video.mp4`;
+
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.VIDEO_BUCKET_NAME,
+        Key: finalVideoKey,
+        Body: finalVideoBuffer,
+        ContentType: 'video/mp4',
+      }),
+    );
+
+    console.log('💾 Final video uploaded to S3:', finalVideoKey);
+
+    // Generate pre-signed URL for the final video
+    const finalVideoSignedUrl = await getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: process.env.VIDEO_BUCKET_NAME,
+        Key: finalVideoKey,
+      }),
+      { expiresIn: 36000 }, // 10 hours expiration
+    );
+
+    console.log('🔗 Final video pre-signed URL generated');
+
+    // Clean up the temporary final video file
+    if (fs.existsSync(finalOutputPath)) {
+      fs.unlinkSync(finalOutputPath);
+    }
+
+    return finalVideoSignedUrl;
   } catch (error) {
     console.error('❌ Error in combineVideoAndAudio:', error);
     throw error;

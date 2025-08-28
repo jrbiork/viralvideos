@@ -1,9 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 import { generateNarration } from '../video-generation/audio';
-import { generateSubtitleContent } from '../video-generation/subtitles';
+import { generateSubtitles } from '../video-generation/subtitles';
 import { Scene } from '../video-generation/script';
-import { broadcastMessage } from '../websocket-broadcast';
+
 import { broadcastProgress } from '../video-generation';
 
 interface RequestBody {
@@ -67,37 +67,27 @@ export const handler = async (
       voiceToneInstruction,
     );
 
-    const subtitleContent = await generateSubtitleContent(
+    const subtitleUrls = await generateSubtitles(
       scenes,
       userId,
       timestamp,
       subtitles,
     );
 
-    console.log('📝 Subtitle content generated:', subtitleContent);
+    console.log('📝 Subtitle URLs generated:', subtitleUrls);
     console.log('🎤 Narration URLs generated:', narrationUrls);
-
-    await broadcastProgress(
-      'audio_subtitle_created',
-      userId,
-      timestamp,
-      {
-        subtitles: subtitles.map((subtitle) => ({
-          [`${timestamp}.scene-${subtitle.sceneIndex}.subtitle`]: {
-            text: subtitle.fullText,
-          },
-        })),
-        subtitleContent,
-        narrationUrls,
-      },
-      'Audio and Subtitles completed',
-    );
 
     // Return success response
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: 'Audio and subtitles generated successfully',
+        subtitles: subtitles.map((subtitle) => ({
+          [`${timestamp}.scene-${subtitle.sceneIndex}.subtitle`]: {
+            text: subtitle.fullText,
+          },
+        })),
+        subtitleUrls,
+        narrationUrls,
       }),
     };
   } catch (error) {

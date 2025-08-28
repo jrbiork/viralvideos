@@ -278,6 +278,24 @@ export class ViralVideosStack extends cdk.Stack {
       },
     });
 
+    // Lambda function for fetching preview data
+    const fetchPreviewLambda = new lambda.Function(this, 'FetchPreviewLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../dist/fetch-preview'),
+      ),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(1),
+      memorySize: 128,
+
+      environment: {
+        S3_BUCKET_NAME: videoPartsBucket.bucketName,
+        URL_TTL_SECONDS: '3600',
+        MAX_SCENES: '10',
+      },
+    });
+
     // Lambda function for user management
     const getUserLambda = new lambda.Function(this, 'GetUserLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -383,6 +401,20 @@ export class ViralVideosStack extends cdk.Stack {
         requestTemplates: {
           'application/json': JSON.stringify({
             body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
+    // Lambda integration for fetching preview data
+    const fetchPreviewIntegration = new apigateway.LambdaIntegration(
+      fetchPreviewLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            queryStringParameters: {
+              timestamp: "$input.params('timestamp')",
+            },
           }),
         },
       },
@@ -596,6 +628,14 @@ export class ViralVideosStack extends cdk.Stack {
       authorizer: jwtAuthorizer,
     });
 
+    const fetchPreviewResource = api.root.addResource('fetch-preview');
+    fetchPreviewResource.addMethod('GET', fetchPreviewIntegration, {
+      authorizer: jwtAuthorizer,
+      requestParameters: {
+        'method.request.querystring.timestamp': true,
+      },
+    });
+
     const generateAudioSubtitleResource = api.root.addResource(
       'generate-audio-subtitle',
     );
@@ -654,6 +694,12 @@ export class ViralVideosStack extends cdk.Stack {
 
     new logs.LogGroup(this, 'FetchVideosLogGroup', {
       logGroupName: `/aws/lambda/${fetchVideosLambda.functionName}`,
+      retention: logs.RetentionDays.ONE_WEEK,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new logs.LogGroup(this, 'FetchPreviewLogGroup', {
+      logGroupName: `/aws/lambda/${fetchPreviewLambda.functionName}`,
       retention: logs.RetentionDays.ONE_WEEK,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
@@ -724,6 +770,16 @@ export class ViralVideosStack extends cdk.Stack {
       description: 'Lambda function name for fetching videos',
     });
 
+    new cdk.CfnOutput(this, 'FetchPreviewLambdaArn', {
+      value: fetchPreviewLambda.functionArn,
+      description: 'Lambda function ARN for fetching preview data',
+    });
+
+    new cdk.CfnOutput(this, 'FetchPreviewLambdaName', {
+      value: fetchPreviewLambda.functionName,
+      description: 'Lambda function name for fetching preview data',
+    });
+
     new cdk.CfnOutput(this, 'GetUserLambdaArn', {
       value: getUserLambda.functionArn,
       description: 'Lambda function ARN for get user',
@@ -782,6 +838,11 @@ export class ViralVideosStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'FetchVideosEndpoint', {
       value: `${api.url}fetch-videos`,
       description: 'API Gateway endpoint for fetching videos',
+    });
+
+    new cdk.CfnOutput(this, 'FetchPreviewEndpoint', {
+      value: `${api.url}fetch-preview`,
+      description: 'API Gateway endpoint for fetching preview data',
     });
 
     new cdk.CfnOutput(this, 'UserManagementEndpoint', {

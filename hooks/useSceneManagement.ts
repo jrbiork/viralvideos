@@ -255,22 +255,45 @@ export function useSceneManagement() {
     videoRef.dataset.currentTimestamp = currentTimestamp;
     videoRef.dataset.sceneId = scene.id.toString();
 
-    const updateSubtitle = () => {
+    const updateSubtitle = async () => {
       // Get the latest assFiles from the video element
       const latestAssFiles = JSON.parse(videoRef.dataset.assFiles || '{}');
       const assKey = `${currentTimestamp}.scene-${sceneIndex}.ass`;
-      const assContent = latestAssFiles[assKey];
-      const subtitles = assContent ? parseAssFile(assContent) : [];
+      const assUrl = latestAssFiles[assKey];
 
-      const currentTime = videoRef.currentTime;
-      const currentSub = subtitles.find(
-        (sub) => currentTime >= sub.start && currentTime <= sub.end,
-      );
+      if (assUrl) {
+        try {
+          // Fetch ASS content from the URL
+          const response = await fetch('/api/fetch-content', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              url: assUrl,
+              type: 'ass',
+            }),
+          });
 
-      dispatch({
-        type: 'SET_CURRENT_SUBTITLE',
-        payload: currentSub ? currentSub.coloredText : '',
-      });
+          if (response.ok) {
+            const assData = await response.json();
+            const assContent = assData.content;
+            const subtitles = assContent ? parseAssFile(assContent) : [];
+
+            const currentTime = videoRef.currentTime;
+            const currentSub = subtitles.find(
+              (sub) => currentTime >= sub.start && currentTime <= sub.end,
+            );
+
+            dispatch({
+              type: 'SET_CURRENT_SUBTITLE',
+              payload: currentSub ? currentSub.coloredText : '',
+            });
+          }
+        } catch (error) {
+          console.error('Error fetching ASS content:', error);
+        }
+      }
     };
 
     // Add event listeners only once
