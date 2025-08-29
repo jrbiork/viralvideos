@@ -1,9 +1,14 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { S3Client } from '@aws-sdk/client-s3';
 import { listScenes } from './listScenes';
+import {
+  getManifest,
+  hydrateManifest,
+} from '../video-generation/util/manifestUtils';
 
 const s3 = new S3Client({ region: process.env['AWS_REGION'] || 'us-east-1' });
-const bucketName = process.env['S3_BUCKET_NAME']!;
+const bucketName =
+  process.env['VIDEO_PARTS_BUCKET_NAME'] || process.env['S3_BUCKET_NAME']!;
 const EXPIRES = Number(process.env['URL_TTL_SECONDS'] ?? 3600); // default 1h
 
 const cors = {
@@ -41,23 +46,26 @@ export const handler = async (
       };
     }
 
-    // Use listScenes to get the preview data
-    const { scenes, sceneCount } = await listScenes(
-      s3,
-      bucketName,
-      userId,
-      timestamp,
-      EXPIRES,
-    );
+    console.log('fetch-preview', { userId, timestamp });
+
+    const manifest = await getManifest(userId, timestamp);
+    console.log('manifest:', manifest);
+
+    if (!manifest) {
+      return {
+        statusCode: 404,
+        headers: cors,
+        body: JSON.stringify({ error: 'Manifest not found' }),
+      };
+    }
+
+    const hydratedManifest = await hydrateManifest(manifest);
+    console.log('hydratedManifest:', hydratedManifest);
 
     return {
       statusCode: 200,
       headers: cors,
-      body: JSON.stringify({
-        success: true,
-        data: scenes,
-        sceneCount,
-      }),
+      body: JSON.stringify({ manifest: hydratedManifest }),
     };
   } catch (error: any) {
     console.error('fetch-preview error', { message: error?.message });

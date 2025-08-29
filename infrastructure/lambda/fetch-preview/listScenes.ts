@@ -38,54 +38,73 @@ export async function listScenes(
       : undefined;
   } while (ContinuationToken);
 
-  // Group by scene index
-  const scenes = new Map<number, Record<Ext, string>>();
-  const re = new RegExp(`^${userId}/${timestamp}\\.scene-(\\d+)\\.`); // capture index
+  // Group files by scene ID and collect all files for each scene
+  const sceneFiles = new Map<number, { [key: string]: string }>();
+  const re = new RegExp(`^${userId}/${timestamp}\\.scene-(\\d+)\\.`);
+
   for (const key of keys) {
     const m = key.match(re);
+    if (!m) continue;
+    const sceneId = Number(m[1]);
     const ext = extOf(key);
-    if (!m || !ext) continue;
-    const idx = Number(m[1]);
-    const rec = scenes.get(idx) ?? ({} as Record<Ext, string>);
-    rec[ext] = key;
-    scenes.set(idx, rec);
+    if (!ext) continue;
+
+    if (!sceneFiles.has(sceneId)) {
+      sceneFiles.set(sceneId, {});
+    }
+    sceneFiles.get(sceneId)![ext] = key;
   }
 
-  // Keep only complete scenes (all required files present)
-  const complete = [...scenes.entries()]
-    .filter(([, rec]) => REQUIRED.every((r) => rec[r]))
-    .sort(([a], [b]) => a - b);
+  // Get all scene IDs and sort them
+  const sceneIds = Array.from(sceneFiles.keys()).sort((a, b) => a - b);
 
-  // Presign in parallel
+  // Process each scene in parallel
   const result: any = {};
   await Promise.all(
-    complete.map(async ([idx, rec]) => {
-      const [audioUrl, videoUrl, imageUrl, subtitleUrl, assUrl] =
-        await Promise.all([
-          getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: rec['mp3'] }), {
-            expiresIn,
-          }),
-          getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: rec['mp4'] }), {
-            expiresIn,
-          }),
-          getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: rec['jpg'] }), {
-            expiresIn,
-          }),
-          getSignedUrl(
-            s3,
-            new GetObjectCommand({ Bucket, Key: rec['subtitle.json'] }),
-            { expiresIn },
-          ),
-          getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: rec['ass'] }), {
-            expiresIn,
-          }),
-        ]);
-      result[`${timestamp}.scene-${idx}`] = {
+    sceneIds.map(async (sceneId) => {
+      const files = sceneFiles.get(sceneId)!;
+
+      // Check if scene has all required files
+      if (!REQUIRED.every((ext) => files[ext])) {
+        return; // Skip incomplete scenes
+      }
+
+      const [audioUrl, videoUrl, imageUrl] = await Promise.all([
+        getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: files['mp3'] }), {
+          expiresIn,
+        }),
+        getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: files['mp4'] }), {
+          expiresIn,
+        }),
+        getSignedUrl(s3, new GetObjectCommand({ Bucket, Key: files['jpg'] }), {
+          expiresIn,
+        }),
+      ]);
+
+      // Fetch inline subtitle.json content
+      const subtitleObj = await s3.send(
+        new GetObjectCommand({ Bucket, Key: files['subtitle.json'] }),
+      );
+      const subtitleText = await subtitleObj.Body?.transformToString();
+      let subtitleContent: any = null;
+      try {
+        subtitleContent = subtitleText ? JSON.parse(subtitleText) : null;
+      } catch {
+        subtitleContent = null;
+      }
+
+      // Fetch inline .ass content
+      const assObj = await s3.send(
+        new GetObjectCommand({ Bucket, Key: files['ass'] }),
+      );
+      const assContent = await assObj.Body?.transformToString();
+
+      result[`${timestamp}.scene-${sceneId}`] = {
         audioUrl,
         videoUrl,
         imageUrl,
-        subtitleUrl,
-        assUrl,
+        subtitleContent, // JSON object
+        assContent, // string
       };
     }),
   );

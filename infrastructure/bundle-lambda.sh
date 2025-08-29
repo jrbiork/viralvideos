@@ -30,6 +30,12 @@ npx esbuild lambda/fetch-videos/index.ts \
   $ESBUILD_FLAGS \
   --outfile=dist/fetch-videos/index.js
 
+# Bundle fetch-preview lambda
+echo "📦 Bundling fetch-preview lambda..."
+npx esbuild lambda/fetch-preview/index.ts \
+  $ESBUILD_FLAGS \
+  --outfile=dist/fetch-preview/index.js
+
 # Bundle get-user lambda
 echo "📦 Bundling get-user lambda..."
 npx esbuild lambda/get-user/index.ts \

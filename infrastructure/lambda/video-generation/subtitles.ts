@@ -21,9 +21,9 @@ export async function generateSubtitles(
   timestamp: string,
   subtitleData?: SubtitleData[],
 ): Promise<Array<{ [key: string]: string }>> {
-  // Format: [{ "timestamp.scene-id.ass": "signed-url" }]
+  // Format: [{ "timestamp.scene-id.ass": "ass-content" }]
   try {
-    const subtitleUrls: Array<{ [key: string]: string }> = [];
+    const assContentArray: Array<{ [key: string]: string }> = [];
     let currentTime = 0;
 
     for (let i = 0; i < scenes.length; i++) {
@@ -69,24 +69,15 @@ export async function generateSubtitles(
         }),
       );
 
-      // Generate signed URL for the uploaded subtitle file
-      const subtitleSignedUrl = await getSignedUrl(
-        s3,
-        new GetObjectCommand({
-          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: assSubtitleKey,
-        }),
-        { expiresIn: 36000 }, // 10 hours expiration
-      );
-
       // Extract filename without user prefix (e.g., "1004.scene-1.ass")
       const filename = assSubtitleKey.replace(`${userId}/`, '');
 
-      subtitleUrls.push({ [filename]: subtitleSignedUrl });
+      // Return inline content instead of a signed URL
+      assContentArray.push({ [filename]: assContent });
       currentTime += scene.duration;
     }
 
-    return subtitleUrls;
+    return assContentArray;
   } catch (error) {
     console.error('❌ Error in generateSubtitles:', error);
     throw error;

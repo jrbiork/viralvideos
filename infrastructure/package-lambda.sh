@@ -10,6 +10,7 @@ mkdir -p dist/jwt-authorizer
 mkdir -p dist/get-user
 mkdir -p dist/upsert-user
 mkdir -p dist/generate-audio-subtitle
+mkdir -p dist/fetch-preview
 
 mkdir -p dist/delete-video
 mkdir -p dist/websocket-connect
@@ -45,6 +46,10 @@ cp lambda/dist/upsert-user/*.js dist/upsert-user/
 
 echo "📋 Copying generate-audio-subtitle files..."
 cp lambda/dist/generate-audio-subtitle/*.js dist/generate-audio-subtitle/
+
+echo "📋 Copying fetch-preview files..."
+cp lambda/dist/fetch-preview/*.js dist/fetch-preview/
+cp lambda/package.json dist/fetch-preview/
 
 
 
@@ -101,6 +106,12 @@ cd ../..
 
 echo "📦 Installing dependencies for generate-audio-subtitle..."
 cd dist/generate-audio-subtitle
+cp ../../lambda/package.json .
+npm install --production
+cd ../..
+
+echo "📦 Installing dependencies for fetch-preview..."
+cd dist/fetch-preview
 cp ../../lambda/package.json .
 npm install --production
 cd ../..

@@ -109,7 +109,7 @@ export async function generateNarration(
       fs.unlinkSync(tempAudioPath);
 
       const subtitleData: SubtitleData = {
-        sceneIndex: i,
+        sceneIndex: scene.id,
         words: [],
         fullText: scene.narration, // Use original narration text instead of transcribed text
       };

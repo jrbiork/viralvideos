@@ -5,6 +5,10 @@ import { generateSubtitles } from '../video-generation/subtitles';
 import { Scene } from '../video-generation/script';
 
 import { broadcastProgress } from '../video-generation';
+import {
+  getManifest,
+  updateManifest,
+} from '../video-generation/util/manifestUtils';
 
 interface RequestBody {
   scenes: Scene[];
@@ -27,11 +31,27 @@ export const handler = async (
       };
     }
 
-    const requestBody: RequestBody = JSON.parse(event.body);
-    const { scenes, userId, timestamp, voiceToneInstruction } = requestBody;
+    // get userId from the authorizer context
+    const userId = (event.requestContext as any).authorizer?.principalId;
+    if (!userId) {
+      return {
+        statusCode: 401,
+        body: JSON.stringify({ error: 'Unauthorized' }),
+      };
+    }
 
-    // Validate required fields
-    if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
+    // get timestamp from query string
+    const timestamp = event.queryStringParameters?.['timestamp'];
+    if (!timestamp) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Timestamp is required' }),
+      };
+    }
+
+    // get one scene object from body
+    const scene = JSON.parse(event.body).scene as Scene;
+    if (!scene) {
       return {
         statusCode: 400,
         body: JSON.stringify({
@@ -40,54 +60,57 @@ export const handler = async (
       };
     }
 
-    if (!userId) {
+    const manifest = await getManifest(userId, timestamp);
+    if (!manifest) {
       return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'userId is required' }),
+        statusCode: 404,
+        body: JSON.stringify({ error: 'Manifest not found' }),
       };
     }
-
-    if (!timestamp) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'timestamp is required' }),
-      };
-    }
-
-    console.log(
-      `🎤 Processing ${scenes.length} scenes for user ${userId}, timestamp ${timestamp}`,
-      scenes,
-    );
 
     // Step 3: Generate audio narration with word-level timestamps
     const { subtitles, narrationUrls } = await generateNarration(
-      scenes,
+      [scene],
       userId,
       timestamp,
-      voiceToneInstruction,
     );
 
-    const subtitleUrls = await generateSubtitles(
-      scenes,
+    const assContent = await generateSubtitles(
+      [scene],
       userId,
       timestamp,
       subtitles,
     );
 
-    console.log('📝 Subtitle URLs generated:', subtitleUrls);
-    console.log('🎤 Narration URLs generated:', narrationUrls);
+    // update manifest with subtitle content, ass content and audio urls
+    const updatedScenesWithAudio = manifest!.scenes.map((manifestScene) => {
+      const narrationUrlObj = narrationUrls[manifestScene.sceneIndex];
+      const narrationUrl = narrationUrlObj
+        ? Object.values(narrationUrlObj)[0]
+        : manifestScene.files.mp3;
+
+      const assContentStr = typeof assContent === 'string' ? assContent : '';
+
+      return {
+        ...manifestScene,
+        files: {
+          ...manifestScene.files,
+          mp3: narrationUrl,
+          ass: assContentStr,
+          subtitle: subtitles[manifestScene.sceneIndex].fullText,
+        },
+      };
+    });
+
+    const manifestUpdated = await updateManifest(manifest!, {
+      scenes: updatedScenesWithAudio,
+    });
 
     // Return success response
     return {
       statusCode: 200,
       body: JSON.stringify({
-        subtitles: subtitles.map((subtitle) => ({
-          [`${timestamp}.scene-${subtitle.sceneIndex}.subtitle`]: {
-            text: subtitle.fullText,
-          },
-        })),
-        subtitleUrls,
-        narrationUrls,
+        manifest: manifestUpdated,
       }),
     };
   } catch (error) {

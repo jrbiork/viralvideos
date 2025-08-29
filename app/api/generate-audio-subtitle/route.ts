@@ -152,9 +152,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({
-      data: responsePayload.data,
-      message:
-        responsePayload.message || 'Audio and subtitles generated successfully',
+      data: responsePayload,
+      message: 'Audio and subtitles generated successfully',
     });
   } catch (error) {
     console.error('💥 Error in audio-subtitle generation:', error);

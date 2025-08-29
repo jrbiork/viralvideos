@@ -19,7 +19,6 @@ export type SceneManagementAction =
   | { type: 'SET_AUTO_ADVANCE_ENABLED'; payload: boolean }
   | { type: 'SET_CURRENT_SUBTITLE'; payload: string }
   | { type: 'SET_EXPORTING'; payload: boolean }
-  | { type: 'RESET_SCENE_STATE' }
   | { type: 'DELETE_SCENE'; payload: number }
   | { type: 'ADD_SCENE'; payload: { position: number; scene: any } };
 
@@ -51,8 +50,7 @@ function sceneManagementReducer(
       return { ...state, currentSubtitle: action.payload };
     case 'SET_EXPORTING':
       return { ...state, isExporting: action.payload };
-    case 'RESET_SCENE_STATE':
-      return initialState;
+
     case 'DELETE_SCENE':
       // Reset selected scene if it's being deleted
       if (state.selectedSceneId === action.payload) {
@@ -128,10 +126,6 @@ export function useSceneManagement() {
       console.log('Video exported successfully!');
       // Could redirect to a success page or show download link
     }, 2000);
-  };
-
-  const resetSceneState = () => {
-    dispatch({ type: 'RESET_SCENE_STATE' });
   };
 
   // Auto-select first scene when scenes are loaded
@@ -256,42 +250,26 @@ export function useSceneManagement() {
     videoRef.dataset.sceneId = scene.id.toString();
 
     const updateSubtitle = async () => {
-      // Get the latest assFiles from the video element
+      // Get the latest assFiles from the video element (now expected to hold inline contents)
       const latestAssFiles = JSON.parse(videoRef.dataset.assFiles || '{}');
       const assKey = `${currentTimestamp}.scene-${sceneIndex}.ass`;
-      const assUrl = latestAssFiles[assKey];
+      const assContent = latestAssFiles[assKey];
 
-      if (assUrl) {
+      if (assContent) {
         try {
-          // Fetch ASS content from the URL
-          const response = await fetch('/api/fetch-content', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              url: assUrl,
-              type: 'ass',
-            }),
+          const subtitles = assContent ? parseAssFile(assContent) : [];
+
+          const currentTime = videoRef.currentTime;
+          const currentSub = subtitles.find(
+            (sub) => currentTime >= sub.start && currentTime <= sub.end,
+          );
+
+          dispatch({
+            type: 'SET_CURRENT_SUBTITLE',
+            payload: currentSub ? currentSub.coloredText : '',
           });
-
-          if (response.ok) {
-            const assData = await response.json();
-            const assContent = assData.content;
-            const subtitles = assContent ? parseAssFile(assContent) : [];
-
-            const currentTime = videoRef.currentTime;
-            const currentSub = subtitles.find(
-              (sub) => currentTime >= sub.start && currentTime <= sub.end,
-            );
-
-            dispatch({
-              type: 'SET_CURRENT_SUBTITLE',
-              payload: currentSub ? currentSub.coloredText : '',
-            });
-          }
         } catch (error) {
-          console.error('Error fetching ASS content:', error);
+          console.error('Error parsing ASS content:', error);
         }
       }
     };
@@ -383,7 +361,6 @@ export function useSceneManagement() {
     handleDeleteScene,
     handleAddScene,
     handleExportVideo,
-    resetSceneState,
     autoSelectFirstScene,
     handleAutoPlay,
     setupVideoEventListeners,

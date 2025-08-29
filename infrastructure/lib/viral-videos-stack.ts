@@ -291,6 +291,7 @@ export class ViralVideosStack extends cdk.Stack {
 
       environment: {
         S3_BUCKET_NAME: videoPartsBucket.bucketName,
+        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
         URL_TTL_SECONDS: '3600',
         MAX_SCENES: '10',
       },

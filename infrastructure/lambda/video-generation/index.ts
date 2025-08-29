@@ -11,8 +11,14 @@ import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { getImageUrls } from './util/imageUtils';
 import { generateVideoEffects, getVideoEffectUrls } from './util/videoEffects';
 import { combineVideoAndAudio } from './videoCombiner';
-import { createManifest } from './util/manifestUtils';
+import {
+  createManifest,
+  getManifest,
+  hydrateManifest,
+  updateManifest,
+} from './util/manifestUtils';
 import { broadcastMessage } from '../websocket-broadcast';
+import { Manifest } from '../types/s3Types';
 
 interface VideoGenerationRequest {
   prompt?: string;
@@ -60,7 +66,27 @@ async function processVideoGeneration(
   try {
     console.log('processVideoGeneration:', request);
 
-    // Use timestamp from request body
+    // check if the video is already generated
+    let manifest = await getManifest(request.userId, request.timestamp);
+
+    if (manifest) {
+      const manifestHydrated = await hydrateManifest(manifest);
+      console.log('🎥 Video already generated, skipping video generation');
+      await broadcastProgress(
+        'video_completed',
+        request.userId,
+        request.timestamp,
+        { manifest: manifestHydrated },
+        'Video generated successfully',
+      );
+
+      return {
+        message: 'Video already generated',
+        manifest: manifestHydrated,
+      };
+    }
+
+    // Use timestamp
     const timestamp = request.timestamp;
 
     const sceneDuration = Math.floor(
@@ -92,7 +118,7 @@ async function processVideoGeneration(
       }
 
       const storyBreakdown = await generateStoryBreakdown(
-        request.prompt,
+        request.prompt!,
         request.sceneCount,
         sceneDuration,
         request.totalDuration,
@@ -109,16 +135,6 @@ async function processVideoGeneration(
     }
 
     console.log('🎥 Story breakdown generated:', scenes);
-
-    await broadcastProgress(
-      'script_created',
-      request.userId,
-      timestamp,
-      {
-        scenes,
-      },
-      'Story breakdown completed',
-    );
 
     // Step 2: Generate images for each scene in parallel
     // Check if there are already images generated in the s3 bucket for the timestamp
@@ -177,11 +193,33 @@ async function processVideoGeneration(
 
     console.log('🖼️ Image URLs generated:', imageUrls);
 
+    // Update manifest with image URLs
+    const updatedScenes = manifest!.scenes.map((scene) => {
+      const imageUrlObj = imageUrls[scene.sceneIndex];
+      const imageUrl = imageUrlObj
+        ? Object.values(imageUrlObj)[0]
+        : scene.files.jpg;
+
+      return {
+        ...scene,
+        files: {
+          ...scene.files,
+          jpg: imageUrl,
+        },
+      };
+    });
+
+    manifest = await updateManifest(manifest!, {
+      scenes: updatedScenes,
+    });
+
     await broadcastProgress(
       'image_created',
       request.userId,
       timestamp,
-      imageUrls,
+      {
+        manifest,
+      },
       'Images generated',
     );
 
@@ -196,28 +234,46 @@ async function processVideoGeneration(
     );
 
     // Step 4: Generate subtitle file
-    const subtitleUrls = await generateSubtitles(
+    const assContent = await generateSubtitles(
       scenes,
       request.userId,
       timestamp,
       subtitles,
     );
 
-    console.log('📝 Subtitle URLs generated:', subtitleUrls);
+    console.log('📝 Subtitle content generated');
     console.log('🎤 Narration URLs generated:', narrationUrls);
+
+    // update manifest with subtitle content, ass content and audio urls
+    const updatedScenesWithAudio = manifest!.scenes.map((manifestScene) => {
+      const narrationUrlObj = narrationUrls[manifestScene.sceneIndex];
+      const narrationUrl = narrationUrlObj
+        ? Object.values(narrationUrlObj)[0]
+        : manifestScene.files.mp3;
+
+      const assContentStr = typeof assContent === 'string' ? assContent : '';
+
+      return {
+        ...manifestScene,
+        files: {
+          ...manifestScene.files,
+          mp3: narrationUrl,
+          ass: assContentStr,
+          subtitle: subtitles[manifestScene.sceneIndex].fullText,
+        },
+      };
+    });
+
+    manifest = await updateManifest(manifest!, {
+      scenes: updatedScenesWithAudio,
+    });
 
     await broadcastProgress(
       'audio_subtitle_created',
       request.userId,
       timestamp,
       {
-        subtitles: subtitles.map((subtitle) => ({
-          [`${timestamp}.scene-${subtitle.sceneIndex}.subtitle`]: {
-            text: subtitle.fullText,
-          },
-        })),
-        subtitleUrls,
-        narrationUrls,
+        manifest,
       },
       'Audio and Subtitles completed',
     );
@@ -261,8 +317,7 @@ async function processVideoGeneration(
 
     // console.log(`✅ Generated ${videoClips.length} video clips`);
 
-    // Step 4: Generate video effects and camera movement using the images
-
+    // Step 4: Generate camera movements from image
     // check if there are already all the video effects generated in the s3 bucket for the timestamp
     let videoEffectsUrls = [];
 
@@ -272,12 +327,31 @@ async function processVideoGeneration(
       scenes,
     );
 
+    const updatedScenesWithVideo = manifest!.scenes.map((manifestScene) => {
+      const videoUrlObj = videoEffectsUrls[manifestScene.sceneIndex];
+      const videoUrl = videoUrlObj
+        ? Object.values(videoUrlObj)[0]
+        : manifestScene.files.mp4;
+
+      return {
+        ...manifestScene,
+        files: {
+          ...manifestScene.files,
+          mp4: videoUrl,
+        },
+      };
+    });
+
+    manifest = await updateManifest(manifest!, {
+      scenes: updatedScenesWithVideo,
+    });
+
     await broadcastProgress(
       'video_scene_created',
       request.userId,
       timestamp,
       {
-        videoEffectsUrls,
+        manifest,
       },
       'Video effects completed',
     );
@@ -293,11 +367,16 @@ async function processVideoGeneration(
 
     console.log('🎬 Video combined completed', finalVideoUrl);
 
+    manifest = await updateManifest(manifest!, {
+      finalVideoUrl,
+      totalDuration: request.totalDuration,
+    });
+
     await broadcastProgress(
       'video_completed',
       request.userId,
       timestamp,
-      { finalVideoUrl },
+      { manifest },
       'Video generated successfully',
     );
 
@@ -311,7 +390,13 @@ async function processVideoGeneration(
     }
 
     // Step 7: Create manifest and upload to s3
-    await createManifest(request.userId, timestamp, scenes);
+    await createManifest(
+      request.userId,
+      timestamp,
+      scenes,
+      finalVideoUrl,
+      request.totalDuration,
+    );
     console.log('manifest created');
 
     return {

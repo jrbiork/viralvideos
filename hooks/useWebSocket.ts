@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../components/AuthContext';
-
-interface WebSocketMessage {
-  action: string;
-  [key: string]: any;
-}
+import { WebSocketMessage } from '../app/types/websocket';
 
 interface UseWebSocketOptions {
   onMessage?: (message: WebSocketMessage) => void;
