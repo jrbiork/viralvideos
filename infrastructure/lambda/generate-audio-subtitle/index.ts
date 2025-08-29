@@ -1,14 +1,19 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 import { generateNarration } from '../video-generation/audio';
-import { generateSubtitles } from '../video-generation/subtitles';
+import {
+  generateSubtitles,
+  ASSContentResult,
+} from '../video-generation/subtitles';
 import { Scene } from '../video-generation/script';
 
 import { broadcastProgress } from '../video-generation';
 import {
   getManifest,
+  hydrateManifest,
   updateManifest,
 } from '../video-generation/util/manifestUtils';
+import { uploadJsonToS3 } from '../video-generation/util/s3Uploader';
 
 interface RequestBody {
   scenes: Scene[];
@@ -68,49 +73,66 @@ export const handler = async (
       };
     }
 
+    const manifestHydrated = await hydrateManifest(manifest);
+    console.log('manifestHydrated:', manifestHydrated);
+
     // Step 3: Generate audio narration with word-level timestamps
     const { subtitles, narrationUrls } = await generateNarration(
       [scene],
       userId,
       timestamp,
     );
+    console.log('subtitles generated:', JSON.stringify(subtitles, null, 2));
 
-    const assContent = await generateSubtitles(
+    const assContentArray: ASSContentResult[] = await generateSubtitles(
       [scene],
       userId,
       timestamp,
       subtitles,
     );
+    console.log('assContentArray:', assContentArray);
 
     // update manifest with subtitle content, ass content and audio urls
-    const updatedScenesWithAudio = manifest!.scenes.map((manifestScene) => {
-      const narrationUrlObj = narrationUrls[manifestScene.sceneIndex];
-      const narrationUrl = narrationUrlObj
-        ? Object.values(narrationUrlObj)[0]
-        : manifestScene.files.mp3;
+    // Only update the specific scene that was regenerated (scene.id corresponds to sceneIndex)
+    const updatedScenesWithAudio = manifestHydrated!.scenes.map(
+      (manifestScene) => {
+        // Only update the scene that matches the regenerated scene
+        if (manifestScene.sceneIndex === scene.id) {
+          const narrationUrlObj = narrationUrls[0]; // Only one scene was processed
+          const narrationUrl = narrationUrlObj
+            ? Object.values(narrationUrlObj)[0]
+            : manifestScene.files.mp3;
 
-      const assContentStr = typeof assContent === 'string' ? assContent : '';
+          // Extract ASS content from the array (first element contains the ASS content)
+          const assContent = assContentArray[0]
+            ? Object.values(assContentArray[0])[0]
+            : '';
 
-      return {
-        ...manifestScene,
-        files: {
-          ...manifestScene.files,
-          mp3: narrationUrl,
-          ass: assContentStr,
-          subtitle: subtitles[manifestScene.sceneIndex].fullText,
-        },
-      };
-    });
+          return {
+            ...manifestScene,
+            files: {
+              ...manifestScene.files,
+              mp3: narrationUrl,
+              ass: assContent,
+              subtitle: subtitles[0].fullText, // Only one subtitle was generated
+            },
+          };
+        }
 
-    const manifestUpdated = await updateManifest(manifest!, {
-      scenes: updatedScenesWithAudio,
-    });
+        // Return unchanged scene for all other scenes
+        return manifestScene;
+      },
+    );
+
+    // update manifestHydrated with updatedScenesWithAudio
+    manifestHydrated!.scenes = updatedScenesWithAudio;
+    console.log('manifestHydrated:', JSON.stringify(manifestHydrated, null, 2));
 
     // Return success response
     return {
       statusCode: 200,
       body: JSON.stringify({
-        manifest: manifestUpdated,
+        manifest: manifestHydrated,
       }),
     };
   } catch (error) {

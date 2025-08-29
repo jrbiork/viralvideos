@@ -406,7 +406,7 @@ export default function GeneratePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          scenes: [updatedScene], // Send the scene with updated narration
+          scene: updatedScene, // Send the single scene with updated narration
           instructions: 'Speak in a cheerful and positive tone',
           timestamp:
             videoGenerationState.currentTimestamp ||
@@ -419,11 +419,49 @@ export default function GeneratePage() {
       }
 
       const result = await response.json();
+      console.log('📡 Response from generate-audio-subtitle API:', result);
 
       // Update the video generation state with the new audio/subtitles
+      if (result.data && result.data.manifest) {
+        setVideoGenerationState((prev) => ({
+          ...prev,
+          manifest: result.data.manifest,
+        }));
+        console.log(
+          '✅ Audio/subtitles regenerated successfully:',
+          result.data.manifest,
+        );
 
-      // TODO: Update the UI to reflect the new audio/subtitles
-      // This might involve refreshing the video generation state or updating specific files
+        // Force video players to refresh their ASS and subtitle content
+        const videoElements = document.querySelectorAll('video');
+        videoElements.forEach((videoRef) => {
+          if (videoRef.dataset.initialized) {
+            // Build complete ASS files object from the updated manifest
+            const timestamp = result.data.manifest.generatedAt;
+            const completeAssFiles: { [key: string]: string } = {};
+
+            result.data.manifest.scenes.forEach((scene: any) => {
+              const assKey = `${timestamp}.scene-${scene.sceneIndex}.ass`;
+              completeAssFiles[assKey] = scene.files.ass;
+            });
+
+            // Update the video element with complete ASS content
+            videoRef.dataset.assFiles = JSON.stringify(completeAssFiles);
+            console.log(
+              '🔄 Updated video player with complete ASS content:',
+              Object.keys(completeAssFiles),
+            );
+
+            // Force immediate subtitle update by triggering a timeupdate event
+            const timeupdateEvent = new Event('timeupdate', {
+              bubbles: true,
+            });
+            videoRef.dispatchEvent(timeupdateEvent);
+          }
+        });
+      } else {
+        console.error('❌ Unexpected response format:', result);
+      }
     } catch (error) {
       console.error('Error regenerating audio:', error);
       alert('Failed to regenerate audio. Please try again.');

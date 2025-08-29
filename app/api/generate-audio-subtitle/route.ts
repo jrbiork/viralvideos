@@ -46,26 +46,23 @@ export async function POST(request: NextRequest) {
       cognitoToken.length,
     );
 
-    const { scenes, instructions, timestamp } = await request.json();
+    const { scene, instructions, timestamp } = await request.json();
 
-    if (!scenes || !Array.isArray(scenes) || scenes.length === 0) {
+    if (!scene) {
       return NextResponse.json(
-        { error: 'Scenes array is required and must not be empty' },
+        { error: 'Scene object is required' },
         { status: 400 },
       );
     }
 
-    // Validate each scene has required fields
-    for (let i = 0; i < scenes.length; i++) {
-      const scene = scenes[i];
-      if (!scene.narration || !scene.duration) {
-        return NextResponse.json(
-          {
-            error: `Scene ${i} is missing required fields: narration and duration`,
-          },
-          { status: 400 },
-        );
-      }
+    // Validate scene has required fields
+    if (!scene.narration || !scene.duration) {
+      return NextResponse.json(
+        {
+          error: 'Scene is missing required fields: narration and duration',
+        },
+        { status: 400 },
+      );
     }
 
     if (!timestamp) {
@@ -87,16 +84,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare Lambda payload with userId and timestamp from request
+    // Prepare Lambda payload with userId and selected scene
     const lambdaPayload = {
-      scenes,
-      userId: userInfo.id,
-      timestamp,
+      scene,
       voiceToneInstruction: instructions,
     };
 
-    // Call the API Gateway endpoint
-    const apiGatewayUrl = `${process.env.API_GATEWAY_URL}generate-audio-subtitle`;
+    // Call the API Gateway endpoint with timestamp as query string
+    const apiGatewayUrl = `${
+      process.env.API_GATEWAY_URL
+    }generate-audio-subtitle?timestamp=${encodeURIComponent(timestamp)}`;
     console.log(
       '🔗 Calling API Gateway (generate-audio-subtitle):',
       apiGatewayUrl,

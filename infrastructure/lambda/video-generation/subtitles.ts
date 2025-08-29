@@ -15,12 +15,17 @@ import {
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 
+// Type for ASS content result
+export interface ASSContentResult {
+  [filename: string]: string; // e.g., { "1004.scene-1.ass": "[Script Info]\n..." }
+}
+
 export async function generateSubtitles(
   scenes: Scene[],
   userId: string,
   timestamp: string,
   subtitleData?: SubtitleData[],
-): Promise<Array<{ [key: string]: string }>> {
+): Promise<ASSContentResult[]> {
   // Format: [{ "timestamp.scene-id.ass": "ass-content" }]
   try {
     const assContentArray: Array<{ [key: string]: string }> = [];
@@ -31,8 +36,9 @@ export async function generateSubtitles(
       let assContent: string;
 
       // Check if we have word-level subtitle data for this scene
+      // Use scene.id as sceneIndex since that's what we're passing from the lambda
       const sceneSubtitleData = subtitleData?.find(
-        (data) => data.sceneIndex === i,
+        (data) => data.sceneIndex === scene.id,
       );
 
       if (sceneSubtitleData && sceneSubtitleData.words.length > 0) {
