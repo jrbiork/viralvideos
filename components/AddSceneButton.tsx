@@ -3,6 +3,7 @@ interface AddSceneButtonProps {
   position: number; // Position where the new scene should be inserted
   isFirst?: boolean; // Whether this is the first button (before all scenes)
   isLast?: boolean; // Whether this is the last button (after all scenes)
+  disabled?: boolean; // Whether the button should be disabled
 }
 
 export default function AddSceneButton({
@@ -10,6 +11,7 @@ export default function AddSceneButton({
   position,
   isFirst = false,
   isLast = false,
+  disabled = false,
 }: AddSceneButtonProps) {
   return (
     <div className="flex items-center justify-center my-4">
@@ -18,10 +20,17 @@ export default function AddSceneButton({
 
       {/* Add button */}
       <button
-        onClick={() => onAddScene(position)}
-        className="mx-4 p-3 bg-slate-700/50 hover:bg-slate-600/50 border-2 border-dashed border-slate-500 hover:border-slate-400 rounded-xl transition-all duration-200 group"
+        onClick={() => !disabled && onAddScene(position)}
+        disabled={disabled}
+        className={`mx-4 p-3 border-2 border-dashed rounded-xl transition-all duration-200 group ${
+          disabled
+            ? 'bg-slate-800/30 border-slate-600/30 cursor-not-allowed'
+            : 'bg-slate-700/50 hover:bg-slate-600/50 border-slate-500 hover:border-slate-400'
+        }`}
         title={
-          isFirst
+          disabled
+            ? 'Add scene feature is currently disabled'
+            : isFirst
             ? 'Add scene at beginning'
             : isLast
             ? 'Add scene at end'
@@ -29,7 +38,11 @@ export default function AddSceneButton({
         }
       >
         <svg
-          className="w-6 h-6 text-slate-400 group-hover:text-slate-300 transition-colors duration-200"
+          className={`w-6 h-6 transition-colors duration-200 ${
+            disabled
+              ? 'text-slate-500'
+              : 'text-slate-400 group-hover:text-slate-300'
+          }`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

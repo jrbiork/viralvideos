@@ -53,7 +53,6 @@ export default function GeneratePage() {
     handleSaveEdit,
     handleCancelEdit,
     handleSceneSelection,
-    handleDeleteScene,
     handleAddScene,
     handleExportVideo,
     autoSelectFirstScene,
@@ -506,7 +505,7 @@ export default function GeneratePage() {
 
   // Right sidebar content
   const rightSidebarContent = (
-    <div className="sticky top-4 p-[50px]">
+    <div className="sticky">
       {currentStep === 1 &&
         !generationState.generatedVideoUrl &&
         !generationState.selectedGalleryVideo && (
@@ -700,6 +699,7 @@ export default function GeneratePage() {
                         onAddScene={handleAddScene}
                         position={0}
                         isFirst={true}
+                        disabled={true}
                       />
 
                       {/* Scene Cards */}
@@ -749,7 +749,6 @@ export default function GeneratePage() {
                                   payload: value,
                                 });
                               }}
-                              onDeleteScene={handleDeleteScene}
                               onRegenerateAudio={handleRegenerateAudio}
                               imageUrl={imageUrl}
                               isSelected={
@@ -764,6 +763,7 @@ export default function GeneratePage() {
                               <AddSceneButton
                                 onAddScene={handleAddScene}
                                 position={index + 1}
+                                disabled={true}
                               />
                             )}
                           </div>
@@ -775,6 +775,7 @@ export default function GeneratePage() {
                         onAddScene={handleAddScene}
                         position={scenes.length}
                         isLast={true}
+                        disabled={true}
                       />
                     </>
                   )}

@@ -13,7 +13,6 @@ interface EditSceneProps {
   onSaveEdit: (sceneId: number) => void;
   onCancelEdit: () => void;
   onEditedNarrationChange: (value: string) => void;
-  onDeleteScene?: (sceneId: number) => void;
   onRegenerateAudio?: (sceneId: number) => void;
   imageUrl?: string;
   isSelected?: boolean;
@@ -29,7 +28,6 @@ export default function EditScene({
   onSaveEdit,
   onCancelEdit,
   onEditedNarrationChange,
-  onDeleteScene,
   onRegenerateAudio,
   imageUrl,
   isSelected = false,
@@ -69,33 +67,7 @@ export default function EditScene({
             </div>
           </div>
         )}
-        {/* Delete Button - Top Right Corner */}
-        {onDeleteScene && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirm('Are you sure you want to delete this scene?')) {
-                onDeleteScene(scene.id);
-              }
-            }}
-            className="absolute top-2 right-2 p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors duration-200 z-10"
-            title="Delete scene"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        )}
+
         {/* Scene Image */}
         {imageUrl ? (
           <div
