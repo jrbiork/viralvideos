@@ -10,7 +10,6 @@ export async function createManifest(
   userId: string,
   timestamp: string,
   scenes: Scene[],
-  finalVideoUrl: string,
   totalDuration: number,
 ): Promise<string> {
   try {
@@ -38,7 +37,7 @@ export async function createManifest(
         },
       })),
       totalDuration,
-      finalVideoUrl,
+      finalVideoUrl: `${userId}/${timestamp}.final-video.mp4`,
     };
 
     // Convert manifest to JSON string

@@ -17,3 +17,4 @@ export interface NarrationResult {
 }
 export declare function fetchAudioFilesForTimestamp(userId: string, timestamp: string): Promise<NarrationResult>;
 export declare function getAudioSignedUrl(audioKey: string): Promise<string | null>;
+export declare function checkAudioCaptionExists(userId: string, timestamp: string): Promise<boolean>;

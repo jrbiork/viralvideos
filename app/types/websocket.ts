@@ -5,6 +5,7 @@ export type WebSocketAction =
   | 'image_created'
   | 'audio_subtitle_created'
   | 'video_scene_created'
+  | 'preview_completed'
   | 'video_completed'
   | 'ping';
 

@@ -6,6 +6,7 @@ import {
   useEffect,
   useState,
   ReactNode,
+  useRef,
 } from 'react';
 
 interface User {
@@ -27,66 +28,57 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Cache keys for localStorage
-const AUTH_CACHE_KEY = 'viral-videos-auth-cache';
-const AUTH_CACHE_TIMESTAMP_KEY = 'viral-videos-auth-timestamp';
-const CACHE_DURATION = 20 * 60 * 1000; // 20 minutes in milliseconds
-
-interface AuthCache {
+// In-memory cache for auth state with TTL
+interface AuthCacheEntry {
   user: User;
   timestamp: number;
+  expiresAt: number;
 }
+
+class AuthCache {
+  private cache: AuthCacheEntry | null = null;
+  private readonly ttl = 20 * 60 * 1000; // 20 minutes in milliseconds
+
+  get(): User | null {
+    if (!this.cache) return null;
+
+    const now = Date.now();
+    if (now > this.cache.expiresAt) {
+      this.clear();
+      return null;
+    }
+
+    return this.cache.user;
+  }
+
+  set(user: User): void {
+    const now = Date.now();
+    this.cache = {
+      user,
+      timestamp: now,
+      expiresAt: now + this.ttl,
+    };
+  }
+
+  clear(): void {
+    this.cache = null;
+  }
+
+  isValid(): boolean {
+    return this.cache !== null && Date.now() <= this.cache.expiresAt;
+  }
+}
+
+// Global auth cache instance
+const authCache = new AuthCache();
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  // Check if cached auth data is still valid
-  const isCacheValid = (): boolean => {
-    try {
-      const timestamp = localStorage.getItem(AUTH_CACHE_TIMESTAMP_KEY);
-      if (!timestamp) return false;
-
-      const cacheAge = Date.now() - parseInt(timestamp);
-      return cacheAge < CACHE_DURATION;
-    } catch {
-      return false;
-    }
-  };
-
-  // Get cached auth data
-  const getCachedAuth = (): User | null => {
-    try {
-      if (!isCacheValid()) return null;
-
-      const cached = localStorage.getItem(AUTH_CACHE_KEY);
-      if (!cached) return null;
-
-      const authCache: AuthCache = JSON.parse(cached);
-      return authCache.user;
-    } catch {
-      return null;
-    }
-  };
-
-  // Set cached auth data
-  const setCachedAuth = (user: User | null) => {
-    try {
-      if (user) {
-        const authCache: AuthCache = {
-          user,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify(authCache));
-        localStorage.setItem(AUTH_CACHE_TIMESTAMP_KEY, Date.now().toString());
-      } else {
-        localStorage.removeItem(AUTH_CACHE_KEY);
-        localStorage.removeItem(AUTH_CACHE_TIMESTAMP_KEY);
-      }
-    } catch (error) {
-      console.error('Failed to cache auth data:', error);
-    }
-  };
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const refreshPromiseRef = useRef<Promise<User | null> | null>(null);
+  const isInitializedRef = useRef(false);
+  const oauthStateRef = useRef<string | null>(null);
 
   // Check authentication status from server
   const checkAuthStatus = async (): Promise<User | null> => {
@@ -95,12 +87,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json();
 
       if (data.user) {
-        setCachedAuth(data.user);
+        authCache.set(data.user);
         return data.user;
       }
 
       // Clear cache if no user found
-      setCachedAuth(null);
+      authCache.clear();
       return null;
     } catch (error) {
       console.error('Auth check failed:', error);
@@ -109,34 +101,180 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   // Refresh authentication status (force server check)
-  const refreshAuth = async () => {
-    setIsLoading(true);
-    try {
-      const user = await checkAuthStatus();
-      setUser(user);
-    } finally {
-      setIsLoading(false);
+  const refreshAuth = async (): Promise<void> => {
+    // Prevent multiple simultaneous refresh attempts
+    if (refreshPromiseRef.current) {
+      await refreshPromiseRef.current;
+      return;
     }
+
+    setIsRefreshing(true);
+
+    const refreshPromise = checkAuthStatus()
+      .then((user) => {
+        setUser(user);
+        return user;
+      })
+      .finally(() => {
+        setIsRefreshing(false);
+        refreshPromiseRef.current = null;
+      });
+
+    refreshPromiseRef.current = refreshPromise;
+    await refreshPromise;
+  };
+
+  // Stale-while-revalidate pattern for auth state
+  const getAuthState = async (): Promise<User | null> => {
+    // First, return cached data immediately if available
+    const cachedUser = authCache.get();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setIsLoading(false);
+
+      // Then refresh in background if cache is stale
+      if (!authCache.isValid()) {
+        refreshAuth().catch(console.error);
+      }
+      return cachedUser;
+    }
+
+    // If no cache, fetch from server
+    const user = await checkAuthStatus();
+    setUser(user);
+    setIsLoading(false);
+    return user;
+  };
+
+  // Detect if user was redirected due to expired authentication
+  const detectExpiredAuthRedirect = () => {
+    // Check if we're on the root page and have cached auth data
+    if (typeof window !== 'undefined' && window.location.pathname === '/') {
+      const cachedUser = authCache.get();
+      if (cachedUser && !isInitializedRef.current) {
+        // User has cached auth but is on root page - likely expired session
+        console.log(
+          'Detected potential expired session redirect, clearing cache',
+        );
+        authCache.clear();
+        setUser(null);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Check for middleware redirects on page load
+  const checkForMiddlewareRedirect = () => {
+    if (typeof window === 'undefined') return false;
+
+    // Check if we have a referrer that indicates we were redirected from a protected route
+    const referrer = document.referrer;
+    const currentPath = window.location.pathname;
+
+    // If we're on the root page and the referrer was from a protected route,
+    // it's likely a middleware redirect due to expired auth
+    if (currentPath === '/' && referrer) {
+      const referrerUrl = new URL(referrer);
+      const protectedRoutes = ['/create', '/videos', '/debug'];
+      const wasFromProtectedRoute = protectedRoutes.some((route) =>
+        referrerUrl.pathname.startsWith(route),
+      );
+
+      if (wasFromProtectedRoute) {
+        console.log(
+          'Detected middleware redirect from protected route, clearing auth cache',
+        );
+        authCache.clear();
+        setUser(null);
+        return true;
+      }
+    }
+
+    return false;
   };
 
   useEffect(() => {
-    const initializeAuth = async () => {
-      // First, try to get auth from cache
-      const cachedUser = getCachedAuth();
-
-      if (cachedUser) {
-        setUser(cachedUser);
-        setIsLoading(false);
-        return;
-      }
-
-      // If no valid cache, check with server
-      const user = await checkAuthStatus();
-      setUser(user);
+    // Check for expired auth redirect first
+    if (detectExpiredAuthRedirect()) {
       setIsLoading(false);
+      return;
+    }
+
+    // Check for middleware redirects
+    if (checkForMiddlewareRedirect()) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Initialize auth state
+    getAuthState().finally(() => {
+      isInitializedRef.current = true;
+    });
+  }, []);
+
+  // Listen for navigation events to detect expired auth redirects
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleBeforeUnload = () => {
+      // Clear cache on page unload to ensure fresh state on next load
+      if (window.location.pathname === '/') {
+        authCache.clear();
+      }
     };
 
-    initializeAuth();
+    const handlePopState = () => {
+      // Check if we navigated to root page with cached auth
+      if (window.location.pathname === '/') {
+        const cachedUser = authCache.get();
+        if (cachedUser) {
+          // User has cached auth but is on root page - likely expired session
+          console.log(
+            'Detected navigation to root with cached auth, clearing cache',
+          );
+          authCache.clear();
+          setUser(null);
+        }
+      }
+    };
+
+    // Listen for navigation events
+    const handleNavigation = () => {
+      // Check if we're on root page and have cached auth
+      if (window.location.pathname === '/') {
+        const cachedUser = authCache.get();
+        if (cachedUser && isInitializedRef.current) {
+          // This might be a middleware redirect, clear the cache
+          console.log(
+            'Detected navigation to root with cached auth, clearing cache',
+          );
+          authCache.clear();
+          setUser(null);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // Use a more reliable method to detect navigation changes
+    let currentPath = window.location.pathname;
+    const checkPathChange = () => {
+      if (window.location.pathname !== currentPath) {
+        currentPath = window.location.pathname;
+        handleNavigation();
+      }
+    };
+
+    // Check for path changes periodically
+    const pathCheckInterval = setInterval(checkPathChange, 100);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+      clearInterval(pathCheckInterval);
+    };
   }, []);
 
   const login = (provider: string) => {
@@ -151,7 +289,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Generate a random state parameter for security
     const state = Math.random().toString(36).substring(2, 15);
-    localStorage.setItem('oauth_state', state);
+    // Store state in memory only (no sessionStorage)
+    oauthStateRef.current = state;
 
     // Ensure the domain doesn't already include the protocol
     const cleanDomain = cognitoDomain.replace(/^https?:\/\//, '');
@@ -244,17 +383,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const sessionData = await sessionResponse.json();
 
       // Cache the user data and update state
-      setCachedAuth(sessionData.user);
+      authCache.set(sessionData.user);
       setUser(sessionData.user);
 
-      // Clear the state parameter
-      localStorage.removeItem('oauth_state');
+      // Clear the state parameter from memory
+      oauthStateRef.current = null;
     } catch (error) {
       console.error('Auth callback failed:', error);
 
       // If it's an invalid_grant error, clear the state and suggest retry
       if (error instanceof Error && error.message.includes('invalid_grant')) {
-        localStorage.removeItem('oauth_state');
+        oauthStateRef.current = null;
       }
 
       throw error;
@@ -274,9 +413,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Clear cached auth data and state
-    setCachedAuth(null);
+    authCache.clear();
     setUser(null);
-    localStorage.removeItem('oauth_state');
+    oauthStateRef.current = null;
 
     // Redirect to Cognito logout if needed
     const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
@@ -298,7 +437,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = {
     user,
-    isLoading,
+    isLoading: isLoading || isRefreshing,
     isAuthenticated: !!user,
     login,
     logout,

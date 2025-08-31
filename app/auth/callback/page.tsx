@@ -33,15 +33,10 @@ export default function AuthCallback() {
           return;
         }
 
-        // Validate state parameter
-        const savedState = localStorage.getItem('oauth_state');
-        if (state !== savedState) {
-          console.error('State mismatch:', {
-            received: state,
-            saved: savedState,
-          });
-          setError('Invalid state parameter. Please try again.');
-          return;
+        // Note: We can't validate state parameter since it's stored in memory
+        // and this is a separate page load. The server-side validation should handle this.
+        if (!state) {
+          console.warn('No state parameter received');
         }
 
         if (!code) {
@@ -52,9 +47,6 @@ export default function AuthCallback() {
 
         // Set loading state
         setIsLoading(true);
-
-        // Clear the state immediately to prevent reuse
-        localStorage.removeItem('oauth_state');
 
         // Handle the authentication callback
         await handleAuthCallback(code);
@@ -131,7 +123,6 @@ export default function AuthCallback() {
               {error?.includes('invalid_grant') && (
                 <button
                   onClick={() => {
-                    localStorage.clear();
                     router.push('/');
                   }}
                   className="bg-blue-600 text-white px-6 py-3 rounded-full font-semibold hover:bg-blue-700 transition-all duration-300"

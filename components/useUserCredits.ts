@@ -1,65 +1,72 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
+import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 
 interface UserCredits {
-  userId: string;
-  email: string;
-  creditsAvailable: number;
-  createdAt: string;
-  lastLoginAt: string;
+  credits: number;
+  lastUpdated: string;
 }
 
 export function useUserCredits() {
-  const { user, isAuthenticated } = useAuth();
+  const { user } = useAuth();
+  const { authenticatedFetch } = useAuthenticatedFetch();
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const refreshPromiseRef = useRef<Promise<UserCredits | null> | null>(null);
 
-  const fetchCredits = async () => {
-    if (!user || !isAuthenticated) {
-      setCredits(null);
+  const fetchCredits = async (): Promise<UserCredits> => {
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    const data = await authenticatedFetch('/api/user');
+    return {
+      credits: data.credits || 0,
+      lastUpdated: new Date().toISOString(),
+    };
+  };
+
+  const refreshCredits = async (): Promise<void> => {
+    // Prevent multiple simultaneous refresh attempts
+    if (refreshPromiseRef.current) {
+      await refreshPromiseRef.current;
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    try {
-      const params = new URLSearchParams({
-        userId: user.id,
-        username: user.email, // user.email is actually the username from JWT token
+    const refreshPromise = fetchCredits()
+      .then((userCredits) => {
+        setCredits(userCredits);
+        return userCredits;
+      })
+      .catch((err) => {
+        setError(err.message);
+        throw err;
+      })
+      .finally(() => {
+        setLoading(false);
+        refreshPromiseRef.current = null;
       });
-      const response = await fetch(`/api/user?${params.toString()}`);
 
-      if (!response.ok) {
-        throw new Error('Failed to fetch user credits');
-      }
-
-      const data = await response.json();
-
-      if (data.success && data.user) {
-        setCredits(data.user);
-      } else {
-        throw new Error('Invalid response format');
-      }
-    } catch (err) {
-      console.error('Error fetching user credits:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    } finally {
-      setLoading(false);
-    }
+    refreshPromiseRef.current = refreshPromise;
+    await refreshPromise;
   };
 
-  const refreshCredits = () => {
-    fetchCredits();
-  };
-
+  // Fetch credits when user changes
   useEffect(() => {
-    fetchCredits();
-  }, [user, isAuthenticated]);
+    if (user) {
+      refreshCredits();
+    } else {
+      setCredits(null);
+      setError(null);
+    }
+  }, [user]);
 
   return {
-    credits,
+    credits: credits?.credits || 0,
     loading,
     error,
     refreshCredits,

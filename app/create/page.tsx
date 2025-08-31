@@ -64,6 +64,7 @@ export default function GeneratePage() {
   const { isConnected } = useWebSocket({
     onMessage: (message: WebSocketMessage) => {
       console.log('WebSocket message:', message);
+
       // Handle different message types
       switch (message.action) {
         case 'image_created':
@@ -75,8 +76,8 @@ export default function GeneratePage() {
         case 'video_scene_created':
           handleVideoSceneCreated(message.data);
           break;
-        case 'video_completed':
-          handleVideoCompleted(message.data);
+        case 'preview_completed':
+          handlePreviewCompleted(message.data);
           break;
         default:
           // Unknown message type
@@ -132,7 +133,7 @@ export default function GeneratePage() {
   };
 
   // Handle video completion
-  const handleVideoCompleted = (data: any) => {
+  const handlePreviewCompleted = (data: any) => {
     if (data.manifest) {
       setVideoGenerationState((prev) => ({
         ...prev,
