@@ -22,7 +22,7 @@ export function useUserCredits() {
 
     const data = await authenticatedFetch('/api/user');
     return {
-      credits: data.credits || 0,
+      credits: data.user.creditsAvailable || 0,
       lastUpdated: new Date().toISOString(),
     };
   };

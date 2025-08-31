@@ -52,7 +52,7 @@ export async function generateImage(
         imageResult = await runway.textToImage
           .create({
             model: 'gen4_image',
-            promptText: `${description} - no text overlays, no graphics, no logos, no watermarks, clean visual content only`,
+            promptText: `${description} - realistic image with good lighting, no text, no logos, clean visual content only`,
             ratio: '720:1280', // Vertical format (9:16)
             seed: seed,
           })

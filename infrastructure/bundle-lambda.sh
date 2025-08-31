@@ -8,15 +8,21 @@ ESBUILD_FLAGS="--bundle --platform=node --target=node20 --minify --tree-shaking=
 echo "📦 Bundling video-generation lambda..."
 npx esbuild lambda/video-generation/index.ts \
   $ESBUILD_FLAGS \
-  --external:fluent-ffmpeg \
   --outfile=dist/video-generation/index.js
+
+# Copy node_modules for video-generation lambda (needed for fluent-ffmpeg)
+echo "📦 Copying node_modules for video-generation lambda..."
+cp -r lambda/node_modules dist/video-generation/
 
 # Bundle generate-audio-subtitle lambda
 echo "📦 Bundling generate-audio-subtitle lambda..."
 npx esbuild lambda/generate-audio-subtitle/index.ts \
   $ESBUILD_FLAGS \
-  --external:fluent-ffmpeg \
   --outfile=dist/generate-audio-subtitle/index.js
+
+# Copy node_modules for generate-audio-subtitle lambda (needed for fluent-ffmpeg)
+echo "📦 Copying node_modules for generate-audio-subtitle lambda..."
+cp -r lambda/node_modules dist/generate-audio-subtitle/
 
 # Bundle full-video-queue lambda
 echo "📦 Bundling full-video-queue lambda..."

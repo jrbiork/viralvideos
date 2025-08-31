@@ -1,13 +1,11 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-import { generateNarration } from '../video-generation/audio';
-import {
-  generateSubtitles,
-  ASSContentResult,
-} from '../video-generation/subtitles';
-import { Scene } from '../video-generation/script';
+import { generateNarration } from '../utils/audio';
+import { generateSubtitles, ASSContentResult } from '../utils/subtitles';
+import { Scene } from '../utils/script';
 
 import { broadcastProgress } from '../video-generation';
+
 import {
   getManifest,
   hydrateManifest,

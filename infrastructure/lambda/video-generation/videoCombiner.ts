@@ -9,11 +9,6 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 const ffmpeg = require('fluent-ffmpeg');
-import {
-  createASSStyleHeader,
-  parseASSTime,
-  formatASSTime,
-} from './util/assUtils';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 

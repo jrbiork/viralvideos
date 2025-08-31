@@ -81,8 +81,8 @@ export function useVideoGeneration() {
 
     try {
       console.log('generateVideo called');
-      const timestamp = '081925211657'; // format(new Date(), 'MMddyyHHmmss');
-      const data = await authenticatedFetch('/api/generate-video', {
+      const timestamp = '081925211662'; // format(new Date(), 'MMddyyHHmmss');
+      await authenticatedFetch('/api/generate-video', {
         method: 'POST',
         body: {
           prompt: script,

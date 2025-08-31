@@ -14,6 +14,7 @@ export default function CreditsDisplay({
   className = '',
 }: CreditsDisplayProps) {
   const { credits, loading } = useUserCredits();
+  console.log('credits:', credits);
 
   const sizeClasses = {
     sm: {
@@ -59,7 +60,7 @@ export default function CreditsDisplay({
           fontWeight: 900,
         }}
       >
-        {credits?.creditsAvailable || 0}
+        {credits || 0}
         {showLabel && (
           <>
             <div style={{ height: '0.25rem' }}></div>

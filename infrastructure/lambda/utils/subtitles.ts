@@ -3,15 +3,14 @@ import {
   PutObjectCommand,
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+
 import { Scene } from './script';
 import { SubtitleData } from './audio';
 import {
   formatASSTime,
   createASSStyleHeader,
   createWordTimedKaraokeASSSubtitle,
-  SubtitleWord,
-} from './util/assUtils';
+} from '../video-generation/util/assUtils';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 

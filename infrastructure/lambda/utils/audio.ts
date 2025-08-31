@@ -5,8 +5,8 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import OpenAI from 'openai';
-import { adjustAudioDuration } from './util/narrationHelper';
-import { Scene } from './script';
+
+import { Scene } from '../video-generation/script';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

@@ -21,7 +21,7 @@ export default function VideoCreator({
   onNextStep,
 }: VideoCreatorProps) {
   const [script, setScript] = useState(
-    "Showcase the unmatched capabilities of the F35 fighter jet in a dynamic 15-second vertical video. Highlight its speed, agility, and cutting-edge technology through a series of high-octane aerial maneuvers and precision strikes. Engage the audience with stunning visuals and impactful sound design to emphasize the aircraft's superiority in the skies. Leave viewers impressed and in awe of the F35's unparalleled performance and versatility.",
+    'AI generated stunning images of the city of Tokey at night with neon lights and a beautiful skyline.',
   );
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState<

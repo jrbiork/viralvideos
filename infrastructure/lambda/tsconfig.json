@@ -36,7 +36,11 @@
     "websocket-connect/**/*.ts",
     "websocket-disconnect/**/*.ts",
     "websocket-message/**/*.ts",
-    "websocket-broadcast/**/*.ts"
+    "websocket-broadcast/**/*.ts",
+    "utils/audio.ts",
+    "utils/script.ts",
+    "utils/subtitles.ts",
+    "utils/imageUtils.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

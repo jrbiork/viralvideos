@@ -1,14 +1,13 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { S3Client } from '@aws-sdk/client-s3';
-import { listScenes } from './listScenes';
+
 import {
   getManifest,
   hydrateManifest,
 } from '../video-generation/util/manifestUtils';
 
 const s3 = new S3Client({ region: process.env['AWS_REGION'] || 'us-east-1' });
-const bucketName =
-  process.env['VIDEO_PARTS_BUCKET_NAME'] || process.env['S3_BUCKET_NAME']!;
+const bucketName = process.env['VIDEO_PARTS_BUCKET_NAME'];
 const EXPIRES = Number(process.env['URL_TTL_SECONDS'] ?? 3600); // default 1h
 
 const cors = {
@@ -49,7 +48,7 @@ export const handler = async (
     console.log('fetch-preview', { userId, timestamp });
 
     const manifest = await getManifest(userId, timestamp);
-    console.log('manifest:', manifest);
+    console.log('manifest:', JSON.stringify(manifest, null, 2));
 
     if (!manifest) {
       return {
@@ -60,7 +59,7 @@ export const handler = async (
     }
 
     const hydratedManifest = await hydrateManifest(manifest);
-    console.log('hydratedManifest:', hydratedManifest);
+    console.log('hydratedManifest:', JSON.stringify(hydratedManifest, null, 2));
 
     return {
       statusCode: 200,

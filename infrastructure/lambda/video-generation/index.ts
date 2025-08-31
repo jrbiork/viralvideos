@@ -4,22 +4,21 @@ import { SQSEvent, SQSRecord, SQSBatchResponse } from 'aws-lambda';
 import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 
 import { generateImage } from './image';
-import { generateNarration, generateStoryBreakdown, Scene } from './narration';
-import { generateSubtitles } from './subtitles';
-import { addSceneIds } from './script';
+import { generateNarration } from '../utils/audio';
+import { generateSubtitles } from '../utils/subtitles';
+import { addSceneIds } from '../utils/script';
+import { generateStoryBreakdown, Scene } from '../utils/script';
 import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { checkAudioCaptionExists } from './util/audioUtils';
-import { getImageUrls } from './util/imageUtils';
-import { generateVideoEffects, getVideoEffectUrls } from './util/videoEffects';
+import { getImageUrls } from '../utils/imageUtils';
+import { getVideoEffectUrls } from './util/videoEffects';
 import { combineVideoAndAudio } from './videoCombiner';
 import {
   createManifest,
   getManifest,
   hydrateManifest,
-  updateManifest,
 } from './util/manifestUtils';
 import { broadcastMessage } from '../websocket-broadcast';
-import { Manifest } from '../types/s3Types';
 
 interface VideoGenerationRequest {
   prompt?: string;
@@ -67,25 +66,6 @@ async function processVideoGeneration(
   try {
     console.log('processVideoGeneration:', request);
 
-    // check if the video is already generated
-    let manifest = await getManifest(request.userId, request.timestamp);
-
-    const manifestHydrated = await hydrateManifest(manifest);
-    console.log('🎥 Video already generated, skipping video generation');
-    if (manifestHydrated) {
-      // await broadcastProgress(
-      //   'preview_completed',
-      //   request.userId,
-      //   request.timestamp,
-      //   { manifest: manifestHydrated },
-      //   'Video generated successfully',
-      // );
-      // return {
-      //   message: 'Video already generated',
-      //   manifest: manifestHydrated,
-      // };
-    }
-
     // Use timestamp
     const timestamp = request.timestamp;
 
@@ -93,12 +73,48 @@ async function processVideoGeneration(
       request.totalDuration / request.sceneCount,
     );
 
+    let scenes: Scene[] = [];
+    let voiceToneInstruction: string = '';
+
+    // check if the video is already generated
+    let manifest = await getManifest(request.userId, request.timestamp);
+
+    if (manifest) {
+      console.log('🎥 Video already generated, skipping video generation');
+      const manifestHydrated = await hydrateManifest(manifest);
+      await broadcastProgress(
+        'preview_completed',
+        request.userId,
+        request.timestamp,
+        { manifest: manifestHydrated },
+        'Video generated successfully',
+      );
+      return {
+        message: 'Video already generated',
+        manifest: manifestHydrated,
+      };
+    } else {
+      scenes = Array.from({ length: request.sceneCount }, (_, i) => ({
+        id: i,
+        description: '',
+        duration: sceneDuration,
+        narration: '',
+      }));
+
+      // Create manifest and upload to s3
+      await createManifest(
+        request.userId,
+        timestamp,
+        scenes,
+        request.totalDuration,
+      );
+
+      manifest = await getManifest(request.userId, request.timestamp);
+    }
+
     // Check if there is already script generated in the s3 bucket for the timestamp
     const scriptKey = `${request.userId}/${timestamp}.script.txt`;
     const existingScript = await getObjectFromS3(scriptKey);
-
-    let scenes: Scene[] = [];
-    let voiceToneInstruction: string = '';
 
     // Step 1: Generate script/story breakdown using GPT-4
     if (existingScript) {
@@ -133,6 +149,8 @@ async function processVideoGeneration(
       console.log('❌ Error: Failed to get or generate story breakdown');
       throw new Error('Failed to get or generate story breakdown');
     }
+
+    console.log('🎥 Manifest created and uploaded:');
 
     console.log('🎥 Story breakdown generated:', scenes);
 
@@ -220,6 +238,8 @@ async function processVideoGeneration(
       await generateSubtitles(scenes, request.userId, timestamp, subtitles);
     }
 
+    let manifestHydrated = await hydrateManifest(manifest);
+
     await broadcastProgress(
       'audio_subtitle_created',
       request.userId,
@@ -271,7 +291,6 @@ async function processVideoGeneration(
 
     // Step 4: Generate camera movements from image
     // check if there are already all the video effects generated in the s3 bucket for the timestamp
-
     await getVideoEffectUrls(request.userId, timestamp, scenes);
 
     console.log('🎬 Video effects URLs generated:');
@@ -279,6 +298,8 @@ async function processVideoGeneration(
       '🎬 Manifest preview completed:',
       JSON.stringify(manifest, null, 2),
     );
+
+    manifestHydrated = await hydrateManifest(manifest);
 
     await broadcastProgress(
       'preview_completed',
@@ -305,15 +326,6 @@ async function processVideoGeneration(
       });
       await sqs.send(deleteCommand);
     }
-
-    // Step 7: Create manifest and upload to s3
-    await createManifest(
-      request.userId,
-      timestamp,
-      scenes,
-      request.totalDuration,
-    );
-    console.log('manifest created');
 
     return {
       message: 'Video generated successfully',
