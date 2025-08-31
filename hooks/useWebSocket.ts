@@ -108,7 +108,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
         wsRef.current = ws;
 
         ws.onopen = () => {
-          console.log('WebSocket connected');
+          console.log('WebSocket connected opened! on url:', url);
           setIsConnected(true);
           setIsConnecting(false);
           reconnectAttemptsRef.current = 0;

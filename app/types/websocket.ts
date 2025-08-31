@@ -7,6 +7,7 @@ export type WebSocketAction =
   | 'video_scene_created'
   | 'preview_completed'
   | 'video_completed'
+  | 'credit_updated'
   | 'ping';
 
 export interface WebSocketMessage {
@@ -14,7 +15,8 @@ export interface WebSocketMessage {
   data: {
     userId: string;
     timestamp: string;
-    message: string;
+    message?: string;
     manifest?: Manifest;
+    currentCredits?: number;
   };
 }

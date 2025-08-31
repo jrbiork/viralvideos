@@ -3,6 +3,7 @@ import {
   DynamoDBDocumentClient,
   GetCommand,
   UpdateCommand,
+  QueryCommand,
 } from '@aws-sdk/lib-dynamodb';
 
 const client = new DynamoDBClient({
@@ -59,6 +60,34 @@ export async function hasSufficientCredits(
 
     console.log(
       `User ${userId} (${username}) has ${currentCredits} credits, required: ${costToPay}`,
+    );
+
+    return currentCredits >= costToPay;
+  } catch (error) {
+    console.error('Error checking credit balance:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if user has sufficient credit balance using only userId
+ * @param userId - The user ID (partition key)
+ * @param costToPay - The costToPay to check against
+ * @returns Promise<boolean> - True if user has sufficient credits, false otherwise
+ */
+export async function hasSufficientCreditsByUserId(
+  userId: string,
+  costToPay: number,
+): Promise<boolean> {
+  try {
+    console.log(
+      `Checking credit balance for userId: ${userId}, costToPay: ${costToPay}`,
+    );
+
+    const currentCredits = await getCreditBalanceByUserId(userId);
+
+    console.log(
+      `User ${userId} has ${currentCredits} credits, required: ${costToPay}`,
     );
 
     return currentCredits >= costToPay;
@@ -126,6 +155,82 @@ export async function updateCreditBalance(
 }
 
 /**
+ * Update user's credit balance by deducting the costToPay using only userId
+ * @param userId - The user ID (partition key)
+ * @param costToPay - The costToPay to deduct
+ * @returns Promise<number> - The updated credit balance
+ */
+export async function updateCreditBalanceByUserId(
+  userId: string,
+  costToPay: number,
+): Promise<number> {
+  try {
+    console.log(
+      `Updating credit balance for userId: ${userId}, deducting: ${costToPay}`,
+    );
+
+    // First check if user has sufficient credits
+    const currentCredits = await getCreditBalanceByUserId(userId);
+
+    if (currentCredits < costToPay) {
+      throw new Error(
+        `Insufficient credits for user ${userId}. Current: ${currentCredits}, Required: ${costToPay}`,
+      );
+    }
+
+    // Get the user's username first
+    const queryCommand = new QueryCommand({
+      TableName: USERS_TABLE_NAME,
+      KeyConditionExpression: 'userId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+      },
+      Limit: 1,
+    });
+
+    const queryResult = await docClient.send(queryCommand);
+
+    if (!queryResult.Items || queryResult.Items.length === 0) {
+      throw new Error(`User not found for userId: ${userId}`);
+    }
+
+    const user = queryResult.Items[0] as User;
+    const username = user.username;
+
+    // Update the credit balance
+    const updateCommand = new UpdateCommand({
+      TableName: USERS_TABLE_NAME,
+      Key: {
+        userId: userId,
+        username: username,
+      },
+      UpdateExpression: 'SET creditsAvailable = creditsAvailable - :costToPay',
+      ExpressionAttributeValues: {
+        ':costToPay': costToPay,
+      },
+      ReturnValues: 'ALL_NEW',
+    });
+
+    const result = await docClient.send(updateCommand);
+
+    if (!result.Attributes) {
+      throw new Error('Failed to update credit balance');
+    }
+
+    const updatedCredits = result.Attributes.creditsAvailable as number;
+
+    console.log(
+      `Credit balance updated for user ${userId}. New balance: ${updatedCredits}`,
+    );
+
+    return updatedCredits;
+  } catch (error) {
+    console.error('Error updating credit balance:', error);
+    throw error;
+  }
+}
+
+/**
  * Get user's current credit balance
  * @param userId - The user ID (partition key)
  * @param username - The username (sort key)
@@ -161,6 +266,45 @@ export async function getCreditBalance(
     const currentCredits = user.creditsAvailable || 0;
 
     console.log(`User ${userId} (${username}) has ${currentCredits} credits`);
+
+    return currentCredits;
+  } catch (error) {
+    console.error('Error getting credit balance:', error);
+    return 0;
+  }
+}
+
+/**
+ * Get user's current credit balance using only userId
+ * @param userId - The user ID (partition key)
+ * @returns Promise<number> - The current credit balance
+ */
+export async function getCreditBalanceByUserId(
+  userId: string,
+): Promise<number> {
+  try {
+    console.log(`Getting credit balance for userId: ${userId}`);
+
+    const queryCommand = new QueryCommand({
+      TableName: USERS_TABLE_NAME,
+      KeyConditionExpression: 'userId = :userId',
+      ExpressionAttributeValues: {
+        ':userId': userId,
+      },
+      Limit: 1,
+    });
+
+    const result = await docClient.send(queryCommand);
+
+    if (!result.Items || result.Items.length === 0) {
+      console.log(`User not found for userId: ${userId}`);
+      return 0;
+    }
+
+    const user = result.Items[0] as User;
+    const currentCredits = user.creditsAvailable || 0;
+
+    console.log(`User ${userId} has ${currentCredits} credits`);
 
     return currentCredits;
   } catch (error) {

@@ -14,7 +14,6 @@ export default function CreditsDisplay({
   className = '',
 }: CreditsDisplayProps) {
   const { credits, loading } = useUserCredits();
-  console.log('credits:', credits);
 
   const sizeClasses = {
     sm: {

@@ -5,6 +5,7 @@ import { generateSubtitles, ASSContentResult } from '../utils/subtitles';
 import { Scene } from '../utils/script';
 
 import { broadcastProgress } from '../video-generation';
+import { broadcastMessage } from '../websocket-broadcast';
 
 import {
   getManifest,
@@ -12,6 +13,11 @@ import {
   updateManifest,
 } from '../video-generation/util/manifestUtils';
 import { uploadJsonToS3 } from '../video-generation/util/s3Uploader';
+import {
+  getCreditBalanceByUserId,
+  hasSufficientCreditsByUserId,
+  updateCreditBalanceByUserId,
+} from '../utils/credits';
 
 interface RequestBody {
   scenes: Scene[];
@@ -63,16 +69,23 @@ export const handler = async (
       };
     }
 
+    const hasCredits = await hasSufficientCreditsByUserId(userId, 1);
+    console.log('hasCredits:', hasCredits);
+    if (!hasCredits) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Insufficient credits' }),
+      };
+    }
+
     const manifest = await getManifest(userId, timestamp);
+
     if (!manifest) {
       return {
         statusCode: 404,
         body: JSON.stringify({ error: 'Manifest not found' }),
       };
     }
-
-    const manifestHydrated = await hydrateManifest(manifest);
-    console.log('manifestHydrated:', manifestHydrated);
 
     // Step 3: Generate audio narration with word-level timestamps
     const { subtitles, narrationUrls } = await generateNarration(
@@ -90,41 +103,51 @@ export const handler = async (
     );
     console.log('assContentArray:', assContentArray);
 
+    const manifestHydrated = await hydrateManifest(manifest);
+    console.log('manifestHydrated:', manifestHydrated);
+
+    const currentCredits = await updateCreditBalanceByUserId(userId, 1);
+    console.log('currentCredits:', currentCredits);
+
     // update manifest with subtitle content, ass content and audio urls
     // Only update the specific scene that was regenerated (scene.id corresponds to sceneIndex)
-    const updatedScenesWithAudio = manifestHydrated!.scenes.map(
-      (manifestScene) => {
-        // Only update the scene that matches the regenerated scene
-        if (manifestScene.sceneIndex === scene.id) {
-          const narrationUrlObj = narrationUrls[0]; // Only one scene was processed
-          const narrationUrl = narrationUrlObj
-            ? Object.values(narrationUrlObj)[0]
-            : manifestScene.files.mp3;
+    // const updatedScenesWithAudio = manifestHydrated!.scenes.map(
+    //   (manifestScene) => {
+    //     // Only update the scene that matches the regenerated scene
+    //     if (manifestScene.sceneIndex === scene.id) {
+    //       const narrationUrlObj = narrationUrls[0]; // Only one scene was processed
+    //       const narrationUrl = narrationUrlObj
+    //         ? Object.values(narrationUrlObj)[0]
+    //         : manifestScene.files.mp3;
 
-          // Extract ASS content from the array (first element contains the ASS content)
-          const assContent = assContentArray[0]
-            ? Object.values(assContentArray[0])[0]
-            : '';
+    //       // Extract ASS content from the array (first element contains the ASS content)
+    //       const assContent = assContentArray[0]
+    //         ? Object.values(assContentArray[0])[0]
+    //         : '';
 
-          return {
-            ...manifestScene,
-            files: {
-              ...manifestScene.files,
-              mp3: narrationUrl,
-              ass: assContent,
-              subtitle: subtitles[0].fullText, // Only one subtitle was generated
-            },
-          };
-        }
+    //       return {
+    //         ...manifestScene,
+    //         files: {
+    //           ...manifestScene.files,
+    //           mp3: narrationUrl,
+    //           ass: assContent,
+    //           subtitle: subtitles[0].fullText, // Only one subtitle was generated
+    //         },
+    //       };
+    //     }
 
-        // Return unchanged scene for all other scenes
-        return manifestScene;
-      },
-    );
+    //     // Return unchanged scene for all other scenes
+    //     return manifestScene;
+    //   },
+    // );
 
-    // update manifestHydrated with updatedScenesWithAudio
-    manifestHydrated!.scenes = updatedScenesWithAudio;
-    console.log('manifestHydrated:', JSON.stringify(manifestHydrated, null, 2));
+    // // update manifestHydrated with updatedScenesWithAudio
+    // manifestHydrated!.scenes = updatedScenesWithAudio;
+    // console.log('manifestHydrated:', JSON.stringify(manifestHydrated, null, 2));
+
+    await broadcastProgress('credit_updated', userId, timestamp, {
+      currentCredits,
+    });
 
     // Return success response
     return {
