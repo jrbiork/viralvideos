@@ -9,15 +9,15 @@
     "build:full-video-queue": "cd full-video-queue && tsc",
     "build:fetch-videos": "cd fetch-videos && tsc",
     "build:jwt-authorizer": "cd jwt-authorizer && tsc",
-    "build:generate-story-breakdown": "cd generate-story-breakdown && tsc",
     "build:generate-audio-subtitle": "cd generate-audio-subtitle && tsc",
-    "build:generate-images": "cd generate-images && tsc",
+    "build:generate-image": "cd generate-image && tsc",
+    "build:save-image": "cd save-image && tsc",
     "build:delete-video": "cd delete-video && tsc",
     "build:websocket-connect": "cd websocket-connect && tsc",
     "build:websocket-disconnect": "cd websocket-disconnect && tsc",
     "build:websocket-message": "cd websocket-message && tsc",
     "build:websocket-broadcast": "cd websocket-broadcast && tsc",
-    "build:all": "npm run build:video-generation && npm run build:full-video-queue && npm run build:fetch-videos && npm run build:jwt-authorizer && npm run build:generate-story-breakdown && npm run build:generate-audio-subtitle && npm run build:generate-images && npm run build:delete-video && npm run build:websocket-connect && npm run build:websocket-disconnect && npm run build:websocket-message && npm run build:websocket-broadcast",
+    "build:all": "npm run build:video-generation && npm run build:full-video-queue && npm run build:fetch-videos && npm run build:jwt-authorizer && npm run build:generate-audio-subtitle && npm run build:generate-image && npm run build:save-image && npm run build:delete-video && npm run build:websocket-connect && npm run build:websocket-disconnect && npm run build:websocket-message && npm run build:websocket-broadcast",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "dependencies": {

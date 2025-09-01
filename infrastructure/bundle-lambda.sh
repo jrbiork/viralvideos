@@ -24,6 +24,26 @@ npx esbuild lambda/generate-audio-subtitle/index.ts \
 echo "📦 Copying node_modules for generate-audio-subtitle lambda..."
 cp -r lambda/node_modules dist/generate-audio-subtitle/
 
+# Bundle generate-image lambda
+echo "📦 Bundling generate-image lambda..."
+npx esbuild lambda/generate-image/index.ts \
+  $ESBUILD_FLAGS \
+  --outfile=dist/generate-image/index.js
+
+# Copy node_modules for generate-image lambda
+echo "📦 Copying node_modules for generate-image lambda..."
+cp -r lambda/node_modules dist/generate-image/
+
+# Bundle save-image lambda
+echo "📦 Bundling save-image lambda..."
+npx esbuild lambda/save-image/index.ts \
+  $ESBUILD_FLAGS \
+  --outfile=dist/save-image/index.js
+
+# Copy node_modules for save-image lambda
+echo "📦 Copying node_modules for save-image lambda..."
+cp -r lambda/node_modules dist/save-image/
+
 # Bundle full-video-queue lambda
 echo "📦 Bundling full-video-queue lambda..."
 npx esbuild lambda/full-video-queue/index.ts \

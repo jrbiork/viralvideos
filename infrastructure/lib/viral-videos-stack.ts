@@ -24,6 +24,16 @@ export class ViralVideosStack extends cdk.Stack {
     const runwayApiKey = process.env.RUNWAY_API_KEY || '';
     const openaiApiKey = process.env.OPENAI_API_KEY || '';
 
+    const websocketDomainName = process.env.WEBSOCKET_DOMAIN_NAME || '';
+    const websocketEnv = process.env.WEBSOCKET_STAGE || '';
+
+    if (!websocketDomainName) {
+      console.warn('⚠️  WEBSOCKET_DOMAIN_NAME is not set. WebSocket may fail.');
+    }
+    if (!websocketEnv) {
+      console.warn('⚠️  WEBSOCKET_STAGE is not set. WebSocket may fail.');
+    }
+
     // Validate API keys
     if (!runwayApiKey) {
       console.warn('⚠️  RUNWAY_API_KEY is not set. Video generation may fail.');
@@ -43,7 +53,7 @@ export class ViralVideosStack extends cdk.Stack {
         {
           id: 'DeleteOldAssets',
           enabled: true,
-          noncurrentVersionExpiration: cdk.Duration.days(7),
+          noncurrentVersionExpiration: cdk.Duration.days(15),
           expiration: cdk.Duration.days(30),
         },
       ],
@@ -60,7 +70,7 @@ export class ViralVideosStack extends cdk.Stack {
         {
           id: 'DeleteOldVideoParts',
           enabled: true,
-          noncurrentVersionExpiration: cdk.Duration.days(7),
+          noncurrentVersionExpiration: cdk.Duration.days(15),
           expiration: cdk.Duration.days(30),
         },
       ],
@@ -177,6 +187,7 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.minutes(15),
         memorySize: 3008, // Increased for video processing
+        logRetention: logs.RetentionDays.ONE_WEEK,
         layers: [ffmpegLayer],
         environment: {
           VIDEO_BUCKET_NAME: videoBucket.bucketName,
@@ -188,9 +199,8 @@ export class ViralVideosStack extends cdk.Stack {
           PATH: '/opt/bin:/usr/local/bin:/usr/bin/:/bin',
           FONTCONFIG_PATH: '/opt/etc/fonts',
           FONTCONFIG_FILE: '/opt/etc/fonts/fonts.conf',
-          WEBSOCKET_DOMAIN_NAME:
-            'mlpiz7uok5.execute-api.us-east-1.amazonaws.com',
-          WEBSOCKET_STAGE: 'prod',
+          WEBSOCKET_DOMAIN_NAME: websocketDomainName,
+          WEBSOCKET_STAGE: websocketEnv,
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },
       },
@@ -217,6 +227,7 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.minutes(1),
         memorySize: 128,
+        logRetention: logs.RetentionDays.ONE_WEEK,
         environment: {
           VIDEO_QUEUE_URL: videoQueue.queueUrl,
           USERS_TABLE_NAME: usersTable.tableName,
@@ -250,6 +261,7 @@ export class ViralVideosStack extends cdk.Stack {
         role: jwtAuthorizerRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
+        logRetention: logs.RetentionDays.ONE_WEEK,
         environment: {
           NEXT_PUBLIC_COGNITO_USER_POOL_ID:
             process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
@@ -270,6 +282,7 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
+      logRetention: logs.RetentionDays.ONE_WEEK,
 
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
@@ -288,6 +301,7 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
+      logRetention: logs.RetentionDays.ONE_WEEK,
 
       environment: {
         S3_BUCKET_NAME: videoPartsBucket.bucketName,
@@ -305,6 +319,7 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
+      logRetention: logs.RetentionDays.ONE_WEEK,
       environment: {
         USERS_TABLE_NAME: usersTable.tableName,
       },
@@ -317,6 +332,7 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
+      logRetention: logs.RetentionDays.ONE_WEEK,
       environment: {
         USERS_TABLE_NAME: usersTable.tableName,
       },
@@ -330,6 +346,7 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
+      logRetention: logs.RetentionDays.ONE_WEEK,
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
       },
@@ -348,16 +365,54 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.minutes(5),
         memorySize: 512,
+        logRetention: logs.RetentionDays.ONE_WEEK,
         environment: {
           OPENAI_API_KEY: openaiApiKey,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
-          WEBSOCKET_DOMAIN_NAME:
-            'mlpiz7uok5.execute-api.us-east-1.amazonaws.com',
-          WEBSOCKET_STAGE: 'prod',
+          WEBSOCKET_DOMAIN_NAME: websocketDomainName,
+          WEBSOCKET_STAGE: websocketEnv,
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },
       },
     );
+
+    // Lambda function for generating images
+    const generateImageLambda = new lambda.Function(
+      this,
+      'GenerateImageLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/generate-image'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.minutes(5),
+        memorySize: 512,
+        logRetention: logs.RetentionDays.ONE_WEEK,
+        environment: {
+          RUNWAY_API_KEY: runwayApiKey,
+          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+          WEBSOCKET_DOMAIN_NAME: websocketDomainName,
+          WEBSOCKET_STAGE: websocketEnv,
+          WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+        },
+      },
+    );
+
+    // Lambda function for saving images
+    const saveImageLambda = new lambda.Function(this, 'SaveImageLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/save-image')),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(2),
+      memorySize: 512,
+      logRetention: logs.RetentionDays.ONE_WEEK,
+      environment: {
+        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+      },
+    });
 
     // API Gateway REST API
     const api = new apigateway.RestApi(this, 'VideoGenerationApi', {
@@ -471,6 +526,7 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
+        logRetention: logs.RetentionDays.ONE_WEEK,
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
           USERS_TABLE_NAME: usersTable.tableName,
@@ -505,6 +561,7 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
+        logRetention: logs.RetentionDays.ONE_WEEK,
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },
@@ -523,6 +580,7 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
+        logRetention: logs.RetentionDays.ONE_WEEK,
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
           USERS_TABLE_NAME: usersTable.tableName,
@@ -543,6 +601,7 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
+        logRetention: logs.RetentionDays.ONE_WEEK,
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },
@@ -606,6 +665,30 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda integration for generating images
+    const generateImageIntegration = new apigateway.LambdaIntegration(
+      generateImageLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
+    // Lambda integration for saving images
+    const saveImageIntegration = new apigateway.LambdaIntegration(
+      saveImageLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
     // Lambda integration for WebSocket broadcasting
     const websocketBroadcastIntegration = new apigateway.LambdaIntegration(
       websocketBroadcastLambda,
@@ -648,6 +731,16 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    const generateImageResource = api.root.addResource('generate-image');
+    generateImageResource.addMethod('POST', generateImageIntegration, {
+      authorizer: jwtAuthorizer,
+    });
+
+    const saveImageResource = api.root.addResource('save-image');
+    saveImageResource.addMethod('POST', saveImageIntegration, {
+      authorizer: jwtAuthorizer,
+    });
+
     const userManagementResource = api.root.addResource('user');
     userManagementResource.addMethod('POST', upsertUserIntegration, {
       authorizer: jwtAuthorizer,
@@ -679,186 +772,5 @@ export class ViralVideosStack extends cdk.Stack {
         authorizer: jwtAuthorizer,
       },
     );
-
-    // CloudWatch Log Group for Lambda
-    new logs.LogGroup(this, 'VideoGenerationLogGroup', {
-      logGroupName: `/aws/lambda/${videoGenerationLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'FullVideoQueueLogGroup', {
-      logGroupName: `/aws/lambda/${fullVideoQueueLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'FetchVideosLogGroup', {
-      logGroupName: `/aws/lambda/${fetchVideosLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'FetchPreviewLogGroup', {
-      logGroupName: `/aws/lambda/${fetchPreviewLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'GetUserLogGroup', {
-      logGroupName: `/aws/lambda/${getUserLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'UpsertUserLogGroup', {
-      logGroupName: `/aws/lambda/${upsertUserLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'DeleteVideoLogGroup', {
-      logGroupName: `/aws/lambda/${deleteVideoLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'JWTAuthorizerLogGroup', {
-      logGroupName: `/aws/lambda/${jwtAuthorizerLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    new logs.LogGroup(this, 'WebSocketBroadcastLogGroup', {
-      logGroupName: `/aws/lambda/${websocketBroadcastLambda.functionName}`,
-      retention: logs.RetentionDays.ONE_WEEK,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
-
-    // Outputs
-    new cdk.CfnOutput(this, 'VideoBucketName', {
-      value: videoBucket.bucketName,
-      description: 'S3 Bucket for storing videos',
-    });
-
-    new cdk.CfnOutput(this, 'VideoPartsBucketName', {
-      value: videoPartsBucket.bucketName,
-      description: 'S3 Bucket for storing video parts',
-    });
-
-    new cdk.CfnOutput(this, 'VideoGenerationLambdaArn', {
-      value: videoGenerationLambda.functionArn,
-      description: 'Lambda function ARN for video generation',
-    });
-
-    new cdk.CfnOutput(this, 'VideoGenerationLambdaName', {
-      value: videoGenerationLambda.functionName,
-      description: 'Lambda function name for video generation',
-    });
-
-    new cdk.CfnOutput(this, 'FullVideoQueueLambdaArn', {
-      value: fullVideoQueueLambda.functionArn,
-      description: 'Lambda function ARN for queue management',
-    });
-
-    new cdk.CfnOutput(this, 'FetchVideosLambdaArn', {
-      value: fetchVideosLambda.functionArn,
-      description: 'Lambda function ARN for fetching videos',
-    });
-
-    new cdk.CfnOutput(this, 'FetchVideosLambdaName', {
-      value: fetchVideosLambda.functionName,
-      description: 'Lambda function name for fetching videos',
-    });
-
-    new cdk.CfnOutput(this, 'FetchPreviewLambdaArn', {
-      value: fetchPreviewLambda.functionArn,
-      description: 'Lambda function ARN for fetching preview data',
-    });
-
-    new cdk.CfnOutput(this, 'FetchPreviewLambdaName', {
-      value: fetchPreviewLambda.functionName,
-      description: 'Lambda function name for fetching preview data',
-    });
-
-    new cdk.CfnOutput(this, 'GetUserLambdaArn', {
-      value: getUserLambda.functionArn,
-      description: 'Lambda function ARN for get user',
-    });
-
-    new cdk.CfnOutput(this, 'GetUserLambdaName', {
-      value: getUserLambda.functionName,
-      description: 'Lambda function name for get user',
-    });
-
-    new cdk.CfnOutput(this, 'UpsertUserLambdaArn', {
-      value: upsertUserLambda.functionArn,
-      description: 'Lambda function ARN for upsert user',
-    });
-
-    new cdk.CfnOutput(this, 'UpsertUserLambdaName', {
-      value: upsertUserLambda.functionName,
-      description: 'Lambda function name for upsert user',
-    });
-
-    new cdk.CfnOutput(this, 'JWTAuthorizerLambdaArn', {
-      value: jwtAuthorizerLambda.functionArn,
-      description: 'Lambda function ARN for JWT authorization',
-    });
-
-    new cdk.CfnOutput(this, 'JWTAuthorizerLambdaName', {
-      value: jwtAuthorizerLambda.functionName,
-      description: 'Lambda function name for JWT authorization',
-    });
-
-    new cdk.CfnOutput(this, 'VideoQueueUrl', {
-      value: videoQueue.queueUrl,
-      description: 'SQS Queue URL for video generation',
-    });
-
-    new cdk.CfnOutput(this, 'ApiGatewayUrl', {
-      value: api.url,
-      description: 'API Gateway URL for video generation',
-    });
-
-    new cdk.CfnOutput(this, 'ApiGatewayEndpoint', {
-      value: `${api.url}generate-video`,
-      description: 'API Gateway endpoint for video generation',
-    });
-
-    new cdk.CfnOutput(this, 'WebSocketApiUrl', {
-      value: websocketStage.url,
-      description: 'WebSocket API Gateway URL',
-    });
-
-    new cdk.CfnOutput(this, 'WebSocketConnectionsTableName', {
-      value: websocketConnectionsTable.tableName,
-      description: 'DynamoDB table for WebSocket connections',
-    });
-
-    new cdk.CfnOutput(this, 'FetchVideosEndpoint', {
-      value: `${api.url}fetch-videos`,
-      description: 'API Gateway endpoint for fetching videos',
-    });
-
-    new cdk.CfnOutput(this, 'FetchPreviewEndpoint', {
-      value: `${api.url}fetch-preview`,
-      description: 'API Gateway endpoint for fetching preview data',
-    });
-
-    new cdk.CfnOutput(this, 'UserManagementEndpoint', {
-      value: `${api.url}user`,
-      description: 'API Gateway endpoint for user management',
-    });
-
-    new cdk.CfnOutput(this, 'UsersTableName', {
-      value: usersTable.tableName,
-      description: 'DynamoDB table name for users',
-    });
-
-    new cdk.CfnOutput(this, 'UsersTableArn', {
-      value: usersTable.tableArn,
-      description: 'DynamoDB table ARN for users',
-    });
   }
 }

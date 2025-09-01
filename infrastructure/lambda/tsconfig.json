@@ -28,10 +28,9 @@
     "fetch-videos/**/*.ts",
     "fetch-preview/**/*.ts",
     "jwt-authorizer/**/*.ts",
-    "generate-story-breakdown/**/*.ts",
     "generate-audio-subtitle/**/*.ts",
-    "generate-images/**/*.ts",
-
+    "generate-image/**/*.ts",
+    "save-image/**/*.ts",
     "delete-video/**/*.ts",
     "websocket-connect/**/*.ts",
     "websocket-disconnect/**/*.ts",
@@ -40,7 +39,11 @@
     "utils/audio.ts",
     "utils/script.ts",
     "utils/subtitles.ts",
-    "utils/imageUtils.ts"
+    "utils/imageUtils.ts",
+    "utils/image.ts",
+    "utils/video.ts",
+    "utils/s3Uploader.ts",
+    "utils/videoEffects.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

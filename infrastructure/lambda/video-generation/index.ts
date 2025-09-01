@@ -19,6 +19,7 @@ import {
   hydrateManifest,
 } from './util/manifestUtils';
 import { broadcastMessage } from '../websocket-broadcast';
+import { uploadImageToS3 } from '../utils/s3Uploader';
 
 interface VideoGenerationRequest {
   prompt?: string;
@@ -193,19 +194,15 @@ async function processVideoGeneration(
           throw new Error('No images were generated');
         }
 
-        // Convert generated image URLs to the new format
-        imageUrls = generatedImageUrls.map((imageUrl, index) => {
-          const filename = `${timestamp}.scene-${scenes[index].id}.jpg`;
-          return { [filename]: imageUrl };
-        });
-
-        console.log(
-          `🎥 Generated ${imageUrls.length} images in parallel:`,
-          imageUrls,
+        // upload imageUrls to s3 using uploadImageToS3
+        const uploadPromises = generatedImageUrls.map((imageUrl, i) =>
+          uploadImageToS3(imageUrl, request.userId, timestamp, scenes[i].id),
         );
+        await Promise.all(uploadPromises);
+
+        console.log('🖼️ Images uploaded to S3');
       } catch (error) {
         console.error('❌ Failed to generate images:', error);
-        throw new Error(`Failed to generate images: ${error}`);
       }
     }
 

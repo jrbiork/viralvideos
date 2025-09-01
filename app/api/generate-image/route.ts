@@ -5,28 +5,17 @@ import { cookies } from 'next/headers';
 const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
 export async function POST(request: NextRequest) {
-  console.log('🚀 generate-audio-subtitle API route called');
+  console.log('🚀 generate-image API route called');
 
   try {
     // Verify session
     console.log('🔍 Verifying session...');
     const session = await verifySession();
-    console.log('📋 Session verification result:', {
-      hasSession: !!session,
-      userId: session?.sub,
-      email: session?.email,
-    });
 
     if (!session) {
       console.log('❌ No valid session found, returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    // Use session user info
-    const userInfo = {
-      id: session.sub,
-      email: session.email,
-    };
 
     // Get the Cognito JWT token from the httpOnly cookie
     const cookieStore = cookies();
@@ -41,26 +30,12 @@ export async function POST(request: NextRequest) {
     }
 
     const cognitoToken = cognitoTokenCookie.value;
-    console.log(
-      '🔍 Found Cognito token in cookie, length:',
-      cognitoToken.length,
-    );
 
-    const { scene, instructions, timestamp } = await request.json();
+    const { imagePrompt, timestamp } = await request.json();
 
-    if (!scene) {
+    if (!imagePrompt) {
       return NextResponse.json(
-        { error: 'Scene object is required' },
-        { status: 400 },
-      );
-    }
-
-    // Validate scene has required fields
-    if (!scene.narration || !scene.duration) {
-      return NextResponse.json(
-        {
-          error: 'Scene is missing required fields: narration and duration',
-        },
+        { error: 'imagePrompt is required' },
         { status: 400 },
       );
     }
@@ -72,11 +47,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔧 Environment check (generate-audio-subtitle):', {
-      hasApiGatewayUrl: !!process.env.API_GATEWAY_URL,
-      apiGatewayUrl: process.env.API_GATEWAY_URL,
-    });
-
     if (!process.env.API_GATEWAY_URL) {
       return NextResponse.json(
         { error: 'API Gateway URL not configured' },
@@ -84,16 +54,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare Lambda payload with userId and selected scene
-    const lambdaPayload = {
-      scene,
-      voiceToneInstruction: instructions,
-    };
-
     // Call the API Gateway endpoint with timestamp as query string
     const apiGatewayUrl = `${
       process.env.API_GATEWAY_URL
-    }generate-audio-subtitle?timestamp=${encodeURIComponent(timestamp)}`;
+    }generate-image?timestamp=${encodeURIComponent(timestamp)}`;
 
     const authHeaderValue = `Bearer ${cognitoToken}`;
 
@@ -103,7 +67,7 @@ export async function POST(request: NextRequest) {
         'Content-Type': 'application/json',
         Authorization: authHeaderValue,
       },
-      body: JSON.stringify(lambdaPayload),
+      body: JSON.stringify({ imagePrompt }),
     });
 
     console.log('📡 API Gateway response:', {
@@ -137,10 +101,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       data: responsePayload,
-      message: 'Audio and subtitles generated successfully',
+      message: 'Image generated successfully',
     });
   } catch (error) {
-    console.error('💥 Error in audio-subtitle generation:', error);
+    console.error('💥 Error in image generation:', error);
     console.error(
       'Error stack:',
       error instanceof Error ? error.stack : 'No stack trace',
@@ -152,7 +116,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: 'Failed to generate audio and subtitles',
+        error: 'Failed to generate image',
         details: error instanceof Error ? error.message : 'Unknown error',
       },
       { status: 500 },

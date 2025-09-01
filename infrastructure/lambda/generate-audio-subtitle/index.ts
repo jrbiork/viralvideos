@@ -5,7 +5,7 @@ import { generateSubtitles, ASSContentResult } from '../utils/subtitles';
 import { Scene } from '../utils/script';
 
 import { broadcastProgress } from '../video-generation';
-import { broadcastMessage } from '../websocket-broadcast';
+import { CREDITS_COST } from '../utils/credits';
 
 import {
   getManifest,
@@ -69,9 +69,18 @@ export const handler = async (
       };
     }
 
-    const hasCredits = await hasSufficientCreditsByUserId(userId, 1);
-    console.log('hasCredits:', hasCredits);
-    if (!hasCredits) {
+    const { hasSufficientCredits, currentCredits } =
+      await hasSufficientCreditsByUserId(
+        userId,
+        CREDITS_COST.new_audio_subtitle,
+      );
+
+    console.log(
+      'hasCredits / current credits:',
+      hasSufficientCredits,
+      currentCredits,
+    );
+    if (!hasSufficientCredits) {
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Insufficient credits' }),
@@ -106,8 +115,11 @@ export const handler = async (
     const manifestHydrated = await hydrateManifest(manifest);
     console.log('manifestHydrated:', manifestHydrated);
 
-    const currentCredits = await updateCreditBalanceByUserId(userId, 1);
-    console.log('currentCredits:', currentCredits);
+    const newCurrentCredits = await updateCreditBalanceByUserId(
+      userId,
+      CREDITS_COST.new_audio_subtitle,
+    );
+    console.log('new credits after deduction:', newCurrentCredits);
 
     // update manifest with subtitle content, ass content and audio urls
     // Only update the specific scene that was regenerated (scene.id corresponds to sceneIndex)

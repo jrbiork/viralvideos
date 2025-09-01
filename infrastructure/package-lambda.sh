@@ -10,6 +10,8 @@ mkdir -p dist/jwt-authorizer
 mkdir -p dist/get-user
 mkdir -p dist/upsert-user
 mkdir -p dist/generate-audio-subtitle
+mkdir -p dist/generate-image
+mkdir -p dist/save-image
 mkdir -p dist/fetch-preview
 
 mkdir -p dist/delete-video
@@ -46,6 +48,12 @@ cp lambda/dist/upsert-user/*.js dist/upsert-user/
 
 echo "📋 Copying generate-audio-subtitle files..."
 cp lambda/dist/generate-audio-subtitle/*.js dist/generate-audio-subtitle/
+
+echo "📋 Copying generate-image files..."
+cp lambda/dist/generate-image/*.js dist/generate-image/
+
+echo "📋 Copying save-image files..."
+cp lambda/dist/save-image/*.js dist/save-image/
 
 echo "📋 Copying fetch-preview files..."
 cp lambda/dist/fetch-preview/*.js dist/fetch-preview/
@@ -106,6 +114,18 @@ cd ../..
 
 echo "📦 Installing dependencies for generate-audio-subtitle..."
 cd dist/generate-audio-subtitle
+cp ../../lambda/package.json .
+npm install --production
+cd ../..
+
+echo "📦 Installing dependencies for generate-image..."
+cd dist/generate-image
+cp ../../lambda/package.json .
+npm install --production
+cd ../..
+
+echo "📦 Installing dependencies for save-image..."
+cd dist/save-image
 cp ../../lambda/package.json .
 npm install --production
 cd ../..
