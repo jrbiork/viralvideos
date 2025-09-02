@@ -298,13 +298,50 @@ export default function EditScene({
                 <div className="absolute top-3 left-3 w-6 h-6 bg-purple-600 rounded flex items-center justify-center m-2">
                   <span className="text-white text-sm font-bold">T</span>
                 </div>
-                <div className="w-full min-h-28 bg-slate-700/50 border border-purple-500/30 rounded-xl p-1 pl-8 pb-4 text-white my-2">
-                  <p className="text-white text-sm leading-relaxed">
+                <div
+                  className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl pt-5 pr-6 pb-6 pl-16 text-white mt-2 mb-4"
+                  style={{
+                    fontFamily: 'inherit',
+                    fontFeatureSettings: 'inherit',
+                    fontVariationSettings: 'inherit',
+                    fontSize: '16px',
+                    fontWeight: 'inherit',
+                  }}
+                >
+                  <p
+                    className="text-white text-sm leading-relaxed"
+                    style={{ fontSize: '16px' }}
+                  >
                     {scene.narration}
                   </p>
                 </div>
               </div>
-              <div className="flex justify-end">
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    // TODO: Add animate with AI functionality
+                    console.log('Animate with AI clicked for scene', scene.id);
+                  }}
+                  className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-[#5B5BFF] hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
+                  style={{
+                    boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+                  }}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                  <span>Animate with AI</span>
+                </button>
                 <button
                   onClick={() => onEditScene(scene.id, scene.narration)}
                   className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-[#5B5BFF] hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"

@@ -513,7 +513,7 @@ export default function GeneratePage() {
           <div className="flex justify-center">
             <video
               className="rounded-xl shadow-lg border-2 border-gray-600"
-              style={{ width: '60%', height: 'auto' }}
+              style={{ width: '85%', height: 'auto' }}
               controls
               autoPlay
               muted
