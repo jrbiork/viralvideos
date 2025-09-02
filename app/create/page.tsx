@@ -672,7 +672,7 @@ export default function GeneratePage() {
             }`}
           >
             {/* Scene Cards Container */}
-            <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4">
+            <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4 custom-scrollbar">
               {videoGenerationState.isLoadingVideoScenes && (
                 <div className="flex items-center justify-center">
                   <div className="text-center">
