@@ -13,12 +13,11 @@ export interface Scene {
 
 export async function generateVideoClip(
   description: string,
-  duration: number,
+  duration: 5 | 10,
   sceneIndex: number,
   userId: string,
   timestamp: string,
   seed: number,
-  sceneId?: number,
   imageUrl?: string,
 ): Promise<string> {
   try {
@@ -28,12 +27,8 @@ export async function generateVideoClip(
     });
 
     console.log(`🎬 Calling Runway SDK for scene ${sceneIndex}...`);
-    console.log('📤 Runway SDK request parameters:');
-    console.log('- Text-to-image model: gen4_image');
-    console.log('- Image-to-video model: gen4_turbo');
     console.log('- Prompt:', description);
     console.log('- Duration:', duration, 'seconds');
-    console.log('- Aspect ratio: 9:16 (vertical)');
 
     // Use the provided image URL or throw error if not provided
     if (!imageUrl) {
@@ -128,9 +123,7 @@ export async function generateVideoClip(
     console.log(`✅ Downloaded video, size: ${videoBuffer.length} bytes`);
 
     // Save video to video-parts bucket with timestamp prefix
-    const videoKey = `${userId}/${timestamp}.scene-${
-      sceneId !== undefined ? sceneId : sceneIndex
-    }.mp4`;
+    const videoKey = `${userId}/${timestamp}.scene-${sceneIndex}.mp4`;
     console.log(
       `☁️ Uploading video part to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${videoKey}`,
     );

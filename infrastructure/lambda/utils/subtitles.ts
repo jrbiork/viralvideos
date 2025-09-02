@@ -10,7 +10,7 @@ import {
   formatASSTime,
   createASSStyleHeader,
   createWordTimedKaraokeASSSubtitle,
-} from '../video-generation/util/assUtils';
+} from './assUtils';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 

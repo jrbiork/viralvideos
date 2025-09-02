@@ -30,6 +30,7 @@
     "jwt-authorizer/**/*.ts",
     "generate-audio-subtitle/**/*.ts",
     "generate-image/**/*.ts",
+    "animate-image/**/*.ts",
     "save-image/**/*.ts",
     "delete-video/**/*.ts",
     "websocket-connect/**/*.ts",
@@ -44,7 +45,8 @@
     "utils/video.ts",
     "utils/s3Uploader.ts",
     "utils/videoEffects.ts",
-    "utils/manifestUtils.ts"
+    "utils/manifestUtils.ts",
+    "utils/assUtils.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

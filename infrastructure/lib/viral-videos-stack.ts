@@ -424,6 +424,29 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda function for animating an image into video
+    const animateImageLambda = new lambda.Function(this, 'AnimateImageLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../dist/animate-image'),
+      ),
+      role: lambdaRole,
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      logGroup: new logs.LogGroup(this, 'AnimateImageLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+      environment: {
+        RUNWAY_API_KEY: runwayApiKey,
+        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+        WEBSOCKET_DOMAIN_NAME: websocketDomainName,
+        WEBSOCKET_STAGE: websocketEnv,
+        WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+        VIDEO_QUEUE_URL: videoQueue.queueUrl,
+      },
+    });
+
     // Lambda function for saving images
     const saveImageLambda = new lambda.Function(this, 'SaveImageLambda', {
       runtime: lambda.Runtime.NODEJS_20_X,
@@ -772,6 +795,27 @@ export class ViralVideosStack extends cdk.Stack {
     const generateImageResource = api.root.addResource('generate-image');
     generateImageResource.addMethod('POST', generateImageIntegration, {
       authorizer: jwtAuthorizer,
+    });
+
+    // Lambda integration for animate-image
+    const animateImageIntegration = new apigateway.LambdaIntegration(
+      animateImageLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+            queryString: '$input.params().querystring',
+          }),
+        },
+      },
+    );
+
+    const animateImageResource = api.root.addResource('animate-image');
+    animateImageResource.addMethod('POST', animateImageIntegration, {
+      authorizer: jwtAuthorizer,
+      requestParameters: {
+        'method.request.querystring.timestamp': true,
+      },
     });
 
     const saveImageResource = api.root.addResource('save-image');

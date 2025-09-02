@@ -49,7 +49,7 @@ export async function getImageUrls(
           Key: obj.Key,
         });
 
-        const signedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 }); // 1 hour expiration
+        const signedUrl = await getSignedUrl(s3, command, { expiresIn: 36000 }); // 1 hour expiration
 
         // Extract filename without user prefix (e.g., "1004.scene-1.jpg")
         const filename = obj.Key.replace(`${userId}/`, '');

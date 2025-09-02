@@ -34,6 +34,16 @@ npx esbuild lambda/generate-image/index.ts \
 echo "📦 Copying node_modules for generate-image lambda..."
 cp -r lambda/node_modules dist/generate-image/
 
+# Bundle animate-image lambda
+echo "📦 Bundling animate-image lambda..."
+npx esbuild lambda/animate-image/index.ts \
+  $ESBUILD_FLAGS \
+  --outfile=dist/animate-image/index.js
+
+# Copy node_modules for animate-image lambda
+echo "📦 Copying node_modules for animate-image lambda..."
+cp -r lambda/node_modules dist/animate-image/
+
 # Bundle save-image lambda
 echo "📦 Bundling save-image lambda..."
 npx esbuild lambda/save-image/index.ts \

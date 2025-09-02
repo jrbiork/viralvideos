@@ -11,6 +11,7 @@ mkdir -p dist/get-user
 mkdir -p dist/upsert-user
 mkdir -p dist/generate-audio-subtitle
 mkdir -p dist/generate-image
+mkdir -p dist/animate-image
 mkdir -p dist/save-image
 mkdir -p dist/fetch-preview
 
@@ -51,6 +52,9 @@ cp lambda/dist/generate-audio-subtitle/*.js dist/generate-audio-subtitle/
 
 echo "📋 Copying generate-image files..."
 cp lambda/dist/generate-image/*.js dist/generate-image/
+
+echo "📋 Copying animate-image files..."
+cp lambda/dist/animate-image/*.js dist/animate-image/
 
 echo "📋 Copying save-image files..."
 cp lambda/dist/save-image/*.js dist/save-image/
@@ -120,6 +124,12 @@ cd ../..
 
 echo "📦 Installing dependencies for generate-image..."
 cd dist/generate-image
+cp ../../lambda/package.json .
+npm install --production
+cd ../..
+
+echo "📦 Installing dependencies for animate-image..."
+cd dist/animate-image
 cp ../../lambda/package.json .
 npm install --production
 cd ../..

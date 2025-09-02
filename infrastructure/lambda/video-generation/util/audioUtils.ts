@@ -154,7 +154,7 @@ export async function getAudioSignedUrl(
       Key: audioKey,
     });
 
-    return await getSignedUrl(s3, command, { expiresIn: 3600 });
+    return await getSignedUrl(s3, command, { expiresIn: 36000 });
   } catch (error) {
     console.error(`❌ Error getting signed URL for ${audioKey}:`, error);
     return null;

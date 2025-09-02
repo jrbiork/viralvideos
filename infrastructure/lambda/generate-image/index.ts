@@ -75,8 +75,8 @@ export const handler = async (
       };
     }
 
-    const seed = Math.floor(Math.random() * 1000000);
-    const sceneId = -1;
+    const seed = parseInt(timestamp);
+    const sceneId = 99;
 
     const imageUrl = await generateImage(
       imagePrompt,
