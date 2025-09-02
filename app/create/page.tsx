@@ -569,7 +569,7 @@ export default function GeneratePage() {
                             console.error('Video error:', event);
                           }}
                           className="rounded-xl shadow-lg border-2 border-gray-600"
-                          style={{ width: '60%', height: 'auto' }}
+                          style={{ width: '85%', height: 'auto' }}
                           controls
                           preload="auto"
                           src={getMediaFiles()[videoKey] || ''}

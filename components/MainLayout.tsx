@@ -123,7 +123,7 @@ export default function MainLayout({
             className="flex flex-col md:flex-row flex-1 overflow-hidden"
             style={{ backgroundColor: '#090526' }}
           >
-            <div className="flex-1 overflow-hidden">{children}</div>
+            <div className="flex-[1.86] overflow-hidden">{children}</div>
             {rightSidebarContent && (
               <div
                 className="flex-1 order-1 md:order-2 overflow-hidden"
