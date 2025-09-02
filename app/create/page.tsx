@@ -635,7 +635,7 @@ export default function GeneratePage() {
     >
       {/* WebSocket Status for Testing */}
 
-      <div className="flex flex-col justify-start p-4 h-full overflow-y-auto">
+      <div className="flex flex-col justify-start px-4 h-full overflow-y-auto">
         <div className="relative overflow-hidden flex-1">
           <div
             className={`h-full transition-transform duration-500 ease-in-out ${
