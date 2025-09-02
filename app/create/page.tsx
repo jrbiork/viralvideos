@@ -635,13 +635,10 @@ export default function GeneratePage() {
     >
       {/* WebSocket Status for Testing */}
 
-      <div className="flex flex-col justify-start p-4">
-        <div
-          className="relative overflow-hidden"
-          style={{ height: 'calc(100vh - 64px - 200px)' }}
-        >
+      <div className="flex flex-col justify-start p-4 h-full overflow-y-auto">
+        <div className="relative overflow-hidden flex-1">
           <div
-            className={`transition-transform duration-500 ease-in-out ${
+            className={`h-full transition-transform duration-500 ease-in-out ${
               currentStep === 1
                 ? 'translate-x-0'
                 : currentStep > 1
@@ -666,7 +663,7 @@ export default function GeneratePage() {
           </div>
 
           <div
-            className={`absolute top-0 left-0 w-full h-[80%] transition-transform duration-500 ease-in-out px-3 ${
+            className={`absolute top-0 left-0 w-full h-full transition-transform duration-500 ease-in-out px-3 ${
               currentStep === 2
                 ? 'translate-x-0'
                 : currentStep > 2
@@ -806,7 +803,7 @@ export default function GeneratePage() {
 
           {/* Step 3: Export Video */}
           <div
-            className={`absolute top-0 left-0 w-full transition-transform duration-500 ease-in-out ${
+            className={`absolute top-0 left-0 w-full h-full transition-transform duration-500 ease-in-out ${
               currentStep === 3 ? 'translate-x-0' : 'translate-x-full'
             }`}
           >

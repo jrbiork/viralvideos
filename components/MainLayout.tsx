@@ -43,7 +43,7 @@ export default function MainLayout({
   };
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor }}>
+    <div className="h-screen flex flex-col" style={{ backgroundColor }}>
       {/* Header */}
       <div className="sticky top-0 z-50 w-full" id="navbar-wrapper">
         <nav
@@ -98,8 +98,8 @@ export default function MainLayout({
 
       {/* Main Content */}
       <div
-        className="flex flex-col lg:flex-row flex-1 overflow-hidden"
-        style={{ height: 'calc(100vh - 64px)', backgroundColor: '#090526' }}
+        className="flex flex-col lg:flex-row flex-1 overflow-hidden h-full"
+        style={{ backgroundColor: '#090526' }}
       >
         {showSidebar && (
           <div
@@ -111,22 +111,22 @@ export default function MainLayout({
         )}
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-auto h-full">
+        <div className="flex-1 flex flex-col overflow-hidden">
           {/* Progress Steps */}
           {progressSteps && (
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center flex-shrink-0">
               {progressSteps}
             </div>
           )}
 
           <div
-            className="flex flex-col md:flex-row h-full"
+            className="flex flex-col md:flex-row flex-1 overflow-hidden"
             style={{ backgroundColor: '#090526' }}
           >
-            <div className="h-full">{children}</div>
+            <div className="flex-1 overflow-hidden">{children}</div>
             {rightSidebarContent && (
               <div
-                className="flex-1 order-1 md:order-2 h-full"
+                className="flex-1 order-1 md:order-2 overflow-hidden"
                 style={{ backgroundColor: '#090526' }}
               >
                 {rightSidebarContent}
