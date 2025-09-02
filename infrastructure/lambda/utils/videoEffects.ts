@@ -54,7 +54,7 @@ function resolveFfmpegPath(): string {
 export async function getVideoEffectUrls(
   userId: string,
   timestamp: string,
-  scenes: Scene[],
+  scenes: Omit<Scene, 'description' | 'narration'>[],
 ): Promise<Array<{ [key: string]: string }>> {
   // Check if video effects already exist by listing S3 objects with prefix timestamp.scene- and suffix .mp4
   const s3Client = new S3Client({
@@ -111,7 +111,7 @@ export async function getVideoEffectUrls(
 }
 
 export async function generateVideoEffects(
-  scenes: Scene[],
+  scenes: Omit<Scene, 'description' | 'narration'>[],
   userId: string,
   timestamp: string,
 ): Promise<Array<{ [key: string]: string }>> {
@@ -121,7 +121,7 @@ export async function generateVideoEffects(
 
     // Process all scenes in parallel
     const videoPromises = scenes.map(async (scene, i) => {
-      console.log(`🎬 Processing scene ${i + 1}: ${scene.description}`);
+      console.log(`🎬 Processing scene ${i + 1}`);
 
       try {
         // Get the image URL for this scene
@@ -137,7 +137,6 @@ export async function generateVideoEffects(
         const videoSignedUrl = await generateSceneVideo(
           imageUrl,
           scene,
-          i,
           userId,
           timestamp,
         );
@@ -188,8 +187,7 @@ async function getImageSignedUrl(imageKey: string): Promise<string | null> {
 
 async function generateSceneVideo(
   imageUrl: string,
-  scene: Scene,
-  sceneIndex: number,
+  scene: Omit<Scene, 'description' | 'narration'>,
   userId: string,
   timestamp: string,
 ): Promise<string> {
@@ -218,14 +216,14 @@ async function generateSceneVideo(
 
     // Create temporary files
     const tempDir = '/tmp';
-    const inputImagePath = path.join(tempDir, `input-${sceneIndex}.jpg`);
-    const outputVideoPath = path.join(tempDir, `output-${sceneIndex}.mp4`);
+    const inputImagePath = path.join(tempDir, `input-${scene.id}.jpg`);
+    const outputVideoPath = path.join(tempDir, `output-${scene.id}.mp4`);
 
     // Write image to temp file
     fs.writeFileSync(inputImagePath, imageBuffer);
 
     // Write watermark to temp file
-    const watermarkPath = path.join(tempDir, `watermark-${sceneIndex}.png`);
+    const watermarkPath = path.join(tempDir, `watermark-${scene.id}.png`);
     fs.writeFileSync(watermarkPath, watermarkBuffer);
 
     const frames = Math.floor(scene.duration * 25);
@@ -237,7 +235,7 @@ async function generateSceneVideo(
     const movePeriod = 180; // frames (~7.2s @25fps) - faster movement
 
     // deterministically choose one of three motion variants per scene (index-based)
-    const variant = sceneIndex % 3; // 0: dramatic pop-out+drift, 1: strong zoom-in, 2: strong zoom-out
+    const variant = scene.id % 3; // 0: dramatic pop-out+drift, 1: strong zoom-in, 2: strong zoom-out
     console.log(`🎨 Motion variant selected (index-based): ${variant}`);
 
     // Motion variant configurations
@@ -318,7 +316,7 @@ async function generateSceneVideo(
       outputVideoPath,
     ];
 
-    console.log(`🎬 Running FFmpeg command for scene ${sceneIndex + 1}:`);
+    console.log(`🎬 Running FFmpeg command for scene ${scene.id + 1}:`);
     console.log(`🎬 Scene duration: ${scene.duration}s`);
     console.log(ffmpegPath, ffmpegArgs.join(' '));
 
@@ -380,11 +378,11 @@ async function generateSceneVideo(
       { expiresIn: 36000 }, // 10 hours expiration
     );
 
-    console.log(`✅ Video signed URL generated for scene ${sceneIndex + 1}`);
+    console.log(`✅ Video signed URL generated for scene ${scene.id + 1}`);
     return videoSignedUrl;
   } catch (error) {
     console.error(
-      `❌ Error generating video for scene ${sceneIndex + 1}:`,
+      `❌ Error generating video for scene ${scene.id + 1}:`,
       error,
     );
     throw error;

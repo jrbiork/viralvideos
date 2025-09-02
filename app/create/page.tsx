@@ -529,81 +529,83 @@ export default function GeneratePage() {
         </div>
       )}
 
-      {currentStep === 2 && scenes.length > 0 && (
-        <>
-          {scenes.map((scene: any, index: number) => {
-            const videoKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp4`;
-            const assKey = `${videoGenerationState.currentTimestamp}.scene-${index}.ass`;
-            const isVisible = sceneState.selectedSceneId === scene.id;
+      {currentStep === 2 &&
+        !videoGenerationState.isLoadingVideoScenes &&
+        scenes.length > 0 && (
+          <>
+            {scenes.map((scene: any, index: number) => {
+              const videoKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp4`;
+              const assKey = `${videoGenerationState.currentTimestamp}.scene-${index}.ass`;
+              const isVisible = sceneState.selectedSceneId === scene.id;
 
-            // Find the correct index for the selected scene
-            const selectedSceneIndex = scenes.findIndex(
-              (s: any) => s.id === sceneState.selectedSceneId,
-            );
-            const isVisibleByIndex = index === selectedSceneIndex;
+              // Find the correct index for the selected scene
+              const selectedSceneIndex = scenes.findIndex(
+                (s: any) => s.id === sceneState.selectedSceneId,
+              );
+              const isVisibleByIndex = index === selectedSceneIndex;
 
-            return (
-              <div
-                key={scene.id}
-                className={isVisibleByIndex ? 'block' : 'hidden'}
-              >
-                {getMediaFiles()[videoKey] &&
-                  getMediaFiles()[videoKey].startsWith('http') && (
-                    <div className="relative flex justify-center">
-                      <video
-                        ref={(videoRef) => {
-                          if (videoRef) {
-                            setupVideoEventListeners(
-                              videoRef,
-                              scene,
-                              scenes,
-                              getAssFiles(),
-                              videoGenerationState.currentTimestamp,
-                              index,
-                            );
-                          }
-                        }}
-                        onError={(event) => {
-                          console.error('Video error:', event);
-                        }}
-                        className="rounded-xl shadow-lg border-2 border-gray-600"
-                        style={{ width: '60%', height: 'auto' }}
-                        controls
-                        preload="auto"
-                        src={getMediaFiles()[videoKey] || ''}
-                      />
+              return (
+                <div
+                  key={scene.id}
+                  className={isVisibleByIndex ? 'block' : 'hidden'}
+                >
+                  {getMediaFiles()[videoKey] &&
+                    getMediaFiles()[videoKey].startsWith('http') && (
+                      <div className="relative flex justify-center">
+                        <video
+                          ref={(videoRef) => {
+                            if (videoRef) {
+                              setupVideoEventListeners(
+                                videoRef,
+                                scene,
+                                scenes,
+                                getAssFiles(),
+                                videoGenerationState.currentTimestamp,
+                                index,
+                              );
+                            }
+                          }}
+                          onError={(event) => {
+                            console.error('Video error:', event);
+                          }}
+                          className="rounded-xl shadow-lg border-2 border-gray-600"
+                          style={{ width: '60%', height: 'auto' }}
+                          controls
+                          preload="auto"
+                          src={getMediaFiles()[videoKey] || ''}
+                        />
 
-                      {/* Subtitles Overlay */}
-                      {isVisibleByIndex && sceneState.currentSubtitle && (
-                        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
-                          <p
-                            className="text-xl font-medium leading-relaxed text-center"
-                            style={{ fontFamily: 'DMSerifText, serif' }}
-                          >
-                            {parseColoredText(sceneState.currentSubtitle)}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-              </div>
-            );
-          })}
+                        {/* Subtitles Overlay */}
+                        {isVisibleByIndex && sceneState.currentSubtitle && (
+                          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
+                            <p
+                              className="text-xl font-medium leading-relaxed text-center"
+                              style={{ fontFamily: 'DMSerifText, serif' }}
+                            >
+                              {parseColoredText(sceneState.currentSubtitle)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                </div>
+              );
+            })}
 
-          {/* Scene Audio - Hidden Controls */}
-          {scenes.map((scene: any, index: number) => {
-            const audioKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp3`;
-            return getMediaFiles()[audioKey] ? (
-              <audio
-                key={scene.id}
-                id={`audio-${scene.id}`}
-                className="hidden"
-                src={getMediaFiles()[audioKey]}
-              />
-            ) : null;
-          })}
-        </>
-      )}
+            {/* Scene Audio - Hidden Controls */}
+            {scenes.map((scene: any, index: number) => {
+              const audioKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp3`;
+              return getMediaFiles()[audioKey] ? (
+                <audio
+                  key={scene.id}
+                  id={`audio-${scene.id}`}
+                  className="hidden"
+                  src={getMediaFiles()[audioKey]}
+                />
+              ) : null;
+            })}
+          </>
+        )}
 
       {generationState.generatedVideoUrl && (
         <video
@@ -716,6 +718,12 @@ export default function GeneratePage() {
                               editingScene={sceneState.editingScene}
                               editedNarration={sceneState.editedNarration}
                               onEditScene={handleEditSceneWithSubtitle}
+                              setIsLoadingVideoScenes={(value: boolean) =>
+                                setVideoGenerationState((prev) => ({
+                                  ...prev,
+                                  isLoadingVideoScenes: value,
+                                }))
+                              }
                               onSaveEdit={(sceneId) =>
                                 handleSaveEdit(
                                   sceneId,

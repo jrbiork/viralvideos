@@ -4,7 +4,7 @@ echo "📦 Packaging Lambda functions..."
 
 # Create deployment directories
 mkdir -p dist/video-generation
-mkdir -p dist/full-video-queue
+mkdir -p dist/video-queue
 mkdir -p dist/fetch-videos
 mkdir -p dist/jwt-authorizer
 mkdir -p dist/get-user
@@ -28,9 +28,9 @@ cp lambda/package.json dist/video-generation/
 
 
 
-echo "📋 Copying full-video-queue files..."
-cp lambda/dist/full-video-queue/*.js dist/full-video-queue/
-cp lambda/package.json dist/full-video-queue/
+echo "📋 Copying video-queue files..."
+cp lambda/dist/video-queue/*.js dist/video-queue/
+cp lambda/package.json dist/video-queue/
 
 echo "📋 Copying fetch-videos files..."
 cp lambda/dist/fetch-videos/*.js dist/fetch-videos/
@@ -85,8 +85,8 @@ cp ../../lambda/package.json .
 npm install --production
 cd ../..
 
-echo "📦 Installing dependencies for full-video-queue..."
-cd dist/full-video-queue
+echo "📦 Installing dependencies for video-queue..."
+cd dist/video-queue
 npm install --production
 cd ../..
 

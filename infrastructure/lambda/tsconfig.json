@@ -24,7 +24,7 @@
   },
   "include": [
     "video-generation/**/*.ts",
-    "full-video-queue/**/*.ts",
+    "video-queue/**/*.ts",
     "fetch-videos/**/*.ts",
     "fetch-preview/**/*.ts",
     "jwt-authorizer/**/*.ts",
@@ -43,7 +43,8 @@
     "utils/image.ts",
     "utils/video.ts",
     "utils/s3Uploader.ts",
-    "utils/videoEffects.ts"
+    "utils/videoEffects.ts",
+    "utils/manifestUtils.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

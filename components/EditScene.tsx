@@ -20,6 +20,7 @@ interface EditSceneProps {
   isSelected?: boolean;
   onSelect?: (sceneId: number) => void;
   regeneratingSceneId?: number | null;
+  setIsLoadingVideoScenes: (value: boolean) => void;
 }
 
 export default function EditScene({
@@ -35,14 +36,29 @@ export default function EditScene({
   isSelected = false,
   onSelect,
   regeneratingSceneId,
+  setIsLoadingVideoScenes,
 }: EditSceneProps) {
+  const urlTest =
+    'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
+
+  const urlTest2 =
+    'https://dnznrvs05pmza.cloudfront.net/032af1ac-2cbe-4841-a689-032f0d05780e.png?_jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJrZXlIYXNoIjoiNzMzMTM4Mjc4N2ViMjdmNyIsImJ1Y2tldCI6InJ1bndheS10YXNrLWFydGlmYWN0cyIsInN0YWdlIjoicHJvZCIsImV4cCI6MTc1Njk0NDAwMH0.HIbTLZ8moLkowSj28Vb-rMxnfM108JexJFafmfp_qgM';
+
+  const urlTest3 =
+    'https://wallpaper.forfun.com/fetch/b4/b4998cef88539ca8075898078e52ece0.jpeg?h=1200&r=0.5';
+
   const [isImageEditModalOpen, setIsImageEditModalOpen] = useState(false);
   const [newImagePrompt, setNewImagePrompt] = useState('');
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(
-    null,
-  );
+  const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>();
   const [isSavingImage, setIsSavingImage] = useState(false);
+  const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(
+    imageUrl || null,
+  );
+
+  React.useEffect(() => {
+    setCurrentImageUrl(imageUrl || null);
+  }, [imageUrl]);
 
   const queryParams = new URLSearchParams(window.location.search);
 
@@ -76,6 +92,7 @@ export default function EditScene({
         timestamp,
         sceneId: Number(scene.id),
         generatedImageUrl,
+        duration: scene.duration,
       };
 
       console.log('🚀 Sending request payload:', requestPayload);
@@ -97,14 +114,16 @@ export default function EditScene({
       const result = await response.json();
       console.log('✅ Image saved successfully:', result);
 
-      // TODO: Update the scene's imageUrl with the new generated image
-      // This would typically involve calling a parent function or updating state
-      alert(
-        'Image saved successfully! The new image will be used for this scene.',
-      );
+      // Implement logic to replace the original image
+      if (generatedImageUrl) {
+        setCurrentImageUrl(generatedImageUrl);
 
-      // Close the modal
-      setIsImageEditModalOpen(false);
+        // set isLoadingVideoScenes to true
+        setIsLoadingVideoScenes(true);
+      }
+      // alert(
+      //   'Image saved successfully! The new image will be used for this scene.',
+      // );
     } catch (error) {
       console.error('❌ Error saving image:', error);
       alert(
@@ -149,7 +168,7 @@ export default function EditScene({
         )}
 
         {/* Scene Image */}
-        {imageUrl ? (
+        {currentImageUrl ? (
           <div
             className="flex-shrink-0 rounded-xl overflow-hidden relative group"
             style={{
@@ -158,7 +177,7 @@ export default function EditScene({
             }}
           >
             <img
-              src={imageUrl}
+              src={currentImageUrl}
               alt={`Scene ${scene.id + 1}`}
               className="w-full h-full object-contain rounded-xl"
               onError={(e) => {

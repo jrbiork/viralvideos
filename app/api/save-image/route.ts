@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../lib/session-utils';
-import { cookies } from 'next/headers';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,18 +19,15 @@ export async function POST(request: NextRequest) {
 
     // Get timestamp from request body
     const body = await request.json();
-    console.log('📥 Received request body:', body);
-    console.log('🔍 Body type:', typeof body);
-    console.log('🔍 Body keys:', Object.keys(body));
 
-    const { timestamp, sceneId, generatedImageUrl } = body;
+    const { timestamp, sceneId, generatedImageUrl, duration } = body;
 
     console.log('🔍 Extracted values:', {
       timestamp,
       sceneId,
       generatedImageUrl,
+      duration,
     });
-    console.log('🔍 SceneId type:', typeof sceneId, 'Value:', sceneId);
 
     if (!timestamp) {
       return NextResponse.json({ error: 'Missing timestamp' }, { status: 400 });
@@ -47,62 +44,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Cognito JWT token from cookies for authorization
-    const cookieStore = cookies();
-    const authToken = cookieStore.get('viral-videos-cognito-token')?.value;
-
-    if (!authToken) {
-      return NextResponse.json(
-        { error: 'No authorization token found' },
-        { status: 401 },
-      );
+    if (!duration) {
+      return NextResponse.json({ error: 'Missing duration' }, { status: 400 });
     }
 
-    // Construct the API Gateway URL
-    const apiGatewayUrl = process.env.API_GATEWAY_URL;
-    if (!apiGatewayUrl) {
-      console.error('❌ API_GATEWAY_URL environment variable not set');
+    // Enqueue to SQS so the shared consumer handles save-image
+    const queueUrl = process.env.VIDEO_QUEUE_URL;
+    if (!queueUrl) {
+      console.error('❌ VIDEO_QUEUE_URL environment variable not set');
       return NextResponse.json(
-        { error: 'API Gateway URL not configured' },
+        { error: 'SQS queue URL not configured' },
         { status: 500 },
       );
     }
 
-    // Prepare the payload for the lambda
-    const lambdaPayload = {
+    const sqs = new SQSClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+    });
+
+    const messageBody = {
+      type: 'save-image' as const,
+      userId,
       timestamp,
       sceneId,
       generatedImageUrl,
+      duration,
     };
 
-    console.log(`🚀 Calling save-image lambda with payload:`, lambdaPayload);
-
-    // Make request to API Gateway
-    const response = await fetch(
-      `${apiGatewayUrl}/save-image?timestamp=${encodeURIComponent(timestamp)}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(lambdaPayload),
+    const command = new SendMessageCommand({
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify(messageBody),
+      MessageAttributes: {
+        RequestType: { DataType: 'String', StringValue: 'SaveImage' },
+        UserId: { DataType: 'String', StringValue: userId },
       },
-    );
+    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ Lambda response error:', response.status, errorText);
-      return NextResponse.json(
-        { error: `Lambda error: ${response.status}` },
-        { status: response.status },
-      );
-    }
+    const sqsResponse = await sqs.send(command);
+    console.log('✅ Enqueued save-image message:', sqsResponse.MessageId);
 
-    const result = await response.json();
-    console.log('✅ Save image lambda response:', result);
-
-    return NextResponse.json(result);
+    return NextResponse.json({
+      status: 'queued',
+      messageId: sqsResponse.MessageId,
+    });
   } catch (error) {
     console.error('❌ Error in save-image API route:', error);
     return NextResponse.json(

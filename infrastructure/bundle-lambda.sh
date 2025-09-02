@@ -44,11 +44,11 @@ npx esbuild lambda/save-image/index.ts \
 echo "📦 Copying node_modules for save-image lambda..."
 cp -r lambda/node_modules dist/save-image/
 
-# Bundle full-video-queue lambda
-echo "📦 Bundling full-video-queue lambda..."
-npx esbuild lambda/full-video-queue/index.ts \
+# Bundle video-queue lambda
+echo "📦 Bundling video-queue lambda..."
+npx esbuild lambda/video-queue/index.ts \
   $ESBUILD_FLAGS \
-  --outfile=dist/full-video-queue/index.js
+  --outfile=dist/video-queue/index.js
 
 # Bundle fetch-videos lambda
 echo "📦 Bundling fetch-videos lambda..."

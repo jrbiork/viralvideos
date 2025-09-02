@@ -187,7 +187,9 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.minutes(15),
         memorySize: 3008, // Increased for video processing
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'VideoGenerationLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         layers: [ffmpegLayer],
         environment: {
           VIDEO_BUCKET_NAME: videoBucket.bucketName,
@@ -222,12 +224,14 @@ export class ViralVideosStack extends cdk.Stack {
         runtime: lambda.Runtime.NODEJS_20_X,
         handler: 'index.handler',
         code: lambda.Code.fromAsset(
-          path.join(__dirname, '../dist/full-video-queue'),
+          path.join(__dirname, '../dist/video-queue'),
         ),
         role: lambdaRole,
         timeout: cdk.Duration.minutes(1),
         memorySize: 128,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'FullVideoQueueLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         environment: {
           VIDEO_QUEUE_URL: videoQueue.queueUrl,
           USERS_TABLE_NAME: usersTable.tableName,
@@ -261,7 +265,9 @@ export class ViralVideosStack extends cdk.Stack {
         role: jwtAuthorizerRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'JWTAuthorizerLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         environment: {
           NEXT_PUBLIC_COGNITO_USER_POOL_ID:
             process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || '',
@@ -282,7 +288,9 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'FetchVideosLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
 
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
@@ -301,7 +309,9 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'FetchPreviewLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
 
       environment: {
         S3_BUCKET_NAME: videoPartsBucket.bucketName,
@@ -319,7 +329,9 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'GetUserLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
       environment: {
         USERS_TABLE_NAME: usersTable.tableName,
       },
@@ -332,7 +344,9 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'UpsertUserLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
       environment: {
         USERS_TABLE_NAME: usersTable.tableName,
       },
@@ -346,7 +360,9 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(1),
       memorySize: 128,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'DeleteVideoLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
       },
@@ -365,7 +381,13 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.minutes(5),
         memorySize: 512,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(
+          this,
+          'GenerateAudioSubtitleLambdaLogGroup',
+          {
+            retention: logs.RetentionDays.ONE_WEEK,
+          },
+        ),
         environment: {
           OPENAI_API_KEY: openaiApiKey,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
@@ -389,7 +411,9 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.minutes(5),
         memorySize: 512,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'GenerateImageLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         environment: {
           RUNWAY_API_KEY: runwayApiKey,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
@@ -408,9 +432,15 @@ export class ViralVideosStack extends cdk.Stack {
       role: lambdaRole,
       timeout: cdk.Duration.minutes(2),
       memorySize: 512,
-      logRetention: logs.RetentionDays.ONE_WEEK,
+      logGroup: new logs.LogGroup(this, 'SaveImageLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
       environment: {
         VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+        WEBSOCKET_DOMAIN_NAME: websocketDomainName,
+        WEBSOCKET_STAGE: websocketEnv,
+        WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+        VIDEO_QUEUE_URL: videoQueue.queueUrl,
       },
     });
 
@@ -526,7 +556,9 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'WebSocketConnectLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
           USERS_TABLE_NAME: usersTable.tableName,
@@ -561,7 +593,9 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'WebSocketDisconnectLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },
@@ -580,7 +614,9 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'WebSocketMessageLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
           USERS_TABLE_NAME: usersTable.tableName,
@@ -601,7 +637,9 @@ export class ViralVideosStack extends cdk.Stack {
         role: lambdaRole,
         timeout: cdk.Duration.seconds(30),
         memorySize: 128,
-        logRetention: logs.RetentionDays.ONE_WEEK,
+        logGroup: new logs.LogGroup(this, 'WebSocketBroadcastLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
         environment: {
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
         },

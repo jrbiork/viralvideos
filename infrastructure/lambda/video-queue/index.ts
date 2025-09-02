@@ -6,7 +6,6 @@ const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 interface VideoGenerationRequest {
   prompt: string;
   userId: string;
-  userEmail?: string;
   timestamp: string;
   totalDuration: number;
   sceneCount: number;
@@ -43,8 +42,6 @@ export const handler = async (
     // Extract user information from JWT authorizer context or request body
     const userId =
       event.requestContext?.authorizer?.userId || request.userId || 'demo-user';
-    const userEmail =
-      event.requestContext?.authorizer?.email || request.userEmail || '';
 
     if (!process.env.VIDEO_QUEUE_URL) {
       console.log('❌ Error: VIDEO_QUEUE_URL is not set');
@@ -56,6 +53,7 @@ export const handler = async (
 
     // Prepare message for SQS
     const messageBody = {
+      type: 'generate-video' as const,
       prompt: request.prompt,
       userId: userId || request.userId || 'demo-user',
       timestamp: request.timestamp || new Date().toISOString(),

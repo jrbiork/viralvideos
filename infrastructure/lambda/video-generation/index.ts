@@ -11,17 +11,18 @@ import { generateStoryBreakdown, Scene } from '../utils/script';
 import { uploadToS3, getObjectFromS3 } from './util/s3Uploader';
 import { checkAudioCaptionExists } from './util/audioUtils';
 import { getImageUrls } from '../utils/imageUtils';
-import { getVideoEffectUrls } from './util/videoEffects';
+import { generateVideoEffects, getVideoEffectUrls } from './util/videoEffects';
 import { combineVideoAndAudio } from './videoCombiner';
 import {
   createManifest,
   getManifest,
   hydrateManifest,
-} from './util/manifestUtils';
+} from '../utils/manifestUtils';
 import { broadcastMessage } from '../websocket-broadcast';
 import { uploadImageToS3 } from '../utils/s3Uploader';
 
 interface VideoGenerationRequest {
+  type?: 'generate-video' | 'save-image';
   prompt?: string;
   userId: string;
   timestamp: string;
@@ -47,8 +48,12 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
       // Parse the message body
       const request: VideoGenerationRequest = JSON.parse(record.body);
 
-      // Process the video generation with ordered steps
-      await processVideoGeneration(request, record);
+      // Dispatch based on request type; default to generate video
+      if (request.type === 'save-image') {
+        await processSaveImage(request as any, record);
+      } else {
+        await processVideoGeneration(request, record);
+      }
     } catch (error) {
       console.error('❌ Error processing record:', record.messageId, error);
       batchItemFailures.push({ itemIdentifier: record.messageId });
@@ -58,6 +63,85 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
   return {
     batchItemFailures,
   };
+}
+
+interface SaveImageRequest {
+  type?: 'save-image';
+  userId: string;
+  timestamp: string;
+  sceneId: number;
+  generatedImageUrl: string;
+  duration?: number;
+}
+
+async function processSaveImage(
+  request: SaveImageRequest,
+  record?: SQSRecord,
+): Promise<any> {
+  try {
+    if (!request.userId || !request.timestamp) {
+      throw new Error('Missing userId or timestamp');
+    }
+    if (request.sceneId === undefined || request.sceneId === null) {
+      throw new Error('Missing sceneId');
+    }
+    if (!request.generatedImageUrl) {
+      throw new Error('Missing generatedImageUrl');
+    }
+    if (!request.duration) {
+      throw new Error('Missing duration');
+    }
+
+    const { userId, timestamp, sceneId, generatedImageUrl, duration } = request;
+
+    const manifest = await getManifest(userId, timestamp);
+    if (!manifest) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Manifest not found' }),
+      };
+    }
+
+    // Form the imageKey
+    const imageKey = `${userId}/${timestamp}.scene-${sceneId}.jpg`;
+    console.log(`🔑 Formed image key: ${imageKey}`);
+
+    await uploadImageToS3(generatedImageUrl, userId, timestamp, sceneId);
+    console.log(`✅ Image replaced successfully`);
+
+    let hydratedManifest = await hydrateManifest(manifest);
+
+    broadcastProgress('image_created', userId, timestamp, {
+      manifest: hydratedManifest,
+    });
+
+    await generateVideoEffects(
+      [{ id: sceneId, duration, description: '', narration: '' }],
+      userId,
+      timestamp,
+    );
+
+    hydratedManifest = await hydrateManifest(manifest);
+
+    broadcastProgress('preview_completed', userId, timestamp, {
+      manifest: hydratedManifest,
+    });
+    console.log('✅ Image saved via SQS for scene:', request.sceneId);
+
+    // If this was triggered by SQS, delete the message from the queue
+    if (record && process.env.VIDEO_QUEUE_URL) {
+      const deleteCommand = new DeleteMessageCommand({
+        QueueUrl: process.env.VIDEO_QUEUE_URL,
+        ReceiptHandle: record.receiptHandle,
+      });
+      await sqs.send(deleteCommand);
+    }
+
+    return { message: 'Image saved successfully' };
+  } catch (error) {
+    console.error('Error in save image (SQS):', error);
+    throw error;
+  }
 }
 
 async function processVideoGeneration(
