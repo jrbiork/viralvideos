@@ -40,6 +40,10 @@ export default function GeneratePage() {
     manifest: null as Manifest | null,
   });
 
+  // Toaster state
+  const [showToaster, setShowToaster] = useState(false);
+  const [toasterMessage, setToasterMessage] = useState('');
+
   // Custom hooks
   const {
     state: generationState,
@@ -167,6 +171,13 @@ export default function GeneratePage() {
     }
   };
 
+  // Handle insufficient credits
+  const handleInsufficientCredits = (data: any) => {
+    console.log('Insufficient credits:', data);
+    setToasterMessage('Insufficient credits');
+    setShowToaster(true);
+  };
+
   // Helper functions to extract data from manifest
   const getMediaFiles = useCallback(() => {
     if (!videoGenerationState.manifest) return {};
@@ -245,13 +256,16 @@ export default function GeneratePage() {
 
       const narration = subtitles[subtitleKey] || `Scene ${sceneIndex + 1}`;
 
+      const scene = videoGenerationState.manifest;
       console.log('Creating scene:', { id: sceneIndex, narration });
 
       return {
         id: sceneIndex,
         description: `Scene ${sceneIndex + 1}`,
         narration: narration,
-        duration: 5, // Default duration
+        duration: Math.floor(
+          (scene?.totalDuration || 30) / (scene?.sceneCount || 3),
+        ),
       };
     });
   }, [getSubtitles]);
@@ -292,6 +306,17 @@ export default function GeneratePage() {
     videoGenerationState.currentTimestamp,
     scenes.length,
   ]); // Add scenes.length to dependencies
+
+  // Auto-hide toaster after 4 seconds
+  useEffect(() => {
+    if (showToaster) {
+      const timer = setTimeout(() => {
+        setShowToaster(false);
+      }, 4000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [showToaster]);
 
   // Handle URL query parameters for step 2 - edit mode
   const urlParamsProcessedRef = useRef(false);
@@ -357,7 +382,7 @@ export default function GeneratePage() {
   // Subscribe to WebSocket updates when connected
   // WebSocket connection is now automatic - no subscription needed
 
-  const handleGenerateVideo = async (script: string, duration: number) => {
+  const handleGenerateVideo = async (script: string, duration: 30 | 60) => {
     await generateVideo(script, duration, (timestamp) => {
       setCurrentStep(2);
       setVideoGenerationState((prev) => ({
@@ -815,6 +840,58 @@ export default function GeneratePage() {
           </div>
         </div>
       </div>
+
+      {/* Animated Toaster */}
+      {showToaster && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <div
+            className={`
+              bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg 
+              flex items-center space-x-3 max-w-sm
+              transform transition-all duration-300 ease-in-out
+              ${
+                showToaster
+                  ? 'translate-x-0 opacity-100'
+                  : 'translate-x-full opacity-0'
+              }
+            `}
+          >
+            {/* Warning Icon */}
+            <div className="flex-shrink-0">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path
+                  fillRule="evenodd"
+                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM12 9a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0112 9zm0 8a1 1 0 100-2 1 1 0 000 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+
+            {/* Message */}
+            <div className="font-medium">{toasterMessage}</div>
+
+            {/* Close Button */}
+            <button
+              onClick={() => setShowToaster(false)}
+              className="flex-shrink-0 ml-4 text-white hover:text-gray-200 transition-colors"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 }

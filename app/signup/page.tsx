@@ -9,8 +9,13 @@ export default function SignUp() {
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [code, setCode] = useState('');
+  const [usernameUsed, setUsernameUsed] = useState<string | null>(null);
+  const [awaitingCode, setAwaitingCode] = useState(false);
+  const [error, setError] = useState('');
   const router = useRouter();
-  const { login, isAuthenticated, user } = useAuth();
+  const { login, isAuthenticated, user, refreshAuth } = useAuth();
 
   // Redirect to create page if user is already authenticated
   useEffect(() => {
@@ -20,15 +25,10 @@ export default function SignUp() {
   }, [isAuthenticated, user, router]);
 
   const handleGoogleSignUp = async () => {
-    setIsLoading(true);
     try {
       login('Google');
-      // The popup will handle the authentication flow
-      // The useEffect above will redirect when authentication is successful
     } catch (error) {
       console.error('Sign up failed:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -36,11 +36,70 @@ export default function SignUp() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      login('Google');
-      // The popup will handle the authentication flow
-      // The useEffect above will redirect when authentication is successful
+      setError('');
+      const resp = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setError(data?.error || 'Failed to sign up');
+        return;
+      }
+      setUsernameUsed(data?.usernameUsed || null);
+      setAwaitingCode(true);
     } catch (error) {
       console.error('Sign up failed:', error);
+      setError(error instanceof Error ? error.message : 'Sign up failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleConfirm = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      setError('');
+      const resp = await fetch('/api/auth/confirm-signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          code,
+          username: usernameUsed || undefined,
+          password,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) {
+        setError(data?.error || 'Confirmation failed');
+        return;
+      }
+      // If server already created a session (returns user), redirect
+      if (data?.user) {
+        // Cookie set; refresh React auth state from server session
+        await refreshAuth();
+        router.push('/create');
+        return;
+      }
+      // Fallback: if server didn't set cookie, attempt client sign-in
+      const signinResp = await fetch('/api/auth/signin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const signinData = await signinResp.json();
+      if (!signinResp.ok) {
+        setError(signinData?.error || 'Sign in after confirmation failed');
+        return;
+      }
+      await refreshAuth();
+      router.push('/create');
+    } catch (error) {
+      console.error('Confirm failed:', error);
+      setError(error instanceof Error ? error.message : 'Confirm failed');
     } finally {
       setIsLoading(false);
     }
@@ -71,86 +130,115 @@ export default function SignUp() {
           </h1>
 
           {/* Sign Up Form */}
-          <form onSubmit={handleSignUp} className="space-y-6">
-            {/* Email Input */}
-            <div>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 bg-white text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Email"
-              />
-            </div>
-
-            {/* Password Input */}
-            <div>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 bg-white text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
-                placeholder="Password"
-              />
-            </div>
-
-            {/* Forgot Password Link */}
-            <div className="text-right">
-              <a href="#" className="text-gray-400 text-sm hover:text-gray-300">
-                Forgot Password?
-              </a>
-            </div>
-
-            {/* Sign Up Button */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
-            >
-              {isLoading ? 'Signing up...' : 'Sign up'}
-            </button>
-
-            {/* Sign In Link */}
-            <div className="text-center">
-              <p className="text-gray-400 text-sm">
-                Already have an account?{' '}
-                <a
-                  href="/signin"
-                  className="text-white font-semibold hover:text-gray-300"
-                >
-                  Sign in
-                </a>
-              </p>
-            </div>
-
-            {/* Separator */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300"></div>
+          {!awaitingCode ? (
+            <form onSubmit={handleSignUp} className="space-y-6">
+              {/* Email Input */}
+              <div>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-4 py-3 bg-white text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Email"
+                />
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span
-                  className="px-2 text-gray-300"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, rgb(var(--background-start-rgb)) 0%, rgb(var(--background-end-rgb)) 100%)',
+
+              {/* Password Input */}
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (error) setError('');
                   }}
+                  className="w-full pr-12 px-4 py-3 bg-white text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="absolute inset-y-0 right-3 flex items-center text-gray-600 hover:text-gray-800"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  Or continue with
-                </span>
+                  {showPassword ? (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M3 3l18 18" />
+                      <path d="M10.58 10.58a2 2 0 102.83 2.83" />
+                      <path d="M16.88 13.12A10.94 10.94 0 0012 11c-4.2 0-7.8 2.5-9 6 1.1 2.8 3.7 5 7 5 1.2 0 2.3-.2 3.3-.7" />
+                    </svg>
+                  ) : (
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z" />
+                      <circle cx="12" cy="12" r="3" />
+                    </svg>
+                  )}
+                </button>
+                {!awaitingCode && error && (
+                  <p className="text-red-500 text-sm mt-2">{error}</p>
+                )}
               </div>
-            </div>
 
-            {/* Google Sign Up Button */}
-            <button
-              type="button"
-              onClick={handleGoogleSignUp}
-              disabled={isLoading}
-              className="w-full flex items-center justify-center space-x-3 bg-white text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-50 transition-all font-semibold border border-gray-300 shadow-sm"
-            >
-              {isLoading ? (
-                <div className="w-5 h-5 border-2 border-gray-800 border-t-transparent rounded-full animate-spin"></div>
-              ) : (
+              {/* Sign Up Button */}
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
+              >
+                {isLoading ? 'Signing up...' : 'Sign up'}
+              </button>
+
+              {/* Sign In Link */}
+              <div className="text-center">
+                <p className="text-gray-400 text-sm">
+                  Already have an account?{' '}
+                  <a
+                    href="/signin"
+                    className="text-white font-semibold hover:text-gray-300"
+                  >
+                    Sign in
+                  </a>
+                </p>
+              </div>
+
+              {/* Separator */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300"></div>
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span
+                    className="px-2 text-gray-300"
+                    style={{
+                      background:
+                        'linear-gradient(135deg, rgb(var(--background-start-rgb)) 0%, rgb(var(--background-end-rgb)) 100%)',
+                    }}
+                  >
+                    Or continue with
+                  </span>
+                </div>
+              </div>
+
+              {/* Google Sign Up Button */}
+              <button
+                type="button"
+                onClick={handleGoogleSignUp}
+                className="w-full flex items-center justify-center space-x-3 bg-white text-gray-800 py-3 px-4 rounded-lg hover:bg-gray-50 transition-all font-semibold border border-gray-300 shadow-sm"
+              >
                 <svg className="w-5 h-5 text-gray-800" viewBox="0 0 24 24">
                   <path
                     fill="currentColor"
@@ -169,24 +257,56 @@ export default function SignUp() {
                     d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                   />
                 </svg>
-              )}
-              <span>Google</span>
-            </button>
+                <span>Google</span>
+              </button>
 
-            {/* Legal Text */}
-            <div className="text-left">
-              <p className="text-gray-400 text-xs">
-                By clicking on sign up, you agree to our{' '}
-                <a href="#" className="text-blue-400 hover:text-blue-300">
-                  Terms of Service
-                </a>{' '}
-                and{' '}
-                <a href="#" className="text-blue-400 hover:text-blue-300">
-                  Privacy Policy
-                </a>
-              </p>
-            </div>
-          </form>
+              {/* Legal Text */}
+              <div className="text-left">
+                <p className="text-gray-400 text-xs">
+                  By clicking on sign up, you agree to our{' '}
+                  <a href="#" className="text-blue-400 hover:text-blue-300">
+                    Terms of Service
+                  </a>{' '}
+                  and{' '}
+                  <a href="#" className="text-blue-400 hover:text-blue-300">
+                    Privacy Policy
+                  </a>
+                </p>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleConfirm} className="space-y-6">
+              <div className="text-gray-200 text-sm">
+                We sent a verification code to {email}. Enter it below to
+                confirm your account.
+              </div>
+              <div>
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => {
+                    setCode(e.target.value);
+                    if (error) setError('');
+                  }}
+                  className="w-full px-4 py-3 bg-white text-gray-900 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  placeholder="Verification code"
+                />
+                {awaitingCode && error && (
+                  <p className="text-red-500 text-sm mt-2">{error}</p>
+                )}
+              </div>
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
+              >
+                {isLoading ? 'Verifying...' : 'Verify and Continue'}
+              </button>
+              <div className="text-center text-sm text-gray-400">
+                Didn’t get the code? Check spam or wait a minute and try again.
+              </div>
+            </form>
+          )}
         </div>
       </div>
 

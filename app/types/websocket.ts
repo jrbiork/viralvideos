@@ -8,7 +8,8 @@ export type WebSocketAction =
   | 'preview_completed'
   | 'video_completed'
   | 'credit_updated'
-  | 'ping';
+  | 'ping'
+  | 'insufficient_credits';
 
 export interface WebSocketMessage {
   action: WebSocketAction;

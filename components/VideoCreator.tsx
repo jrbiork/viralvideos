@@ -3,7 +3,7 @@ import CreditsDisplay from './CreditsDisplay';
 
 interface VideoCreatorProps {
   isGenerating: boolean;
-  onGenerateVideo: (script: string, duration: number) => void;
+  onGenerateVideo: (script: string, duration: 30 | 60) => void;
   onGenerateScript: (prompt: string) => void;
   generationStatus: 'idle' | 'queued' | 'processing' | 'completed' | 'error';
   statusMessage: string;
@@ -24,9 +24,9 @@ export default function VideoCreator({
     'AI generated stunning images of the city of Tokey at night with neon lights and a beautiful skyline.',
   );
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
-  const [selectedDuration, setSelectedDuration] = useState<
-    '15s' | '30s' | '60s'
-  >('15s');
+  const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
+    '30s',
+  );
 
   // Word count calculation
   const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0;
@@ -170,21 +170,6 @@ export default function VideoCreator({
             <div className="flex justify-center w-full sm:w-auto">
               <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                 <button
-                  onClick={() => setSelectedDuration('15s')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedDuration === '15s'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                  style={
-                    selectedDuration === '15s'
-                      ? { backgroundColor: '#7552F2' }
-                      : {}
-                  }
-                >
-                  15s
-                </button>
-                <button
                   onClick={() => setSelectedDuration('30s')}
                   className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                     selectedDuration === '30s'
@@ -219,7 +204,9 @@ export default function VideoCreator({
 
             <button
               onClick={() => {
-                const duration = parseInt(selectedDuration.replace('s', ''));
+                const duration = parseInt(selectedDuration.replace('s', '')) as
+                  | 30
+                  | 60;
                 onGenerateVideo(script, duration);
               }}
               disabled={isGenerating || !script.trim() || wordCount < 10}

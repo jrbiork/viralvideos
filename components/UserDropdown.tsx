@@ -64,7 +64,7 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
           {getPictureUrl(user.picture) && !imageError ? (
             <img
               src={getPictureUrl(user.picture)!}
-              alt={user.name || user.email}
+              alt={user.email || user.name}
               className="w-8 h-8 rounded-full object-cover"
               onError={(e) => {
                 console.error('Image failed to load:', e);
@@ -76,16 +76,18 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
             />
           ) : (
             <div className="w-8 h-8 bg-purple-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
-              {(user.name || user.email || 'U').charAt(0).toUpperCase()}
+              {(user.email || user.name || 'U').charAt(0).toUpperCase()}
             </div>
           )}
           <div className="text-left">
             <div className="text-sm font-medium truncate max-w-32">
-              {user.name || 'User'}
-            </div>
-            <div className="text-xs text-gray-400 truncate max-w-32">
               {user.email}
             </div>
+            {user.name && (
+              <div className="text-xs text-gray-400 truncate max-w-32">
+                {user.name}
+              </div>
+            )}
           </div>
         </div>
         <svg

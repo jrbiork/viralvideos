@@ -751,7 +751,7 @@ export default function EditScene({
                 {/* Right Side - Example Video */}
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-white">
-                    Example Animation
+                    Output Example
                   </h3>
                   <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center">
                     <video
@@ -776,7 +776,7 @@ export default function EditScene({
                             d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1a3 3 0 000-6h-1m4 6V4a3 3 0 003-3M9 10v8a3 3 0 01-3 3M12 14l4-4 4 4"
                           />
                         </svg>
-                        <p className="text-sm">Example animation preview</p>
+                        <p className="text-sm">Output example preview</p>
                       </div>
                     </video>
                   </div>

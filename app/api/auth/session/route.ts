@@ -43,7 +43,7 @@ async function getUserInfoFromCognito(accessToken: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { token } = await request.json();
+    const { token, email: fallbackEmail, name: fallbackName } = await request.json();
 
     if (!token) {
       return NextResponse.json({ error: 'Token required' }, { status: 400 });
@@ -61,8 +61,9 @@ export async function POST(request: NextRequest) {
     const cognitoUserInfo = await getUserInfoFromCognito(token);
 
     // Get email from userInfo if not in JWT
-    const userEmail = userData.email || cognitoUserInfo?.email;
+    let userEmail = fallbackEmail || userData.email || cognitoUserInfo?.email;
     const userName =
+      fallbackName ||
       userData.name ||
       cognitoUserInfo?.name ||
       cognitoUserInfo?.given_name ||
@@ -77,7 +78,71 @@ export async function POST(request: NextRequest) {
         cognitoUserInfo: cognitoUserInfo,
         allData: userData,
       });
-      return NextResponse.json({ error: 'Invalid user data' }, { status: 400 });
+      // As a last resort, synthesize an email to satisfy downstream requirements
+      // This keeps the session flow working even if /oauth2/userInfo doesn't include email.
+      // Format: <username>@unknown.local
+      const synthesizedEmail = `${userData.username || 'user'}@unknown.local`;
+      (request as any).synthesizedEmail = synthesizedEmail;
+      // Proceed with synthesized email
+      const userInfo = {
+        name: userName,
+        picture:
+          cognitoUserInfo?.picture ||
+          cognitoUserInfo?.picture_url ||
+          userData.picture,
+      };
+
+      // Create or update user in DynamoDB
+      try {
+        const userPayload = {
+          userId: userData.sub,
+          email: synthesizedEmail,
+          name: userInfo.name,
+          username: userData.username,
+        };
+
+        const userManagementResponse = await fetch(
+          `${request.nextUrl.origin}/api/user`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(userPayload),
+          },
+        );
+
+        if (!userManagementResponse.ok) {
+          console.error(
+            'Failed to manage user via API Gateway:',
+            await userManagementResponse.text(),
+          );
+        }
+      } catch (error) {
+        console.error('Error managing user via API Gateway (synthesized):', error);
+      }
+
+      const response = NextResponse.json({
+        success: true,
+        user: {
+          id: userData.sub,
+          email: synthesizedEmail,
+          name: userName,
+          picture:
+            cognitoUserInfo?.picture ||
+            cognitoUserInfo?.picture_url ||
+            userData.picture,
+        },
+      });
+      response.cookies.set(COGNITO_TOKEN_COOKIE_NAME, token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24,
+        path: '/',
+      });
+      return response;
     }
 
     const userInfo = {
@@ -89,6 +154,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Create or update user in DynamoDB
+    let dbEmail: string | undefined;
     try {
       const userPayload = {
         userId: userData.sub,
@@ -110,8 +176,9 @@ export async function POST(request: NextRequest) {
       );
 
       if (userManagementResponse.ok) {
-        const userData = await userManagementResponse.json();
-        // User management successful
+        const managed = await userManagementResponse.json();
+        dbEmail = managed?.user?.email || dbEmail;
+        // User management successful; prefer DB email if present
       } else {
         console.error(
           'Failed to manage user via API Gateway:',
@@ -122,12 +189,15 @@ export async function POST(request: NextRequest) {
       console.error('Error managing user via API Gateway:', error);
     }
 
+    // Prefer the email returned from DB if available
+    const finalEmail = dbEmail || userEmail;
+
     // Set the Cognito token directly in a cookie
     const response = NextResponse.json({
       success: true,
       user: {
         id: userData.sub,
-        email: userEmail,
+        email: finalEmail,
         name: userInfo.name,
         picture: userInfo.picture,
       },
@@ -175,11 +245,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ user: cachedUser });
     }
 
-    // Get additional user info from Cognito
+    // Get additional user info from Cognito (may not include email for access tokens without OIDC scope)
     const cognitoUserInfo = await getUserInfoFromCognito(cognitoToken.value);
 
-    // Get email from userInfo if not in JWT
-    const userEmail = userData.email || cognitoUserInfo?.email;
+    // Derive best-effort email and name
+    let derivedEmail =
+      userData.email ||
+      cognitoUserInfo?.email ||
+      `${userData.username || 'user'}@unknown.local`;
     const userName =
       userData.name ||
       cognitoUserInfo?.name ||
@@ -187,14 +260,9 @@ export async function GET(request: NextRequest) {
       userData.username?.split('_')[1] ||
       'User';
 
-    // Validate required fields after getting user info
-    if (!userData.sub || !userEmail) {
-      console.error('Missing required user data fields in GET:', {
-        sub: userData.sub,
-        email: userEmail,
-        cognitoUserInfo: cognitoUserInfo,
-        allData: userData,
-      });
+    // Validate required id
+    if (!userData.sub) {
+      console.error('Missing required user sub in GET:', { allData: userData });
       return NextResponse.json({ user: null });
     }
 
@@ -207,10 +275,12 @@ export async function GET(request: NextRequest) {
     };
 
     // Update lastLoginAt in DynamoDB for existing sessions
+    // Try to sync/update user and prefer DB email afterwards
+    let dbEmailGet: string | undefined;
     try {
       const userPayload = {
         userId: userData.sub,
-        email: userEmail,
+        email: derivedEmail,
         name: userInfo.name,
         username: userData.username,
       };
@@ -228,7 +298,8 @@ export async function GET(request: NextRequest) {
       );
 
       if (userManagementResponse.ok) {
-        const userData = await userManagementResponse.json();
+        const managed = await userManagementResponse.json();
+        dbEmailGet = managed?.user?.email || dbEmailGet;
         // Session update successful
       } else {
         console.error(
@@ -240,10 +311,13 @@ export async function GET(request: NextRequest) {
       console.error('Error updating user session via API Gateway:', error);
     }
 
+    // Prefer email from DB if returned
+    const finalEmailGet = dbEmailGet || derivedEmail;
+
     const userResponse = {
       user: {
         id: userData.sub,
-        email: userEmail,
+        email: finalEmailGet,
         name: userInfo.name,
         picture: userInfo.picture,
       },

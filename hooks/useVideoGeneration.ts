@@ -1,5 +1,6 @@
 import { useReducer } from 'react';
 import { useAuthenticatedFetch } from '../components/useAuthenticatedFetch';
+import { format } from 'date-fns';
 
 // Define the state interface
 export interface VideoGenerationState {
@@ -34,6 +35,11 @@ const initialState: VideoGenerationState = {
   hasStartedProcess: false,
 };
 
+const SCENE_SIZES = {
+  60: 6,
+  30: 3,
+};
+
 // Reducer function
 function videoGenerationReducer(
   state: VideoGenerationState,
@@ -65,7 +71,7 @@ export function useVideoGeneration() {
 
   const generateVideo = async (
     script: string,
-    duration: number,
+    duration: 30 | 60,
     onSuccess?: (timestamp: string) => void,
   ) => {
     if (!isAuthenticated) return;
@@ -80,15 +86,15 @@ export function useVideoGeneration() {
     });
 
     try {
-      console.log('generateVideo called');
-      const timestamp = '081925211662'; // format(new Date(), 'MMddyyHHmmss');
+      console.log('generateVideo called', duration, SCENE_SIZES[duration]);
+      const timestamp = format(new Date(), 'MMddyyHHmmss');
       await authenticatedFetch('/api/generate-video', {
         method: 'POST',
         body: {
           prompt: script,
           timestamp,
           totalDuration: duration,
-          sceneCount: duration === 60 || duration === 30 ? 6 : 3,
+          sceneCount: SCENE_SIZES[duration],
           step: 1,
         },
       });
