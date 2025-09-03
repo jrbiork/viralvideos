@@ -171,6 +171,9 @@ export async function processVideoGeneration(
         await Promise.all(uploadPromises);
 
         console.log('🖼️ Images uploaded to S3');
+
+        // Re-fetch image URLs after upload
+        imageUrls = await getImageUrls(request.userId, timestamp);
       } catch (error) {
         console.error('❌ Failed to generate images:', error);
       }
