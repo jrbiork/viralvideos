@@ -123,6 +123,9 @@ export default function EditScene({
 
         // set isLoadingVideoScenes to true
         setIsLoadingVideoScenes(true);
+
+        // close the image edit modal
+        setIsImageEditModalOpen(false);
       }
       // alert(
       //   'Image saved successfully! The new image will be used for this scene.',
@@ -739,7 +742,8 @@ export default function EditScene({
                           : 'bg-gray-500 text-gray-300 cursor-not-allowed'
                       }`}
                     >
-                      Generate Animation (20 credits)
+                      Generate Animation (
+                      {animationDuration === '5s' ? '25' : '50'} credits)
                     </button>
                   </div>
                 </div>

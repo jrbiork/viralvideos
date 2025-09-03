@@ -12,6 +12,171 @@ interface UseWebSocketOptions {
   maxReconnectAttempts?: number;
 }
 
+// ---- Module-level singleton state ----
+type Subscriber = {
+  onMessage?: (m: WebSocketMessage) => void;
+  onConnect?: () => void;
+  onDisconnect?: () => void;
+  onError?: (e: Event) => void;
+  setStatus?: (status: { connected: boolean; connecting: boolean }) => void;
+};
+
+let singletonWS: WebSocket | null = null;
+let singletonConnected = false;
+let singletonConnecting = false;
+let reconnectAttempts = 0;
+let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let connectPromise: Promise<void> | null = null;
+const subscribers = new Set<Subscriber>();
+let currentUserId: string | null = null;
+
+function getWebSocketUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
+    'wss://your-websocket-api-id.execute-api.region.amazonaws.com/prod'
+  );
+}
+
+async function fetchToken(): Promise<string | null> {
+  try {
+    const res = await fetch('/api/websocket-token');
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.token || null;
+  } catch (e) {
+    console.error('WS token fetch failed:', e);
+    return null;
+  }
+}
+
+function notifyStatus() {
+  for (const sub of subscribers) {
+    sub.setStatus?.({
+      connected: singletonConnected,
+      connecting: singletonConnecting,
+    });
+  }
+}
+
+function notify(event: 'connect' | 'disconnect' | 'error', arg?: any) {
+  for (const sub of subscribers) {
+    try {
+      if (event === 'connect') sub.onConnect?.();
+      else if (event === 'disconnect') sub.onDisconnect?.();
+      else if (event === 'error') sub.onError?.(arg);
+    } catch (e) {
+      console.error('WS subscriber error:', e);
+    }
+  }
+}
+
+function broadcastMessage(msg: WebSocketMessage) {
+  for (const sub of subscribers) {
+    try {
+      sub.onMessage?.(msg);
+    } catch (e) {
+      console.error('WS subscriber message error:', e);
+    }
+  }
+}
+
+async function singletonConnect(
+  autoReconnect: boolean,
+  reconnectInterval: number,
+  maxReconnectAttempts: number,
+) {
+  if (singletonConnected || singletonConnecting) return connectPromise;
+  singletonConnecting = true;
+  notifyStatus();
+
+  if (connectPromise) return connectPromise;
+
+  connectPromise = (async () => {
+    try {
+      const token = await fetchToken();
+      if (!token) {
+        singletonConnecting = false;
+        notifyStatus();
+        return;
+      }
+      const url = `${getWebSocketUrl()}?token=${encodeURIComponent(token)}`;
+      const ws = new WebSocket(url);
+      singletonWS = ws;
+
+      ws.onopen = () => {
+        console.log('WS connected (singleton)');
+        singletonConnected = true;
+        singletonConnecting = false;
+        reconnectAttempts = 0;
+        notifyStatus();
+        notify('connect');
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const msg: WebSocketMessage = JSON.parse(ev.data);
+          broadcastMessage(msg);
+        } catch (e) {
+          console.error('WS parse error', e);
+        }
+      };
+
+      ws.onclose = (ev) => {
+        console.log('WS closed', ev.code, ev.reason);
+        singletonConnected = false;
+        singletonConnecting = false;
+        notifyStatus();
+        notify('disconnect');
+
+        if (autoReconnect && reconnectAttempts < maxReconnectAttempts) {
+          reconnectAttempts++;
+          if (reconnectTimeout) clearTimeout(reconnectTimeout);
+          reconnectTimeout = setTimeout(() => {
+            singletonConnect(
+              autoReconnect,
+              reconnectInterval,
+              maxReconnectAttempts,
+            );
+          }, reconnectInterval);
+        }
+      };
+
+      ws.onerror = (err) => {
+        console.error('WS error', err);
+        notify('error', err);
+      };
+    } finally {
+      connectPromise = null;
+    }
+  })();
+
+  return connectPromise;
+}
+
+function singletonDisconnect() {
+  if (reconnectTimeout) {
+    clearTimeout(reconnectTimeout);
+    reconnectTimeout = null;
+  }
+  if (singletonWS) {
+    try {
+      singletonWS.close();
+    } catch {}
+    singletonWS = null;
+  }
+  singletonConnected = false;
+  singletonConnecting = false;
+  notifyStatus();
+}
+
+function singletonSend(msg: WebSocketMessage) {
+  if (singletonWS && singletonWS.readyState === WebSocket.OPEN) {
+    singletonWS.send(JSON.stringify(msg));
+  } else {
+    console.error('WebSocket is not connected');
+  }
+}
+
 export function useWebSocket(options: UseWebSocketOptions = {}) {
   const {
     onMessage,
@@ -24,200 +189,83 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   } = options;
 
   const { user } = useAuth();
-  const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const connectionAttemptRef = useRef<Promise<void> | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
-
-  // Store latest callback functions in refs to avoid dependency issues
   const onConnectRef = useRef(onConnect);
   const onDisconnectRef = useRef(onDisconnect);
   const onErrorRef = useRef(onError);
   const onMessageRef = useRef(onMessage);
+  const [isConnected, setIsConnected] = useState<boolean>(singletonConnected);
+  const [isConnecting, setIsConnecting] =
+    useState<boolean>(singletonConnecting);
 
-  // Update refs when callbacks change
   useEffect(() => {
     onConnectRef.current = onConnect;
   }, [onConnect]);
-
   useEffect(() => {
     onDisconnectRef.current = onDisconnect;
   }, [onDisconnect]);
-
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
-
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
 
-  // Get WebSocket URL from environment or use a default
-  const getWebSocketUrl = useCallback(() => {
-    // In production, this would come from environment variables
-    // For now, we'll use a placeholder that will be replaced after deployment
-    const wsUrl =
-      process.env.NEXT_PUBLIC_WEBSOCKET_URL ||
-      'wss://your-websocket-api-id.execute-api.region.amazonaws.com/prod';
-    return wsUrl;
+  // subscribe this hook instance to singleton events
+  useEffect(() => {
+    const sub: Subscriber = {
+      onConnect: () => onConnectRef.current?.(),
+      onDisconnect: () => onDisconnectRef.current?.(),
+      onError: (e) => onErrorRef.current?.(e),
+      onMessage: (m) => onMessageRef.current?.(m),
+      setStatus: ({ connected, connecting }) => {
+        setIsConnected(connected);
+        setIsConnecting(connecting);
+      },
+    };
+    subscribers.add(sub);
+    // sync initial status
+    sub.setStatus?.({
+      connected: singletonConnected,
+      connecting: singletonConnecting,
+    });
+    return () => {
+      subscribers.delete(sub);
+    };
   }, []);
 
   const connect = useCallback(async () => {
-    if (!user || isConnecting || isConnected) return;
-
-    // Check if there's already an open WebSocket connection
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('WebSocket connection already exists and is open');
-      return;
+    if (!user) return;
+    // if user changed, force disconnect to refresh token
+    if (currentUserId !== user.userId) {
+      currentUserId = user.userId;
+      singletonDisconnect();
     }
-
-    // If there's already a connection attempt in progress, return the existing promise
-    if (connectionAttemptRef.current) {
-      return connectionAttemptRef.current;
-    }
-
-    setIsConnecting(true);
-
-    // Create a new connection attempt promise
-    connectionAttemptRef.current = (async () => {
-      try {
-        // Get the JWT token from the server via API endpoint
-        const tokenResponse = await fetch('/api/websocket-token');
-
-        if (!tokenResponse.ok) {
-          console.error('Failed to get authentication token for WebSocket');
-          setIsConnecting(false);
-          return;
-        }
-
-        const tokenData = await tokenResponse.json();
-        const token = tokenData.token;
-
-        if (!token) {
-          console.error('No authentication token available');
-          setIsConnecting(false);
-          return;
-        }
-
-        const wsUrl = getWebSocketUrl();
-        const url = `${wsUrl}?token=${encodeURIComponent(token)}`;
-
-        const ws = new WebSocket(url);
-        wsRef.current = ws;
-
-        ws.onopen = () => {
-          console.log('WebSocket connected opened! on url:', url);
-          setIsConnected(true);
-          setIsConnecting(false);
-          reconnectAttemptsRef.current = 0;
-          onConnectRef.current?.();
-        };
-
-        ws.onmessage = (event) => {
-          try {
-            const message: WebSocketMessage = JSON.parse(event.data);
-            console.log('WebSocket message received:', message);
-            onMessageRef.current?.(message);
-          } catch (error) {
-            console.error('Error parsing WebSocket message:', error);
-          }
-        };
-
-        ws.onclose = (event) => {
-          console.log('WebSocket disconnected:', event.code, event.reason);
-          setIsConnected(false);
-          setIsConnecting(false);
-          onDisconnectRef.current?.();
-
-          // Auto-reconnect logic
-          if (
-            autoReconnect &&
-            reconnectAttemptsRef.current < maxReconnectAttempts
-          ) {
-            reconnectAttemptsRef.current++;
-            console.log(
-              `Attempting to reconnect (${reconnectAttemptsRef.current}/${maxReconnectAttempts})...`,
-            );
-
-            reconnectTimeoutRef.current = setTimeout(() => {
-              connect();
-            }, reconnectInterval);
-          }
-        };
-
-        ws.onerror = (error) => {
-          console.error('WebSocket error:', error);
-          onErrorRef.current?.(error);
-        };
-      } catch (error) {
-        console.error('Error connecting to WebSocket:', error);
-        setIsConnecting(false);
-      } finally {
-        // Clear the connection attempt reference
-        connectionAttemptRef.current = null;
-      }
-    })();
-
-    return connectionAttemptRef.current;
-  }, [
-    user,
-    isConnecting,
-    isConnected,
-    autoReconnect,
-    reconnectInterval,
-    maxReconnectAttempts,
-    getWebSocketUrl,
-  ]);
+    await singletonConnect(
+      autoReconnect,
+      reconnectInterval,
+      maxReconnectAttempts,
+    );
+  }, [user, autoReconnect, reconnectInterval, maxReconnectAttempts]);
 
   const disconnect = useCallback(() => {
-    if (reconnectTimeoutRef.current) {
-      clearTimeout(reconnectTimeoutRef.current);
-      reconnectTimeoutRef.current = null;
-    }
-
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
-
-    setIsConnected(false);
-    setIsConnecting(false);
-    reconnectAttemptsRef.current = 0;
+    singletonDisconnect();
   }, []);
 
   const sendMessage = useCallback((message: WebSocketMessage) => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket is not connected');
-    }
+    singletonSend(message);
   }, []);
 
   const ping = useCallback(() => {
     sendMessage({ action: 'ping' });
   }, [sendMessage]);
 
-  // Connect when user is available
   useEffect(() => {
-    if (user) {
-      connect();
-    } else {
-      disconnect();
-    }
-
+    if (user) connect();
+    else disconnect();
     return () => {
-      disconnect();
+      /* leave connection for other subscribers */
     };
-  }, [user]); // Only depend on user changes
+  }, [user, connect, disconnect]);
 
-  return {
-    isConnected,
-    isConnecting,
-    connect,
-    disconnect,
-    sendMessage,
-    ping,
-  };
+  return { isConnected, isConnecting, connect, disconnect, sendMessage, ping };
 }

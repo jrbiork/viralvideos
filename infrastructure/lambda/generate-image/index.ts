@@ -1,9 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 import { generateImage } from '../utils/image';
-import { Scene } from '../utils/script';
 
-import { broadcastProgress } from '../video-generation';
 import { CREDITS_COST } from '../utils/credits';
 
 import {
@@ -75,7 +73,9 @@ export const handler = async (
       };
     }
 
-    const seed = parseInt(timestamp);
+    // get last 4 digits of timestamp
+
+    const seed = Math.floor(Math.random() * 10000);
     const sceneId = 99;
 
     const imageUrl = await generateImage(

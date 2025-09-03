@@ -71,7 +71,7 @@ export async function processAnimateImage(
       };
     }
 
-    const seed = parseInt(timestamp);
+    const seed = Math.floor(Math.random() * 10000);
 
     // Generate video from the provided image
     const videoKey = await generateVideoClip(

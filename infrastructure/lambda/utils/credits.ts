@@ -14,11 +14,11 @@ const docClient = DynamoDBDocumentClient.from(client);
 const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'viral-videos-users';
 
 export const CREDITS_COST = {
-  preview_video: 10,
+  preview_video: 15,
   new_audio_subtitle: 1,
   new_image: 5,
-  ai_video_5s: 10,
-  ai_video_10s: 20,
+  ai_video_5s: 20,
+  ai_video_10s: 40,
 };
 
 interface User {
