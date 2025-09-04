@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
       cognitoToken.length,
     );
 
-    const { prompt, totalDuration, sceneCount, timestamp } =
+    const { prompt, totalDuration, sceneCount, timestamp, voice } =
       await request.json();
 
     if (!prompt) {
@@ -67,7 +67,23 @@ export async function POST(request: NextRequest) {
     const script = (prompt ?? '').toString();
     const duration = videoTotalDuration;
     const aspect_ratio = '9:16';
-    const voice = 'en-US-Standard-C';
+
+    // Validate and use selected voice, default to 'alloy' if not provided
+    const supportedVoices = [
+      'alloy',
+      'ash',
+      'ballad',
+      'coral',
+      'fable',
+      'nova',
+      'onyx',
+      'sage',
+      'shimmer',
+      'verse',
+    ];
+    const selectedVoice =
+      voice && supportedVoices.includes(voice) ? voice : 'alloy';
+
     const captions = true;
 
     console.log('🔧 Environment check (generate-video):', {
@@ -84,11 +100,14 @@ export async function POST(request: NextRequest) {
 
     // Prepare Lambda payload
     const lambdaPayload = {
+      // Required fields for VideoGenerationRequest
+      type: 'generate-video',
+      step: 1,
+      voice: selectedVoice,
       // prefer the backend-friendly schema
       script,
       duration,
       aspect_ratio,
-      voice,
       captions,
       // keep your originals in case backend accepts them too
       prompt,
@@ -113,6 +132,13 @@ export async function POST(request: NextRequest) {
     );
 
     const authHeaderValue = `Bearer ${cognitoToken}`;
+
+    console.log('🚀 Sending lambdaPayload with voice:', {
+      voice: lambdaPayload.voice,
+      type: lambdaPayload.type,
+      step: lambdaPayload.step,
+      fullPayload: lambdaPayload,
+    });
 
     const lambdaResponse = await fetch(apiGatewayUrl, {
       method: 'POST',

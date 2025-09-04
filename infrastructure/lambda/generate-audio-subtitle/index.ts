@@ -24,6 +24,7 @@ interface RequestBody {
   userId: string;
   timestamp: string;
   voiceToneInstruction?: string;
+  voice?: string;
 }
 
 export const handler = async (
@@ -59,7 +60,10 @@ export const handler = async (
     }
 
     // get one scene object from body
-    const scene = JSON.parse(event.body).scene as Scene;
+    const requestBody = JSON.parse(event.body);
+    const scene = requestBody.scene as Scene;
+    const voice = requestBody.voice || 'alloy';
+
     if (!scene) {
       return {
         statusCode: 400,
@@ -101,6 +105,8 @@ export const handler = async (
       [scene],
       userId,
       timestamp,
+      'Speak in a cheerful and positive tone',
+      voice,
     );
     console.log('subtitles generated:', JSON.stringify(subtitles, null, 2));
 

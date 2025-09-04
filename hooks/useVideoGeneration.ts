@@ -73,6 +73,7 @@ export function useVideoGeneration() {
     script: string,
     duration: 30 | 60,
     onSuccess?: (timestamp: string) => void,
+    voice?: string,
   ) => {
     if (!isAuthenticated) return;
 
@@ -96,6 +97,7 @@ export function useVideoGeneration() {
           totalDuration: duration,
           sceneCount: SCENE_SIZES[duration],
           step: 1,
+          voice: voice || 'alloy', // Default to alloy if no voice selected
         },
       });
 

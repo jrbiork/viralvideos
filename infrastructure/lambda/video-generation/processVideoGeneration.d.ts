@@ -7,5 +7,6 @@ export interface VideoGenerationRequest {
     totalDuration: number;
     sceneCount: number;
     step: number;
+    voice?: string;
 }
 export declare function processVideoGeneration(request: VideoGenerationRequest, record?: SQSRecord): Promise<any>;

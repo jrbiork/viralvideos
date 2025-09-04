@@ -21,6 +21,7 @@ import { WebSocketMessage } from '../types/websocket';
 export default function GeneratePage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [selectedVoice, setSelectedVoice] = useState('ash'); // Track voice selection
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
@@ -382,17 +383,29 @@ export default function GeneratePage() {
   // Subscribe to WebSocket updates when connected
   // WebSocket connection is now automatic - no subscription needed
 
-  const handleGenerateVideo = async (script: string, duration: 30 | 60) => {
-    await generateVideo(script, duration, (timestamp) => {
-      setCurrentStep(2);
-      setVideoGenerationState((prev) => ({
-        ...prev,
-        currentTimestamp: timestamp,
-        isLoadingSubtitles: true,
-      }));
+  const handleGenerateVideo = async (
+    script: string,
+    duration: 30 | 60,
+    voice?: string,
+  ) => {
+    // Update the selected voice state for use in regeneration
+    if (voice) {
+      setSelectedVoice(voice);
+    }
 
-      // WebSocket updates are now automatic
-    });
+    await generateVideo(
+      script,
+      duration,
+      (timestamp) => {
+        setCurrentStep(2);
+        setVideoGenerationState((prev) => ({
+          ...prev,
+          currentTimestamp: timestamp,
+          isLoadingSubtitles: true,
+        }));
+      },
+      voice,
+    );
   };
 
   const handleGenerateScript = async (prompt: string) => {
@@ -433,6 +446,7 @@ export default function GeneratePage() {
         body: JSON.stringify({
           scene: updatedScene, // Send the single scene with updated narration
           instructions: 'Speak in a cheerful and positive tone',
+          voice: selectedVoice, // Include the selected voice
           timestamp:
             videoGenerationState.currentTimestamp ||
             queryParams.get('timestamp'),

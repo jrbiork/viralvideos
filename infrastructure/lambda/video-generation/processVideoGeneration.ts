@@ -28,6 +28,7 @@ export interface VideoGenerationRequest {
   totalDuration: number;
   sceneCount: number;
   step: number;
+  voice?: string;
 }
 
 export async function processVideoGeneration(
@@ -36,6 +37,8 @@ export async function processVideoGeneration(
 ): Promise<any> {
   try {
     console.log('processVideoGeneration:', request);
+
+    console.log('request.voice:', request.voice);
 
     // Use timestamp
     const timestamp = request.timestamp;
@@ -202,6 +205,7 @@ export async function processVideoGeneration(
         request.userId,
         timestamp,
         voiceToneInstruction,
+        request.voice || 'ash',
       );
 
       // Step 4: Generate subtitle file

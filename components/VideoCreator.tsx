@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import CreditsDisplay from './CreditsDisplay';
+import VoiceSelection from './VoiceSelection';
 
 interface VideoCreatorProps {
   isGenerating: boolean;
-  onGenerateVideo: (script: string, duration: 30 | 60) => void;
+  onGenerateVideo: (script: string, duration: 30 | 60, voice?: string) => void;
   onGenerateScript: (prompt: string) => void;
   generationStatus: 'idle' | 'queued' | 'processing' | 'completed' | 'error';
   statusMessage: string;
@@ -27,6 +28,7 @@ export default function VideoCreator({
   const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
     '30s',
   );
+  const [selectedVoice, setSelectedVoice] = useState('ash');
 
   // Word count calculation
   const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0;
@@ -207,7 +209,7 @@ export default function VideoCreator({
                 const duration = parseInt(selectedDuration.replace('s', '')) as
                   | 30
                   | 60;
-                onGenerateVideo(script, duration);
+                onGenerateVideo(script, duration, selectedVoice);
               }}
               disabled={isGenerating || !script.trim() || wordCount < 10}
               className={`px-6 py-3 text-base font-semibold flex items-center justify-center space-x-2 transition-all duration-300 ${
@@ -236,6 +238,17 @@ export default function VideoCreator({
               )}
             </button>
           </div>
+        </div>
+
+        {/* Voice Selection Section */}
+        <div className="mb-8 px-2.5">
+          <VoiceSelection
+            selectedVoice={selectedVoice}
+            onVoiceSelect={setSelectedVoice}
+            onVoiceClone={() =>
+              console.log('Voice clone functionality coming soon')
+            }
+          />
         </div>
       </div>
     </>

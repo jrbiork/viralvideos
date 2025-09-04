@@ -6,6 +6,7 @@ const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 interface VideoGenerationRequest {
   prompt: string;
   userId: string;
+  voice?: string;
   timestamp: string;
   totalDuration: number;
   sceneCount: number;
@@ -56,10 +57,16 @@ export const handler = async (
       type: 'generate-video' as const,
       prompt: request.prompt,
       userId: userId || request.userId || 'demo-user',
+      voice: request.voice || 'ash',
       timestamp: request.timestamp || new Date().toISOString(),
       totalDuration: request.totalDuration || 30,
       sceneCount: request.sceneCount || 3,
+      step: 1,
     };
+
+    console.log('🎤 Video Queue - Request voice:', request.voice);
+    console.log('🎤 Video Queue - MessageBody voice:', messageBody.voice);
+    console.log('🚀 Video Queue - Full messageBody:', messageBody);
 
     // Send message to SQS
     const sendMessageCommand = new SendMessageCommand({

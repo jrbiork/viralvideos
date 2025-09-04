@@ -27,6 +27,10 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
       // Parse the message body
       const request: VideoGenerationRequest = JSON.parse(record.body);
 
+      console.log('🔍 Raw SQS record body:', record.body);
+      console.log('🔍 Parsed request object:', request);
+      console.log('🔍 Request voice field:', request.voice);
+
       // Dispatch based on request type; default to generate video
       if (request.type === 'save-image') {
         await processSaveImage(request as any, record);
