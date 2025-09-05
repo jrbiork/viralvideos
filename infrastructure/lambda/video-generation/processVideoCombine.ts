@@ -36,7 +36,7 @@ export async function processVideoCombine(
 
     const hydratedManifest = await hydrateManifest(manifest);
 
-    broadcastProgress('video_completed', userId, timestamp, {
+    await broadcastProgress('video_completed', userId, timestamp, {
       manifest: hydratedManifest,
     });
     console.log('✅ Video combined completed');

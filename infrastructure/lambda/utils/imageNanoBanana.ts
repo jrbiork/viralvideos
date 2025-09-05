@@ -41,7 +41,7 @@ export async function generateNanoBananaImage(
     // Generate an image using Gemini Nano Banana
     console.log('🎨 genai - Generating image from text...');
 
-    const prompt = `${description} - photorealistic, film grain, 50mm lens, dramatic rim light, vertical format 9:16, no text, no logos, clean visual content only`;
+    const prompt = `${description} - photorealistic, film grain, 50mm lens, dramatic rim light. Aspect ratio: 720:1280, Vertical format (9:16)`;
 
     const response = await genAI.models.generateContent({
       model: 'gemini-2.5-flash-image-preview',
