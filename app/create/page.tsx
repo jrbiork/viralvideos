@@ -8,6 +8,7 @@ import ProgressSteps from '../../components/ProgressSteps';
 import VideoCreator from '../../components/VideoCreator';
 import EditScene from '../../components/EditScene';
 import EditSceneSkeleton from '../../components/EditSceneSkeleton';
+import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../../lib/constants';
 import AddSceneButton from '../../components/AddSceneButton';
 import ExportVideo from '../../components/ExportVideo';
 import { parseColoredText, parseAssFile } from '../../lib/subtitle-utils';
@@ -21,7 +22,8 @@ import { WebSocketMessage } from '../types/websocket';
 export default function GeneratePage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedVoice, setSelectedVoice] = useState('ash'); // Track voice selection
+  const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE); // Track voice selection
+  const [selectedLanguage, setSelectedLanguage] = useState(DEFAULT_LANGUAGE); // Track language selection
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
@@ -190,7 +192,7 @@ export default function GeneratePage() {
       const timestamp = videoGenerationState.manifest!.generatedAt;
 
       // Add all file types to mediaFiles
-      mediaFiles[`${timestamp}.scene-${sceneId}.jpg`] = files.jpg;
+      mediaFiles[`${timestamp}.scene-${sceneId}.png`] = files.png || '';
       mediaFiles[`${timestamp}.scene-${sceneId}.mp3`] = files.mp3;
       mediaFiles[`${timestamp}.scene-${sceneId}.mp4`] = files.mp4;
     });
@@ -543,6 +545,40 @@ export default function GeneratePage() {
     }
   };
 
+  const handleCombineVideo = async () => {
+    if (!videoGenerationState.currentTimestamp) {
+      console.error('No timestamp available');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/combine-video', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          timestamp: videoGenerationState.currentTimestamp,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to combine video: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('🎬 Combine video request queued:', result);
+
+      // Show success message or handle response
+      setToasterMessage('Video combination started!');
+      setShowToaster(true);
+    } catch (error) {
+      console.error('Error combining video:', error);
+      setToasterMessage('Failed to combine video. Please try again.');
+      setShowToaster(true);
+    }
+  };
+
   // Right sidebar content
   const rightSidebarContent = (
     <div className="sticky">
@@ -744,7 +780,7 @@ export default function GeneratePage() {
                       {/* Scene Cards */}
                       {scenes.map((scene: any, index: number) => {
                         // Get the image URL for this scene
-                        const imageKey = `${videoGenerationState.currentTimestamp}.scene-${index}.jpg`;
+                        const imageKey = `${videoGenerationState.currentTimestamp}.scene-${index}.png`;
                         const imageUrl = getMediaFiles()[imageKey];
 
                         return (
@@ -837,6 +873,16 @@ export default function GeneratePage() {
               className="px-4 py-2 border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
             >
               ← Back
+            </button>
+          </div>
+
+          {/* Combine Video Button */}
+          <div className="absolute bottom-4 right-4">
+            <button
+              onClick={handleCombineVideo}
+              className="px-4 py-2 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors"
+            >
+              Combine Video
             </button>
           </div>
 
