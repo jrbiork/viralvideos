@@ -41,6 +41,7 @@ export async function generateNarration(
   timestamp: string,
   instructions: string = 'Speak in a cheerful and positive tone',
   voice: string = 'alloy',
+  language: string = 'en',
 ): Promise<NarrationResult> {
   console.log(
     '🎤 Generating narration from scenes with word-level timestamps...',
@@ -93,7 +94,7 @@ export async function generateNarration(
         model: 'whisper-1',
         response_format: 'verbose_json',
         timestamp_granularities: ['word'],
-        language: 'en',
+        language: language,
       });
 
       // Save transcription to S3

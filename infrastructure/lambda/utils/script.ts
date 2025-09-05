@@ -113,31 +113,31 @@ export async function generateStoryBreakdown(
     console.log('🎤 Voice tone instruction:', voiceToneInstruction);
 
     // Save script response to S3
-    const scriptKey = `${userId}/${timestamp}.script.txt`;
-    const scriptContent = JSON.stringify(
-      {
-        prompt,
-        sceneCount,
-        sceneDuration,
-        totalDuration,
-        scenes: scenesWithIds,
-        voiceToneInstruction,
-        timestamp,
-      },
-      null,
-      2,
-    );
+    // const scriptKey = `${userId}/${timestamp}.script.txt`;
+    // const scriptContent = JSON.stringify(
+    //   {
+    //     prompt,
+    //     sceneCount,
+    //     sceneDuration,
+    //     totalDuration,
+    //     scenes: scenesWithIds,
+    //     voiceToneInstruction,
+    //     timestamp,
+    //   },
+    //   null,
+    //   2,
+    // );
 
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Key: scriptKey,
-        Body: scriptContent,
-        ContentType: 'text/plain',
-      }),
-    );
+    // await s3.send(
+    //   new PutObjectCommand({
+    //     Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+    //     Key: scriptKey,
+    //     Body: scriptContent,
+    //     ContentType: 'text/plain',
+    //   }),
+    // );
 
-    console.log(`💾 Script saved to S3: ${scriptKey}`);
+    // console.log(`💾 Script saved to S3: ${scriptKey}`);
 
     return { scenes: scenesWithIds, voiceToneInstruction };
   } catch (error) {

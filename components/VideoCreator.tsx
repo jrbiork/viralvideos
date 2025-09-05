@@ -1,10 +1,17 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import CreditsDisplay from './CreditsDisplay';
 import VoiceSelection from './VoiceSelection';
+import LanguageSelection from './LanguageSelection';
+import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../lib/constants';
 
 interface VideoCreatorProps {
   isGenerating: boolean;
-  onGenerateVideo: (script: string, duration: 30 | 60, voice?: string) => void;
+  onGenerateVideo: (
+    script: string,
+    duration: 30 | 60,
+    voice?: string,
+    language?: string,
+  ) => void;
   onGenerateScript: (prompt: string) => void;
   generationStatus: 'idle' | 'queued' | 'processing' | 'completed' | 'error';
   statusMessage: string;
@@ -28,7 +35,13 @@ export default function VideoCreator({
   const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
     '30s',
   );
-  const [selectedVoice, setSelectedVoice] = useState('ash');
+  const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE);
+  const [selectedLanguage, setSelectedLanguage] = useState(DEFAULT_LANGUAGE);
+
+  // Debug: Track language changes
+  useEffect(() => {
+    console.log('🌍 selectedLanguage state changed to:', selectedLanguage);
+  }, [selectedLanguage]);
 
   // Word count calculation
   const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0;
@@ -38,12 +51,20 @@ export default function VideoCreator({
   const handleMagicScript = async () => {
     if (!script.trim()) return;
 
+    console.log('🌍 Selected Language:', selectedLanguage);
+    console.log(
+      '🔗 API URL will be:',
+      `/api/enhance-prompt?prompt=${encodeURIComponent(
+        script.trim(),
+      )}&duration=${selectedDuration}&language=${selectedLanguage}`,
+    );
+
     setIsGeneratingScript(true);
     try {
       const response = await fetch(
         `/api/enhance-prompt?prompt=${encodeURIComponent(
           script.trim(),
-        )}&duration=${selectedDuration}`,
+        )}&duration=${selectedDuration}&language=${selectedLanguage}`,
         {
           method: 'GET',
           credentials: 'include',
@@ -209,7 +230,12 @@ export default function VideoCreator({
                 const duration = parseInt(selectedDuration.replace('s', '')) as
                   | 30
                   | 60;
-                onGenerateVideo(script, duration, selectedVoice);
+                onGenerateVideo(
+                  script,
+                  duration,
+                  selectedVoice,
+                  selectedLanguage,
+                );
               }}
               disabled={isGenerating || !script.trim() || wordCount < 10}
               className={`px-6 py-3 text-base font-semibold flex items-center justify-center space-x-2 transition-all duration-300 ${

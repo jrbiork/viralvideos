@@ -5,6 +5,7 @@ import {
   type CognitoUserPayload,
 } from '../../../lib/auth-utils';
 import OpenAI from 'openai';
+import { DEFAULT_LANGUAGE } from '../../../lib/constants';
 
 const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
 
@@ -32,6 +33,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const prompt = searchParams.get('prompt');
     const rawDuration = (searchParams.get('duration') || '30').toString();
+    const language = searchParams.get('language') || DEFAULT_LANGUAGE;
     const durationLabel = `${rawDuration}s`;
     const wordLimit = 100;
 
@@ -42,16 +44,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Create the system prompt for OpenAI
-    const systemPrompt = `Elaborate on a rough idea into a objective, precise and concise description for a short video of ${rawDuration} seconds.
-  
-                          Rules (follow strictly):
-                          - Do not exceed ≤ ${wordLimit} words.
-                          - Keep the language simple and concise; no flowery/poetic language.
-                          - Maintain the user's intent and theme.
-                          - No lists, no scene numbers, no hashtags or emojis.
+    // Create language-specific instructions
+    const languageInstructions = {
+      en: 'Write in English',
+      es: 'Escribe en español',
+      fr: 'Écris en français',
+      de: 'Schreibe auf Deutsch',
+      it: 'Scrivi in italiano',
+      pt: 'Escreva em português',
+      'pt-BR': 'Escreva em português brasileiro',
+    };
 
-                          Return only the final paragraph.`;
+    const langInstruction =
+      languageInstructions[language as keyof typeof languageInstructions] ||
+      'Write in English';
+
+    // Create the system prompt for OpenAI
+    const systemPrompt = `Elaborate on a objective idea, precise and concise description for a short video of ${rawDuration} seconds.
+                      ${langInstruction}. 
+                      Rules (follow strictly):
+                      - Do not exceed ≤ ${wordLimit} words.
+                      - Keep the language simple and concise; no flowery/poetic language.
+                      - Maintain the user's intent and theme.
+                      - No lists, no scene numbers, no hashtags or emojis.
+
+                      Return only the final paragraph.`;
 
     // Create the user prompt
     const userPrompt = `Idea: ${prompt}\nTarget: 9:16 vertical, ${rawDuration}s.\nWrite the final paragraph now (≤${wordLimit} words).`;

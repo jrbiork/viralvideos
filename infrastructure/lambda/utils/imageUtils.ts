@@ -9,7 +9,7 @@ export async function getImageUrls(
   userId: string,
   timestamp: string,
 ): Promise<Array<{ [key: string]: string }>> {
-  // Format: [{ "timestamp.scene-id.jpg": "signed-url" }]
+  // Format: [{ "timestamp.scene-id.png": "signed-url" }]
   // Returns an array of objects where each object maps filename to signed URL
   const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -32,7 +32,7 @@ export async function getImageUrls(
 
     // Sort by scene number and generate pre-signed URLs
     const sortedObjects = response.Contents.filter((obj) =>
-      obj.Key?.endsWith('.jpg'),
+      obj.Key?.endsWith('.png'),
     ).sort((a, b) => {
       const sceneA = parseInt(a.Key?.split('scene-')[1]?.split('.')[0] || '0');
       const sceneB = parseInt(b.Key?.split('scene-')[1]?.split('.')[0] || '0');
@@ -51,7 +51,7 @@ export async function getImageUrls(
 
         const signedUrl = await getSignedUrl(s3, command, { expiresIn: 36000 }); // 1 hour expiration
 
-        // Extract filename without user prefix (e.g., "1004.scene-1.jpg")
+        // Extract filename without user prefix (e.g., "1004.scene-1.png")
         const filename = obj.Key.replace(`${userId}/`, '');
 
         return { [filename]: signedUrl };

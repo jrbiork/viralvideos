@@ -67,29 +67,27 @@ export const handler = async (
       Prefix: `${userId}/`,
     });
 
-    const thumbnailListResponse = await s3.send(thumbnailListCommand);
+    const thumbnailListResponse = await (s3 as any).send(thumbnailListCommand);
     console.log(
       '✅ Listed thumbnail objects:',
       thumbnailListResponse.Contents?.length || 0,
     );
 
-    // Create a map of timestamp to thumbnail URL
-    const thumbnailMap = new Map<string, string>();
     console.log(
       '🖼️ Available thumbnail keys:',
-      thumbnailListResponse.Contents?.map((obj) => obj.Key).filter((key) =>
-        key?.endsWith('.scene-0.jpg'),
+      thumbnailListResponse.Contents?.map((obj: any) => obj.Key).filter(
+        (key: any) => key?.endsWith('.scene-0.png'),
       ) || [],
     );
 
     if (thumbnailListResponse.Contents) {
-      await Promise.all(
-        thumbnailListResponse.Contents.filter((object) =>
-          object.Key?.endsWith('.scene-0.jpg'),
-        ).map(async (object) => {
-          if (!object.Key) return;
+      const thumbnailData = await Promise.all(
+        thumbnailListResponse.Contents.filter((object: any) =>
+          object.Key?.endsWith('.scene-0.png'),
+        ).map(async (object: any) => {
+          if (!object.Key) return null;
 
-          // Extract timestamp from thumbnail key: user123/1703123456789.scene-0.jpg -> 1703123456789
+          // Extract timestamp from thumbnail key: user123/1703123456789.scene-0.png -> 1703123456789
           const timestamp = object.Key.split('/').pop()?.split('.')[0] || '';
           console.log('🖼️ Generating thumbnail URL for timestamp:', timestamp);
 
@@ -106,107 +104,39 @@ export const handler = async (
             },
           );
 
-          thumbnailMap.set(timestamp, thumbnailUrl);
+          return {
+            thumbnailUrl,
+            size: object.Size,
+            lastModified: object.LastModified?.toISOString(),
+            timestamp,
+            createdAt: object.LastModified?.toISOString(),
+          };
         }),
       );
-    }
 
-    // List objects in the S3 bucket for this user
-    console.log('📋 Listing videos for user:', userId);
-    const listCommand = new ListObjectsV2Command({
-      Bucket: process.env.VIDEO_BUCKET_NAME,
-      Prefix: `${userId}/`,
-    });
+      // Filter out null values and sort by timestamp (newest first)
+      const validThumbnails = thumbnailData
+        .filter((item): item is NonNullable<typeof item> => item !== null)
+        .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
 
-    const listResponse = await s3.send(listCommand);
-    console.log('✅ Listed objects:', listResponse.Contents?.length || 0);
-    console.log(
-      '🎬 Available video keys:',
-      listResponse.Contents?.map((obj) => obj.Key).filter((key) =>
-        key?.endsWith('.mp4'),
-      ) || [],
-    );
-
-    if (!listResponse.Contents || listResponse.Contents.length === 0) {
-      console.log('📭 No videos found for user:', userId);
       return {
         statusCode: 200,
         body: JSON.stringify({
-          videos: [],
-          message: 'No videos found',
+          videos: validThumbnails,
+          message: `Found ${validThumbnails.length} thumbnails`,
         }),
       };
     }
 
-    // Filter for video files and generate pre-signed URLs
-    const videos = await Promise.all(
-      listResponse.Contents.filter((object) =>
-        object.Key?.endsWith('.mp4'),
-      ).map(async (object) => {
-        if (!object.Key) return null;
-
-        console.log('🔗 Generating pre-signed URL for:', object.Key);
-        const getObjectCommand = new GetObjectCommand({
-          Bucket: process.env.VIDEO_BUCKET_NAME,
-          Key: object.Key,
-        });
-
-        const videoUrl = await getSignedUrl(
-          s3 as any,
-          getObjectCommand as any,
-          {
-            expiresIn: 36000, // 1 hour
-          },
-        );
-
-        // Extract timestamp from video key: user123/1703123456789-final-video.mp4 -> 1703123456789
-        const timestamp =
-          object.Key.split('/').pop()?.split('-final-video')[0] || '';
-        console.log(
-          '🎬 Video timestamp extracted:',
-          timestamp,
-          'from key:',
-          object.Key,
-        );
-        const thumbnailUrl = thumbnailMap.get(timestamp) || null;
-        console.log(
-          '🖼️ Thumbnail URL found:',
-          thumbnailUrl ? 'YES' : 'NO',
-          'for timestamp:',
-          timestamp,
-        );
-
-        return {
-          key: object.Key,
-          url: videoUrl,
-          thumbnailUrl: thumbnailUrl,
-          size: object.Size,
-          lastModified: object.LastModified,
-          timestamp: timestamp,
-        };
-      }),
-    );
-
-    const validVideos = videos.filter((video) => video !== null);
-    console.log('✅ Generated URLs for', validVideos.length, 'videos');
-
     return {
       statusCode: 200,
       body: JSON.stringify({
-        videos: validVideos,
-        message: `Found ${validVideos.length} videos`,
+        videos: [],
+        message: 'No thumbnails found',
       }),
     };
   } catch (error) {
     console.error('💥 Error in fetch videos:', error);
-    console.error(
-      'Error stack:',
-      error instanceof Error ? error.stack : 'No stack trace',
-    );
-    console.error(
-      'Error message:',
-      error instanceof Error ? error.message : 'Unknown error',
-    );
 
     return {
       statusCode: 500,

@@ -23,6 +23,7 @@ export class ViralVideosStack extends cdk.Stack {
     // Get API keys with fallbacks
     const runwayApiKey = process.env.RUNWAY_API_KEY || '';
     const openaiApiKey = process.env.OPENAI_API_KEY || '';
+    const geminiApiKey = process.env.GEMINI_API_KEY || '';
 
     const websocketDomainName = process.env.WEBSOCKET_DOMAIN_NAME || '';
     const websocketEnv = process.env.WEBSOCKET_STAGE || '';
@@ -40,6 +41,9 @@ export class ViralVideosStack extends cdk.Stack {
     }
     if (!openaiApiKey) {
       console.warn('⚠️  OPENAI_API_KEY is not set. Video generation may fail.');
+    }
+    if (!geminiApiKey) {
+      console.warn('⚠️  GEMINI_API_KEY is not set. Image generation may fail.');
     }
 
     // S3 Bucket for storing videos and assets
@@ -197,6 +201,7 @@ export class ViralVideosStack extends cdk.Stack {
           USERS_TABLE_NAME: usersTable.tableName,
           RUNWAY_API_KEY: runwayApiKey,
           OPENAI_API_KEY: openaiApiKey,
+          GEMINI_API_KEY: geminiApiKey,
           VIDEO_QUEUE_URL: videoQueue.queueUrl,
           PATH: '/opt/bin:/usr/local/bin:/usr/bin/:/bin',
           FONTCONFIG_PATH: '/opt/etc/fonts',
@@ -416,6 +421,7 @@ export class ViralVideosStack extends cdk.Stack {
         }),
         environment: {
           RUNWAY_API_KEY: runwayApiKey,
+          GEMINI_API_KEY: geminiApiKey,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
           WEBSOCKET_DOMAIN_NAME: websocketDomainName,
           WEBSOCKET_STAGE: websocketEnv,
@@ -439,6 +445,7 @@ export class ViralVideosStack extends cdk.Stack {
       }),
       environment: {
         RUNWAY_API_KEY: runwayApiKey,
+        GEMINI_API_KEY: geminiApiKey,
         VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
         WEBSOCKET_DOMAIN_NAME: websocketDomainName,
         WEBSOCKET_STAGE: websocketEnv,

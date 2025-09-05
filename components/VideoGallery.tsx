@@ -15,10 +15,10 @@ import VideoPreview from './VideoPreview';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 
 interface Video {
-  key: string;
-  url: string;
+  key?: string;
+  url?: string;
   thumbnailUrl: string | null;
-  timestamp: number;
+  timestamp: number | string;
   createdAt: string;
   lastModified: string;
   size: number;
@@ -89,6 +89,11 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     e.stopPropagation();
     setOpenMenu(null);
 
+    if (!video.url) {
+      alert('Video URL not available for export');
+      return;
+    }
+
     try {
       // Use our proxy API endpoint - authentication is handled via cookies
       const response = await fetch(
@@ -136,8 +141,8 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
             method: 'DELETE',
           },
         );
-        setVideos(videos.filter((v) => v.key !== video.key));
-        if (selectedVideo?.key === video.key) {
+        setVideos(videos.filter((v) => v.timestamp !== video.timestamp));
+        if (selectedVideo?.timestamp === video.timestamp) {
           setSelectedVideo(null);
         }
       } catch (error) {
@@ -268,9 +273,9 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
               )
               .map((video) => (
                 <div
-                  key={video.key}
+                  key={video.timestamp}
                   className={`w-[247px] h-[382px] glass-effect rounded-xl p-4 cursor-pointer transition-all duration-300 hover:transform hover:scale-105 ${
-                    selectedVideo?.key === video.key
+                    selectedVideo?.timestamp === video.timestamp
                       ? 'ring-2 ring-blue-500 bg-blue-500/10'
                       : 'hover:bg-slate-700/50'
                   }`}
@@ -297,14 +302,16 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
 
                     {/* Menu Button */}
                     <button
-                      onClick={(e) => handleMenuToggle(video.key, e)}
+                      onClick={(e) =>
+                        handleMenuToggle(String(video.timestamp), e)
+                      }
                       className="video-menu-button absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 z-10"
                     >
                       <MoreHorizontal className="w-4 h-4 text-white" />
                     </button>
 
                     {/* Dropdown Menu */}
-                    {openMenu === video.key && (
+                    {openMenu === String(video.timestamp) && (
                       <div className="video-menu-dropdown absolute top-10 right-2 bg-slate-800 border border-slate-600 rounded-lg shadow-lg z-20 min-w-[120px]">
                         <button
                           onClick={(e) => handleEdit(video, e)}
@@ -315,10 +322,15 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
                         </button>
                         <button
                           onClick={(e) => handleExport(video, e)}
-                          className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
+                          disabled={!video.url}
+                          className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-200 ${
+                            video.url
+                              ? 'text-slate-300 hover:bg-slate-700'
+                              : 'text-slate-500 cursor-not-allowed'
+                          }`}
                         >
                           <Download className="w-4 h-4" />
-                          Export
+                          Export {!video.url && '(Not Available)'}
                         </button>
                         <button
                           onClick={(e) => handleDelete(video, e)}
@@ -379,15 +391,38 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
             {/* Video Player */}
             <div className="flex-1 p-4">
               <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
-                <video
-                  className="w-full h-full object-contain"
-                  controls
-                  autoPlay
-                  muted
-                  src={selectedVideo.url}
-                >
-                  Your browser does not support the video tag.
-                </video>
+                {selectedVideo.url ? (
+                  <video
+                    className="w-full h-full object-contain"
+                    controls
+                    autoPlay
+                    muted
+                    src={selectedVideo.url}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                ) : selectedVideo.thumbnailUrl ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center">
+                    <img
+                      className="max-w-full max-h-full object-contain"
+                      src={selectedVideo.thumbnailUrl}
+                      alt={`Thumbnail for ${selectedVideo.timestamp}`}
+                    />
+                    <p className="text-white mt-4 text-center">
+                      Video preview not available
+                      <br />
+                      <span className="text-sm text-gray-400">
+                        Thumbnail only
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <p className="text-white text-center">
+                      No preview available
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

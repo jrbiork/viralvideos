@@ -7,17 +7,14 @@ import { Scene } from '../utils/script';
 import { broadcastProgress } from '../video-generation';
 import { CREDITS_COST } from '../utils/credits';
 
+import { getManifest, hydrateManifest } from '../utils/manifestUtils';
 import {
-  getManifest,
-  hydrateManifest,
-  updateManifest,
-} from '../video-generation/util/manifestUtils';
-import { uploadJsonToS3 } from '../video-generation/util/s3Uploader';
-import {
-  getCreditBalanceByUserId,
   hasSufficientCreditsByUserId,
   updateCreditBalanceByUserId,
 } from '../utils/credits';
+
+// Constants
+const DEFAULT_LANGUAGE = 'en';
 
 interface RequestBody {
   scenes: Scene[];
@@ -63,6 +60,7 @@ export const handler = async (
     const requestBody = JSON.parse(event.body);
     const scene = requestBody.scene as Scene;
     const voice = requestBody.voice || 'alloy';
+    const language = requestBody.language || DEFAULT_LANGUAGE;
 
     if (!scene) {
       return {
@@ -91,7 +89,13 @@ export const handler = async (
       };
     }
 
+    console.log('getting manifest');
+    console.log('userId:', userId);
+    console.log('timestamp:', timestamp);
+
     const manifest = await getManifest(userId, timestamp);
+
+    console.log('manifest:', JSON.stringify(manifest, null, 2));
 
     if (!manifest) {
       return {
@@ -107,6 +111,7 @@ export const handler = async (
       timestamp,
       'Speak in a cheerful and positive tone',
       voice,
+      language,
     );
     console.log('subtitles generated:', JSON.stringify(subtitles, null, 2));
 
@@ -126,42 +131,6 @@ export const handler = async (
       CREDITS_COST.new_audio_subtitle,
     );
     console.log('new credits after deduction:', newCurrentCredits);
-
-    // update manifest with subtitle content, ass content and audio urls
-    // Only update the specific scene that was regenerated (scene.id corresponds to sceneIndex)
-    // const updatedScenesWithAudio = manifestHydrated!.scenes.map(
-    //   (manifestScene) => {
-    //     // Only update the scene that matches the regenerated scene
-    //     if (manifestScene.sceneIndex === scene.id) {
-    //       const narrationUrlObj = narrationUrls[0]; // Only one scene was processed
-    //       const narrationUrl = narrationUrlObj
-    //         ? Object.values(narrationUrlObj)[0]
-    //         : manifestScene.files.mp3;
-
-    //       // Extract ASS content from the array (first element contains the ASS content)
-    //       const assContent = assContentArray[0]
-    //         ? Object.values(assContentArray[0])[0]
-    //         : '';
-
-    //       return {
-    //         ...manifestScene,
-    //         files: {
-    //           ...manifestScene.files,
-    //           mp3: narrationUrl,
-    //           ass: assContent,
-    //           subtitle: subtitles[0].fullText, // Only one subtitle was generated
-    //         },
-    //       };
-    //     }
-
-    //     // Return unchanged scene for all other scenes
-    //     return manifestScene;
-    //   },
-    // );
-
-    // // update manifestHydrated with updatedScenesWithAudio
-    // manifestHydrated!.scenes = updatedScenesWithAudio;
-    // console.log('manifestHydrated:', JSON.stringify(manifestHydrated, null, 2));
 
     await broadcastProgress('credit_updated', userId, timestamp, {
       currentCredits,

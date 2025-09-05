@@ -45,7 +45,7 @@ export async function processSaveImage(
     }
 
     // Form the imageKey
-    const imageKey = `${userId}/${timestamp}.scene-${sceneId}.jpg`;
+    const imageKey = `${userId}/${timestamp}.scene-${sceneId}.png`;
     console.log(`🔑 Formed image key: ${imageKey}`);
 
     await uploadImageToS3(generatedImageUrl, userId, timestamp, sceneId);

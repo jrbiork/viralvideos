@@ -22,7 +22,6 @@ export interface Scene {
 export async function combineVideoAndAudio(
   userId: string,
   timestamp: string,
-  scenes?: Scene[],
 ): Promise<string> {
   console.log(
     '🎬 Combining video, audio, and subtitles scene by scene for user:',

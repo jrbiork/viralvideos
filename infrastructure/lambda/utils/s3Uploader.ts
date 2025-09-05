@@ -137,7 +137,7 @@ export async function uploadImageToS3(
     const imageBuffer = Buffer.from(response.data);
 
     // Generate the S3 key
-    const imageKey = `${userId}/${timestamp}.scene-${sceneId}.jpg`;
+    const imageKey = `${userId}/${timestamp}.scene-${sceneId}.png`;
 
     console.log(
       `☁️ Uploading image to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${imageKey}`,

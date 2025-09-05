@@ -30,6 +30,7 @@
     "typescript": "^5.3.3"
   },
   "dependencies": {
+    "@google/genai": "^1.17.0",
     "aws-cdk-lib": "^2.124.0",
     "constructs": "^10.3.0",
     "dotenv": "^16.6.1",

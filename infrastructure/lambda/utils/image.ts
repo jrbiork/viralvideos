@@ -1,5 +1,4 @@
 import { RunwayML } from '@runwayml/sdk';
-import { uploadImageToS3 } from './s3Uploader';
 
 export interface Scene {
   description: string;

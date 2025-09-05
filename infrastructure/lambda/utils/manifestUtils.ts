@@ -34,7 +34,7 @@ export async function createManifest(
           mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
           mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
           combined: `${userId}/${timestamp}.scene-${scene.id}-combined.mp4`,
-          jpg: `${userId}/${timestamp}.scene-${scene.id}.jpg`,
+          png: `${userId}/${timestamp}.scene-${scene.id}.png`,
           subtitle: `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`,
           ass: `${userId}/${timestamp}.scene-${scene.id}.ass`,
         },
@@ -94,7 +94,7 @@ export async function updateManifest(
 }
 
 // create a function to hydrate scenes from manifest
-// it will add pre sign url to the scenes .jpg, .mp3, .mp4
+// it will add pre sign url to the scenes .png, .mp3, .mp4
 // and download the content of .ass, .subtitle.json files
 export async function hydrateManifest(
   manifest: Manifest | null,
@@ -133,7 +133,10 @@ export async function hydrateManifest(
         ),
         getSignedUrl(
           s3,
-          new GetObjectCommand({ Bucket: bucketName, Key: files.jpg }),
+          new GetObjectCommand({
+            Bucket: bucketName,
+            Key: files.png || files.jpg,
+          }),
           {
             expiresIn,
           },
@@ -169,6 +172,7 @@ export async function hydrateManifest(
         mp3: audioUrl,
         mp4: videoUrl,
         jpg: imageUrl,
+        png: imageUrl,
         ass: assContent || '',
         subtitle: subtitleContent || '',
       },

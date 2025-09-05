@@ -1,12 +1,17 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
+// Import constants - using relative path from Lambda location
+const DEFAULT_VOICE = 'ash';
+const DEFAULT_LANGUAGE = 'en';
+
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 interface VideoGenerationRequest {
   prompt: string;
   userId: string;
   voice?: string;
+  language?: string;
   timestamp: string;
   totalDuration: number;
   sceneCount: number;
@@ -57,7 +62,8 @@ export const handler = async (
       type: 'generate-video' as const,
       prompt: request.prompt,
       userId: userId || request.userId || 'demo-user',
-      voice: request.voice || 'ash',
+      voice: request.voice || DEFAULT_VOICE,
+      language: request.language || DEFAULT_LANGUAGE,
       timestamp: request.timestamp || new Date().toISOString(),
       totalDuration: request.totalDuration || 30,
       sceneCount: request.sceneCount || 3,
@@ -65,7 +71,9 @@ export const handler = async (
     };
 
     console.log('🎤 Video Queue - Request voice:', request.voice);
+    console.log('🌍 Video Queue - Request language:', request.language);
     console.log('🎤 Video Queue - MessageBody voice:', messageBody.voice);
+    console.log('🌍 Video Queue - MessageBody language:', messageBody.language);
     console.log('🚀 Video Queue - Full messageBody:', messageBody);
 
     // Send message to SQS

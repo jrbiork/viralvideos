@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
-import { generateImage } from '../utils/image';
+import { generateNanoBananaImage } from '../utils/imageNanoBanana';
 
 import { CREDITS_COST } from '../utils/credits';
 
@@ -78,13 +78,13 @@ export const handler = async (
     const seed = Math.floor(Math.random() * 10000);
     const sceneId = 99;
 
-    const imageUrl = await generateImage(
+    const imageUrl = await generateNanoBananaImage(
       imagePrompt,
       sceneId,
       userId,
       timestamp,
       seed,
-      sceneId,
+      true,
     );
 
     console.log('🎨 Image generated successfully:', imageUrl);

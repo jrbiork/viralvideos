@@ -2,7 +2,8 @@ export interface ManifestFile {
   mp3: string;
   mp4: string;
   combined: string;
-  jpg: string;
+  jpg?: string;
+  png?: string;
   subtitle: string;
   ass: string;
 }

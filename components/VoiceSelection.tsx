@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { DEFAULT_VOICE } from '../lib/constants';
 
 interface Voice {
   id: string;
@@ -80,12 +81,12 @@ const AVAILABLE_VOICES: Voice[] = [
 ];
 
 export default function VoiceSelection({
-  selectedVoice = 'alloy',
+  selectedVoice = DEFAULT_VOICE,
   onVoiceSelect,
   onVoiceClone,
 }: VoiceSelectionProps) {
   const [visibleCount, setVisibleCount] = useState(6);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [loadingVoice, setLoadingVoice] = useState<string | null>(null);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);

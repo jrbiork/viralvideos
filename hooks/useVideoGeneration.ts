@@ -1,6 +1,7 @@
 import { useReducer } from 'react';
 import { useAuthenticatedFetch } from '../components/useAuthenticatedFetch';
 import { format } from 'date-fns';
+import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../lib/constants';
 
 // Define the state interface
 export interface VideoGenerationState {
@@ -74,6 +75,7 @@ export function useVideoGeneration() {
     duration: 30 | 60,
     onSuccess?: (timestamp: string) => void,
     voice?: string,
+    language?: string,
   ) => {
     if (!isAuthenticated) return;
 
@@ -97,7 +99,8 @@ export function useVideoGeneration() {
           totalDuration: duration,
           sceneCount: SCENE_SIZES[duration],
           step: 1,
-          voice: voice || 'alloy', // Default to alloy if no voice selected
+          voice: voice || DEFAULT_VOICE,
+          language: language || DEFAULT_LANGUAGE, // Default to English if no language selected
         },
       });
 

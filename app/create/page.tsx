@@ -80,11 +80,14 @@ export default function GeneratePage() {
         case 'audio_subtitle_created':
           handleAudioSubtitleCreated(message.data);
           break;
-        case 'video_scene_created':
-          handleVideoSceneCreated(message.data);
-          break;
+        // case 'video_scene_created':
+        //   handleVideoSceneCreated(message.data);
+        //   break;
         case 'preview_completed':
           handlePreviewCompleted(message.data);
+          break;
+        case 'video_completed':
+          handleVideoCompleted(message.data);
           break;
         default:
           // Unknown message type
@@ -103,6 +106,35 @@ export default function GeneratePage() {
       console.error('WebSocket error:', error);
     },
   });
+
+  // Handle video completion
+  const handleVideoCompleted = (data: any) => {
+    // Show browser notification when video generation is completed
+    if ('Notification' in window && Notification.permission === 'granted') {
+      new Notification('Your video is ready!', {
+        body: 'Your video has been generated successfully!',
+        icon: '/favicon.ico',
+        badge: '/favicon.ico',
+      });
+    } else if (
+      'Notification' in window &&
+      Notification.permission !== 'denied'
+    ) {
+      Notification.requestPermission().then((permission) => {
+        if (permission === 'granted') {
+          new Notification('Your video is ready!', {
+            body: 'Your video has been generated successfully!',
+            icon: '/favicon.ico',
+            badge: '/favicon.ico',
+          });
+        }
+      });
+    }
+
+    // set toaster message
+    setToasterMessage('Video generated successfully');
+    setShowToaster(true);
+  };
 
   // Handle image creation
   const handleImageCreated = (data: any) => {
@@ -128,16 +160,16 @@ export default function GeneratePage() {
   };
 
   // Handle video scene creation
-  const handleVideoSceneCreated = (data: any) => {
-    if (data.manifest) {
-      setVideoGenerationState((prev) => ({
-        ...prev,
-        isLoadingVideoScenes: false, // Set to false when video scenes are created
-        currentTimestamp: data.timestamp || prev.currentTimestamp,
-        manifest: data.manifest,
-      }));
-    }
-  };
+  // const handleVideoSceneCreated = (data: any) => {
+  //   if (data.manifest) {
+  //     setVideoGenerationState((prev) => ({
+  //       ...prev,
+  //       isLoadingVideoScenes: false, // Set to false when video scenes are created
+  //       currentTimestamp: data.timestamp || prev.currentTimestamp,
+  //       manifest: data.manifest,
+  //     }));
+  //   }
+  // };
 
   // Handle video completion
   const handlePreviewCompleted = (data: any) => {
@@ -149,28 +181,6 @@ export default function GeneratePage() {
         isLoadingVideoScenes: false,
         isLoadingAudioSubtitles: false,
       }));
-    }
-
-    // Show browser notification when video generation is completed
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Your video is ready!', {
-        body: 'Your video has been generated successfully!',
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-      });
-    } else if (
-      'Notification' in window &&
-      Notification.permission !== 'denied'
-    ) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          new Notification('Your video is ready!', {
-            body: 'Your video has been generated successfully!',
-            icon: '/favicon.ico',
-            badge: '/favicon.ico',
-          });
-        }
-      });
     }
   };
 
@@ -568,10 +578,6 @@ export default function GeneratePage() {
 
       const result = await response.json();
       console.log('🎬 Combine video request queued:', result);
-
-      // Show success message or handle response
-      setToasterMessage('Video combination started!');
-      setShowToaster(true);
     } catch (error) {
       console.error('Error combining video:', error);
       setToasterMessage('Failed to combine video. Please try again.');

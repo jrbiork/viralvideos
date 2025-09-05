@@ -31,7 +31,6 @@
     "generate-audio-subtitle/**/*.ts",
     "generate-image/**/*.ts",
     "animate-image/**/*.ts",
-    "save-image/**/*.ts",
     "delete-video/**/*.ts",
     "websocket-connect/**/*.ts",
     "websocket-disconnect/**/*.ts",

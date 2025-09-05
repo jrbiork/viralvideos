@@ -1,6 +1,6 @@
 import { SQSRecord } from 'aws-lambda';
 import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
-import { generateImage } from './image';
+import { generateImage } from '../utils/image';
 import { generateNarration } from '../utils/audio';
 import { generateSubtitles } from '../utils/subtitles';
 import { addSceneIds } from '../utils/script';
@@ -8,6 +8,11 @@ import { generateStoryBreakdown, Scene } from '../utils/script';
 import { uploadToS3, getObjectFromS3 } from '../utils/s3Uploader';
 import { checkAudioCaptionExists } from './util/audioUtils';
 import { getImageUrls } from '../utils/imageUtils';
+import { generateNanoBananaImage } from '../utils/imageNanoBanana';
+
+// Constants
+const DEFAULT_VOICE = 'ash';
+const DEFAULT_LANGUAGE = 'en';
 import { getVideoEffectUrls } from '../utils/videoEffects';
 import { combineVideoAndAudio } from './videoCombiner';
 import {
@@ -21,7 +26,7 @@ import { broadcastProgress } from './broadcastProgress';
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export interface VideoGenerationRequest {
-  type?: 'generate-video' | 'save-image' | 'animate-image';
+  type?: 'generate-video' | 'save-image' | 'animate-image' | 'combine-video';
   prompt?: string;
   userId: string;
   timestamp: string;
@@ -29,6 +34,7 @@ export interface VideoGenerationRequest {
   sceneCount: number;
   step: number;
   voice?: string;
+  language?: string;
 }
 
 export async function processVideoGeneration(
@@ -140,49 +146,42 @@ export async function processVideoGeneration(
       console.log('🎨 Generating images for each scene in parallel...');
 
       try {
-        const imagePromises = scenes.map(async (scene: any, i: number) => {
+        scenes.map(async (scene: any, i: number) => {
           console.log(
             `🎨 Generating image for scene ${i + 1}:`,
             scene.description,
           );
 
-          const imageUrl = await generateImage(
+          await generateNanoBananaImage(
             scene.description,
-            i,
+            scene.id,
             request.userId,
             timestamp,
             seed,
-            scene.id,
           );
 
-          console.log(`✅ Scene ${i + 1} image generated:`, imageUrl);
-          return imageUrl;
+          console.log(`✅ Scene ${i + 1} image generated: done`);
         });
 
-        // Wait for all images to be generated
-        const generatedImageUrls = await Promise.all(imagePromises);
+        // // Wait for all images to be generated
+        // const generatedImageUrls = await Promise.all(imagePromises);
 
-        if (generatedImageUrls.length === 0) {
-          console.log('❌ Error: No images were generated');
-          throw new Error('No images were generated');
-        }
+        // if (generatedImageUrls.length === 0) {
+        //   console.log('❌ Error: No images were generated');
+        //   throw new Error('No images were generated');
+        // }
 
-        // upload imageUrls to s3 using uploadImageToS3
-        const uploadPromises = generatedImageUrls.map((imageUrl, i) =>
-          uploadImageToS3(imageUrl, request.userId, timestamp, scenes[i].id),
-        );
-        await Promise.all(uploadPromises);
+        // // upload imageUrls to s3 using uploadImageToS3
+        // const uploadPromises = generatedImageUrls.map((imageUrl, i) =>
+        //   uploadImageToS3(imageUrl, request.userId, timestamp, scenes[i].id),
+        // );
+        // await Promise.all(imagePromises);
 
         console.log('🖼️ Images uploaded to S3');
-
-        // Re-fetch image URLs after upload
-        imageUrls = await getImageUrls(request.userId, timestamp);
       } catch (error) {
         console.error('❌ Failed to generate images:', error);
       }
     }
-
-    console.log('🖼️ Image URLs generated:', imageUrls);
 
     // check if all together if .mp3, .subtitle.json, .ass files are already exists in the s3 bucket and return boolean
     const audioCaptionFilesExist = await checkAudioCaptionExists(
@@ -205,7 +204,8 @@ export async function processVideoGeneration(
         request.userId,
         timestamp,
         voiceToneInstruction,
-        request.voice || 'ash',
+        request.voice || DEFAULT_VOICE,
+        request.language || DEFAULT_LANGUAGE,
       );
 
       // Step 4: Generate subtitle file
@@ -244,15 +244,6 @@ export async function processVideoGeneration(
       'Video generated successfully',
     );
 
-    // Step 6: Combine video parts and upload to s3
-    const finalVideoUrl = await combineVideoAndAudio(
-      request.userId,
-      timestamp,
-      scenes,
-    );
-
-    console.log('🎬 Video combined completed', finalVideoUrl);
-
     // If this was triggered by SQS, delete the message from the queue
     if (record && process.env.VIDEO_QUEUE_URL) {
       const deleteCommand = new DeleteMessageCommand({
@@ -263,7 +254,7 @@ export async function processVideoGeneration(
     }
 
     return {
-      message: 'Video generated successfully',
+      message: 'Preview generated successfully',
     };
   } catch (error) {
     console.error('Error in video generation:', error);

@@ -125,7 +125,7 @@ export async function generateVideoEffects(
 
       try {
         // Get the image URL for this scene
-        const imageKey = `${userId}/${timestamp}.scene-${scene.id}.jpg`;
+        const imageKey = `${userId}/${timestamp}.scene-${scene.id}.png`;
         const imageUrl = await getImageSignedUrl(imageKey);
 
         if (!imageUrl) {
@@ -216,7 +216,7 @@ async function generateSceneVideo(
 
     // Create temporary files
     const tempDir = '/tmp';
-    const inputImagePath = path.join(tempDir, `input-${scene.id}.jpg`);
+    const inputImagePath = path.join(tempDir, `input-${scene.id}.png`);
     const outputVideoPath = path.join(tempDir, `output-${scene.id}.mp4`);
 
     // Write image to temp file

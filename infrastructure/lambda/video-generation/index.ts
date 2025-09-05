@@ -9,6 +9,7 @@ import {
   processVideoGeneration,
   VideoGenerationRequest,
 } from './processVideoGeneration';
+import { processVideoCombine } from './processVideoCombine';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -36,6 +37,8 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
         await processSaveImage(request as any, record);
       } else if (request.type === 'animate-image') {
         await processAnimateImage(request as any, record);
+      } else if (request.type === 'combine-video') {
+        await processVideoCombine(request as any, record);
       } else {
         await processVideoGeneration(request, record);
       }
