@@ -38,7 +38,7 @@ export async function createManifest(
         },
       })),
       totalDuration,
-      finalVideoUrl: `${userId}/${timestamp}.final-video.mp4`,
+      finalVideoUrl: `${userId}/${timestamp}-final-video.mp4`,
       videoGenerated: false,
     };
 

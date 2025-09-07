@@ -11,17 +11,17 @@ import {
   Trash2,
   Edit,
 } from 'lucide-react';
-import VideoPreview from './VideoPreview';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 
 interface Video {
   key?: string;
-  url?: string;
+  finalVideoUrl?: string;
   thumbnailUrl: string | null;
   timestamp: number | string;
   createdAt: string;
   lastModified: string;
   size: number;
+  videoGenerated: boolean;
 }
 
 interface VideoGalleryProps {
@@ -89,7 +89,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     e.stopPropagation();
     setOpenMenu(null);
 
-    if (!video.url) {
+    if (!video.videoGenerated) {
       alert('Video URL not available for export');
       return;
     }
@@ -98,7 +98,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
       // Use our proxy API endpoint - authentication is handled via cookies
       const response = await fetch(
         `/api/download-video?url=${encodeURIComponent(
-          video.url,
+          video.finalVideoUrl || '',
         )}&filename=video-${video.timestamp}.mp4`,
         {
           method: 'GET',
@@ -322,15 +322,15 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
                         </button>
                         <button
                           onClick={(e) => handleExport(video, e)}
-                          disabled={!video.url}
+                          disabled={!video.videoGenerated}
                           className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-200 ${
-                            video.url
+                            video.videoGenerated
                               ? 'text-slate-300 hover:bg-slate-700'
                               : 'text-slate-500 cursor-not-allowed'
                           }`}
                         >
                           <Download className="w-4 h-4" />
-                          Export {!video.url && '(Not Available)'}
+                          Export {!video.videoGenerated && '(Not Available)'}
                         </button>
                         <button
                           onClick={(e) => handleDelete(video, e)}
@@ -391,17 +391,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
             {/* Video Player */}
             <div className="flex-1 p-4">
               <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
-                {selectedVideo.url ? (
-                  <video
-                    className="w-full h-full object-contain"
-                    controls
-                    autoPlay
-                    muted
-                    src={selectedVideo.url}
-                  >
-                    Your browser does not support the video tag.
-                  </video>
-                ) : selectedVideo.thumbnailUrl ? (
+                {selectedVideo.thumbnailUrl ? (
                   <div className="w-full h-full flex flex-col items-center justify-center">
                     <img
                       className="max-w-full max-h-full object-contain"

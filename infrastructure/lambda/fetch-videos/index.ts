@@ -49,8 +49,8 @@ export const handler = async (
       };
     }
 
-    // List thumbnail images from video parts bucket
-    console.log('🖼️ Fetching thumbnails for user:', userId);
+    // List all manifest files for the user
+    console.log('📋 Fetching all manifests for user:', userId);
 
     if (!process.env.VIDEO_PARTS_BUCKET_NAME) {
       console.log('❌ Error: VIDEO_PARTS_BUCKET_NAME is not set');
@@ -62,68 +62,104 @@ export const handler = async (
       };
     }
 
-    const thumbnailListCommand = new ListObjectsV2Command({
+    const manifestListCommand = new ListObjectsV2Command({
       Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
       Prefix: `${userId}/`,
+      Delimiter: '',
     });
 
-    const thumbnailListResponse = await (s3 as any).send(thumbnailListCommand);
-    console.log(
-      '✅ Listed thumbnail objects:',
-      thumbnailListResponse.Contents?.length || 0,
-    );
+    const manifestListResponse = await s3.send(manifestListCommand);
 
-    console.log(
-      '🖼️ Available thumbnail keys:',
-      thumbnailListResponse.Contents?.map((obj: any) => obj.Key).filter(
-        (key: any) => key?.endsWith('.scene-0.png'),
-      ) || [],
-    );
+    // Filter for manifest files only
+    const manifestFiles =
+      manifestListResponse.Contents?.filter((object: any) =>
+        object.Key?.endsWith('.manifest.json'),
+      ) || [];
 
-    if (thumbnailListResponse.Contents) {
-      const thumbnailData = await Promise.all(
-        thumbnailListResponse.Contents.filter((object: any) =>
-          object.Key?.endsWith('.scene-0.png'),
-        ).map(async (object: any) => {
-          if (!object.Key) return null;
+    if (manifestFiles.length > 0) {
+      const videoData = await Promise.all(
+        manifestFiles.map(async (manifestObject: any) => {
+          if (!manifestObject.Key) return null;
 
-          // Extract timestamp from thumbnail key: user123/1703123456789.scene-0.png -> 1703123456789
-          const timestamp = object.Key.split('/').pop()?.split('.')[0] || '';
-          console.log('🖼️ Generating thumbnail URL for timestamp:', timestamp);
+          try {
+            // Extract timestamp from manifest key: user123/1703123456789.manifest.json -> 1703123456789
+            const timestamp =
+              manifestObject.Key.split('/')
+                .pop()
+                ?.replace('.manifest.json', '') || '';
 
-          const getThumbnailCommand = new GetObjectCommand({
-            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-            Key: object.Key,
-          });
+            console.log('📋 Processing manifest for timestamp:', timestamp);
 
-          const thumbnailUrl = await getSignedUrl(
-            s3 as any,
-            getThumbnailCommand as any,
-            {
-              expiresIn: 36000, // 1 hour
-            },
-          );
+            // Fetch the manifest content
+            const manifestCommand = new GetObjectCommand({
+              Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+              Key: manifestObject.Key,
+            });
 
-          return {
-            thumbnailUrl,
-            size: object.Size,
-            lastModified: object.LastModified?.toISOString(),
-            timestamp,
-            createdAt: object.LastModified?.toISOString(),
-          };
+            const manifestResponse = await s3.send(manifestCommand);
+
+            const manifest = JSON.parse(
+              (await manifestResponse.Body?.transformToString()) || '{}',
+            );
+
+            // Get the first scene's image file path from manifest
+            const firstScene = manifest.scenes?.[0];
+            if (!firstScene?.files?.png) {
+              console.warn(
+                `⚠️ No first scene image found for timestamp: ${timestamp}`,
+              );
+              return null;
+            }
+
+            // Generate presigned URL for the first scene's image
+            const thumbnailCommand = new GetObjectCommand({
+              Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+              Key: firstScene.files.png,
+            });
+
+            const thumbnailUrl = await getSignedUrl(s3, thumbnailCommand, {
+              expiresIn: 36000,
+            });
+
+            let finalVideoUrl = '';
+            if (manifest.videoGenerated) {
+              const videoCommand = new GetObjectCommand({
+                Bucket: process.env.VIDEO_BUCKET_NAME,
+                Key: manifest.finalVideoUrl,
+              });
+              finalVideoUrl = await getSignedUrl(s3, videoCommand, {
+                expiresIn: 36000,
+              });
+            }
+
+            return {
+              key: firstScene.files.png,
+              thumbnailUrl,
+              timestamp,
+              lastModified: manifest.updatedAt,
+              videoGenerated: manifest.videoGenerated || false,
+              finalVideoUrl,
+            };
+          } catch (error) {
+            console.error(
+              `❌ Error processing manifest ${manifestObject.Key}:`,
+              error,
+            );
+            return null;
+          }
         }),
       );
 
       // Filter out null values and sort by timestamp (newest first)
-      const validThumbnails = thumbnailData
+      const validVideos = videoData
         .filter((item): item is NonNullable<typeof item> => item !== null)
         .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
 
       return {
         statusCode: 200,
         body: JSON.stringify({
-          videos: validThumbnails,
-          message: `Found ${validThumbnails.length} thumbnails`,
+          videos: validVideos,
+          message: `Found ${validVideos.length} videos`,
         }),
       };
     }
@@ -132,7 +168,7 @@ export const handler = async (
       statusCode: 200,
       body: JSON.stringify({
         videos: [],
-        message: 'No thumbnails found',
+        message: 'No videos found',
       }),
     };
   } catch (error) {
