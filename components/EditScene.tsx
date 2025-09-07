@@ -664,7 +664,7 @@ export default function EditScene({
                   <div className="space-y-3">
                     <div>
                       <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Animation Prompt
+                        Animation Prompt (optional)
                       </label>
                       <textarea
                         value={animationPrompt}
@@ -678,18 +678,38 @@ export default function EditScene({
                       <label className="block text-sm font-medium text-gray-300 mb-2">
                         Duration
                       </label>
-                      <select
-                        value={animationDuration}
-                        onChange={(e) => setAnimationDuration(e.target.value)}
-                        className="w-full bg-transparent border-2 border-[#5B5BFF] rounded-lg px-4 py-3 text-white text-lg min-h-[50px] focus:outline-none focus:ring-2 focus:ring-[#5B5BFF] focus:border-[#5B5BFF]"
-                      >
-                        <option value="5s" className="bg-slate-800 text-white">
-                          5 seconds
-                        </option>
-                        <option value="10s" className="bg-slate-800 text-white">
-                          10 seconds
-                        </option>
-                      </select>
+                      <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
+                        <button
+                          onClick={() => setAnimationDuration('5s')}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            animationDuration === '5s'
+                              ? 'text-white'
+                              : 'text-gray-400 hover:text-white'
+                          }`}
+                          style={
+                            animationDuration === '5s'
+                              ? { backgroundColor: '#7552F2' }
+                              : {}
+                          }
+                        >
+                          5s
+                        </button>
+                        <button
+                          onClick={() => setAnimationDuration('10s')}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            animationDuration === '10s'
+                              ? 'text-white'
+                              : 'text-gray-400 hover:text-white'
+                          }`}
+                          style={
+                            animationDuration === '10s'
+                              ? { backgroundColor: '#7552F2' }
+                              : {}
+                          }
+                        >
+                          10s
+                        </button>
+                      </div>
                     </div>
 
                     <button
@@ -735,7 +755,6 @@ export default function EditScene({
                           );
                         }
                       }}
-                      disabled={!animationPrompt.trim()}
                       className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
                         animationPrompt.trim()
                           ? 'bg-purple-600 hover:bg-purple-700 text-white'

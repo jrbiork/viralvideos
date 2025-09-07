@@ -146,13 +146,13 @@ export async function processVideoGeneration(
       console.log('🎨 Generating images for each scene in parallel...');
 
       try {
-        scenes.map(async (scene: any, i: number) => {
+        const imagePromises = scenes.map(async (scene: any, i: number) => {
           console.log(
             `🎨 Generating image for scene ${i + 1}:`,
             scene.description,
           );
 
-          await generateNanoBananaImage(
+          const result = await generateNanoBananaImage(
             scene.description,
             scene.id,
             request.userId,
@@ -161,10 +161,16 @@ export async function processVideoGeneration(
           );
 
           console.log(`✅ Scene ${i + 1} image generated: done`);
+          return result;
         });
 
-        // // Wait for all images to be generated
-        // const generatedImageUrls = await Promise.all(imagePromises);
+        // Wait for all images to be generated
+        console.log('⏳ Waiting for all image generation to complete...');
+        const generatedImageUrls = await Promise.all(imagePromises);
+        console.log(
+          '✅ All images generated successfully:',
+          generatedImageUrls.length,
+        );
 
         // if (generatedImageUrls.length === 0) {
         //   console.log('❌ Error: No images were generated');

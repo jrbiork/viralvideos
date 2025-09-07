@@ -4,7 +4,7 @@ import { S3Client } from '@aws-sdk/client-s3';
 import {
   getManifest,
   hydrateManifest,
-} from '../video-generation/util/manifestUtils';
+} from '../utils/manifestUtils';
 
 const s3 = new S3Client({ region: process.env['AWS_REGION'] || 'us-east-1' });
 const bucketName = process.env['VIDEO_PARTS_BUCKET_NAME'];

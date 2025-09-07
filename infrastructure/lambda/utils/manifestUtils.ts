@@ -2,7 +2,7 @@ import { Scene } from '../video-generation/narration';
 import {
   uploadJsonToS3,
   getObjectFromS3,
-} from '../video-generation/util/s3Uploader';
+} from './s3Uploader';
 import { Manifest, ManifestScene } from '../types/s3Types';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -112,6 +112,30 @@ export async function hydrateManifest(
   for (const scene of manifest.scenes) {
     const files = scene.files;
 
+    // Validate required file keys before making S3 requests
+    console.log(`🔍 Hydrating scene ${scene.sceneIndex}, files:`, files);
+    
+    if (!files.mp3) {
+      console.error(`❌ Missing mp3 file for scene ${scene.sceneIndex}`);
+      throw new Error(`Missing mp3 file for scene ${scene.sceneIndex}`);
+    }
+    if (!files.mp4) {
+      console.error(`❌ Missing mp4 file for scene ${scene.sceneIndex}`);
+      throw new Error(`Missing mp4 file for scene ${scene.sceneIndex}`);
+    }
+    if (!files.png && !files.jpg) {
+      console.error(`❌ Missing image file for scene ${scene.sceneIndex}`);
+      throw new Error(`Missing image file for scene ${scene.sceneIndex}`);
+    }
+    if (!files.subtitle) {
+      console.error(`❌ Missing subtitle file for scene ${scene.sceneIndex}`);
+      throw new Error(`Missing subtitle file for scene ${scene.sceneIndex}`);
+    }
+    if (!files.ass) {
+      console.error(`❌ Missing ass file for scene ${scene.sceneIndex}`);
+      throw new Error(`Missing ass file for scene ${scene.sceneIndex}`);
+    }
+
     const [audioUrl, videoUrl, imageUrl, subtitleContent, assContent] =
       await Promise.all([
         getSignedUrl(
@@ -155,14 +179,20 @@ export async function hydrateManifest(
               return '';
             }
           })
-          .catch(() => ''),
+          .catch((error) => {
+            console.warn(`⚠️ Failed to fetch subtitle for scene ${scene.sceneIndex}:`, error.message);
+            return '';
+          }),
         // Fetch inline .ass content
         s3
           .send(new GetObjectCommand({ Bucket: bucketName, Key: files.ass }))
           .then(async (assObj) => {
             return (await assObj.Body?.transformToString()) || null;
           })
-          .catch(() => null),
+          .catch((error) => {
+            console.warn(`⚠️ Failed to fetch ass for scene ${scene.sceneIndex}:`, error.message);
+            return null;
+          }),
       ]);
 
     // create a scene object
