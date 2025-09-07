@@ -164,12 +164,37 @@ export async function processVideoGeneration(
           return result;
         });
 
-        // Wait for all images to be generated
+        // Wait for all images to be generated using allSettled for better error handling
         console.log('⏳ Waiting for all image generation to complete...');
-        const generatedImageUrls = await Promise.all(imagePromises);
+        const results = await Promise.allSettled(imagePromises);
+
+        // Log results and handle failures
+        const successful = results.filter(
+          (result) => result.status === 'fulfilled',
+        );
+        const failed = results.filter((result) => result.status === 'rejected');
+
         console.log(
-          '✅ All images generated successfully:',
-          generatedImageUrls.length,
+          `✅ Image generation results: ${successful.length} successful, ${failed.length} failed`,
+        );
+
+        // Log failed promises with detailed error info
+        failed.forEach((result, index) => {
+          if (result.status === 'rejected') {
+            console.error(
+              `❌ Scene ${index} image generation failed:`,
+              result.reason,
+            );
+          }
+        });
+
+        // Continue processing even if some images failed
+        if (successful.length === 0) {
+          throw new Error('All image generation attempts failed');
+        }
+
+        console.log(
+          `🎨 Successfully generated ${successful.length} out of ${results.length} images`,
         );
 
         // if (generatedImageUrls.length === 0) {

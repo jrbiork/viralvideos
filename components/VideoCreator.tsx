@@ -260,7 +260,10 @@ export default function VideoCreator({
                   <span>Generating...</span>
                 </>
               ) : (
-                <span>Preview for 10 Credits</span>
+                <span>
+                  Preview/Edit Scenes for{' '}
+                  {selectedDuration === '30s' ? '10' : '20'} Credits
+                </span>
               )}
             </button>
           </div>

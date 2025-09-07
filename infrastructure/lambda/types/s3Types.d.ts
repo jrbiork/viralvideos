@@ -13,6 +13,7 @@ export interface ManifestScene {
 }
 export interface Manifest {
     schemaVersion: number;
+    key: string;
     timestamp: string;
     bucket: string;
     userId: string;
@@ -23,4 +24,5 @@ export interface Manifest {
     totalDuration: number;
     finalVideoUrl: string;
     scenes: ManifestScene[];
+    videoGenerated: boolean;
 }

@@ -2,7 +2,11 @@ import { SQSRecord } from 'aws-lambda';
 import { combineVideoAndAudio } from './videoCombiner';
 import { Scene } from './videoCombiner';
 import { broadcastProgress } from './broadcastProgress';
-import { getManifest, hydrateManifest } from '../utils/manifestUtils';
+import {
+  getManifest,
+  hydrateManifest,
+  updateManifest,
+} from '../utils/manifestUtils';
 import { DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { SQSClient } from '@aws-sdk/client-sqs';
 
@@ -33,6 +37,8 @@ export async function processVideoCombine(
     }
 
     const finalVideoUrl = await combineVideoAndAudio(userId, timestamp);
+
+    await updateManifest(manifest, { videoGenerated: true });
 
     const hydratedManifest = await hydrateManifest(manifest);
 

@@ -1,8 +1,5 @@
 import { Scene } from '../video-generation/narration';
-import {
-  uploadJsonToS3,
-  getObjectFromS3,
-} from './s3Uploader';
+import { uploadJsonToS3, getObjectFromS3 } from './s3Uploader';
 import { Manifest, ManifestScene } from '../types/s3Types';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -21,6 +18,7 @@ export async function createManifest(
 
     const manifest: Manifest = {
       schemaVersion: 1,
+      key: `${userId}/${timestamp}.manifest.json`,
       userId,
       timestamp,
       bucket: VIDEO_PARTS_BUCKET_NAME,
@@ -41,6 +39,7 @@ export async function createManifest(
       })),
       totalDuration,
       finalVideoUrl: `${userId}/${timestamp}.final-video.mp4`,
+      videoGenerated: false,
     };
 
     // Convert manifest to JSON string
@@ -89,7 +88,21 @@ export async function updateManifest(
     ...updates,
     updatedAt: Date.now().toString(),
   };
+  await uploadJsonToS3(JSON.stringify(updatedManifest), existingManifest.key);
 
+  return updatedManifest;
+}
+
+// create a new update manifest that will receive manifest key and a new scene object
+export async function addSceneToManifest(
+  existingManifest: Manifest,
+  scene: ManifestScene,
+): Promise<Manifest> {
+  const updatedManifest: Manifest = {
+    ...existingManifest,
+    scenes: [...existingManifest.scenes, scene],
+  };
+  await uploadJsonToS3(JSON.stringify(updatedManifest), existingManifest.key);
   return updatedManifest;
 }
 
@@ -114,27 +127,6 @@ export async function hydrateManifest(
 
     // Validate required file keys before making S3 requests
     console.log(`🔍 Hydrating scene ${scene.sceneIndex}, files:`, files);
-    
-    if (!files.mp3) {
-      console.error(`❌ Missing mp3 file for scene ${scene.sceneIndex}`);
-      throw new Error(`Missing mp3 file for scene ${scene.sceneIndex}`);
-    }
-    if (!files.mp4) {
-      console.error(`❌ Missing mp4 file for scene ${scene.sceneIndex}`);
-      throw new Error(`Missing mp4 file for scene ${scene.sceneIndex}`);
-    }
-    if (!files.png && !files.jpg) {
-      console.error(`❌ Missing image file for scene ${scene.sceneIndex}`);
-      throw new Error(`Missing image file for scene ${scene.sceneIndex}`);
-    }
-    if (!files.subtitle) {
-      console.error(`❌ Missing subtitle file for scene ${scene.sceneIndex}`);
-      throw new Error(`Missing subtitle file for scene ${scene.sceneIndex}`);
-    }
-    if (!files.ass) {
-      console.error(`❌ Missing ass file for scene ${scene.sceneIndex}`);
-      throw new Error(`Missing ass file for scene ${scene.sceneIndex}`);
-    }
 
     const [audioUrl, videoUrl, imageUrl, subtitleContent, assContent] =
       await Promise.all([
@@ -180,7 +172,10 @@ export async function hydrateManifest(
             }
           })
           .catch((error) => {
-            console.warn(`⚠️ Failed to fetch subtitle for scene ${scene.sceneIndex}:`, error.message);
+            console.warn(
+              `⚠️ Failed to fetch subtitle for scene ${scene.sceneIndex}:`,
+              error.message,
+            );
             return '';
           }),
         // Fetch inline .ass content
@@ -190,7 +185,10 @@ export async function hydrateManifest(
             return (await assObj.Body?.transformToString()) || null;
           })
           .catch((error) => {
-            console.warn(`⚠️ Failed to fetch ass for scene ${scene.sceneIndex}:`, error.message);
+            console.warn(
+              `⚠️ Failed to fetch ass for scene ${scene.sceneIndex}:`,
+              error.message,
+            );
             return null;
           }),
       ]);

@@ -68,6 +68,46 @@ export default function EditScene({
   const isEditing = editingScene === scene.id;
   const isRegenerating = regeneratingSceneId === scene.id;
 
+  const handleAnimation = async () => {
+    try {
+      const timestamp = queryParams.get('timestamp');
+      if (!timestamp) throw new Error('No timestamp found in URL');
+      if (!currentImageUrl && !imageUrl)
+        throw new Error('No image available to animate');
+
+      const payload = {
+        animationPrompt,
+        animationDuration,
+        timestamp,
+        sceneId: Number(scene.id),
+        imageUrl: currentImageUrl || imageUrl!,
+      };
+
+      const res = await fetch('/api/animate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to request animation');
+      }
+
+      const data = await res.json();
+      console.log('✅ Animation requested:', data);
+      setIsAiAnimationModalOpen(false);
+      setIsLoadingVideoScenes(true);
+    } catch (e) {
+      console.error('❌ Error requesting animation:', e);
+      alert(
+        `Failed to request animation: ${
+          e instanceof Error ? e.message : 'Unknown error'
+        }`,
+      );
+    }
+  };
+
   const handleSaveImage = async () => {
     if (!generatedImageUrl) {
       console.error('No generated image URL to save');
@@ -674,8 +714,8 @@ export default function EditScene({
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <div className="flex items-center gap-3">
+                      <label className="text-sm font-medium text-gray-300">
                         Duration
                       </label>
                       <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
@@ -713,53 +753,8 @@ export default function EditScene({
                     </div>
 
                     <button
-                      onClick={async () => {
-                        try {
-                          const timestamp = queryParams.get('timestamp');
-                          if (!timestamp)
-                            throw new Error('No timestamp found in URL');
-                          if (!currentImageUrl && !imageUrl)
-                            throw new Error('No image available to animate');
-
-                          const payload = {
-                            animationPrompt,
-                            animationDuration,
-                            timestamp,
-                            sceneId: Number(scene.id),
-                            imageUrl: currentImageUrl || imageUrl!,
-                          };
-
-                          const res = await fetch('/api/animate-image', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload),
-                          });
-
-                          if (!res.ok) {
-                            const err = await res.json().catch(() => ({}));
-                            throw new Error(
-                              err.error || 'Failed to request animation',
-                            );
-                          }
-
-                          const data = await res.json();
-                          console.log('✅ Animation requested:', data);
-                          setIsAiAnimationModalOpen(false);
-                          setIsLoadingVideoScenes(true);
-                        } catch (e) {
-                          console.error('❌ Error requesting animation:', e);
-                          alert(
-                            `Failed to request animation: ${
-                              e instanceof Error ? e.message : 'Unknown error'
-                            }`,
-                          );
-                        }
-                      }}
-                      className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
-                        animationPrompt.trim()
-                          ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                          : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                      }`}
+                      onClick={handleAnimation}
+                      className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${'bg-purple-600 hover:bg-purple-700 text-white'}`}
                     >
                       Generate Animation (
                       {animationDuration === '5s' ? '25' : '50'} credits)

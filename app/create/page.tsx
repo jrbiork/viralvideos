@@ -11,6 +11,7 @@ import EditSceneSkeleton from '../../components/EditSceneSkeleton';
 import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../../lib/constants';
 import AddSceneButton from '../../components/AddSceneButton';
 import ExportVideo from '../../components/ExportVideo';
+import Toaster from '../../components/Toaster';
 import { parseColoredText, parseAssFile } from '../../lib/subtitle-utils';
 import { useVideoGeneration } from '../../hooks/useVideoGeneration';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
@@ -46,6 +47,14 @@ export default function GeneratePage() {
   // Toaster state
   const [showToaster, setShowToaster] = useState(false);
   const [toasterMessage, setToasterMessage] = useState('');
+  const [toasterType, setToasterType] = useState<'success' | 'error'>('error');
+
+  // Helper function to show toaster messages
+  const showToasterMessage = (message: string, type: 'success' | 'error') => {
+    setToasterMessage(message);
+    setToasterType(type);
+    setShowToaster(true);
+  };
 
   // Custom hooks
   const {
@@ -132,8 +141,7 @@ export default function GeneratePage() {
     }
 
     // set toaster message
-    setToasterMessage('Video generated successfully');
-    setShowToaster(true);
+    showToasterMessage('Video generated successfully', 'success');
   };
 
   // Handle image creation
@@ -187,8 +195,7 @@ export default function GeneratePage() {
   // Handle insufficient credits
   const handleInsufficientCredits = (data: any) => {
     console.log('Insufficient credits:', data);
-    setToasterMessage('Insufficient credits');
-    setShowToaster(true);
+    showToasterMessage('Insufficient credits', 'error');
   };
 
   // Helper functions to extract data from manifest
@@ -578,10 +585,10 @@ export default function GeneratePage() {
 
       const result = await response.json();
       console.log('🎬 Combine video request queued:', result);
+      showToasterMessage('Video combination started!', 'success');
     } catch (error) {
       console.error('Error combining video:', error);
-      setToasterMessage('Failed to combine video. Please try again.');
-      setShowToaster(true);
+      showToasterMessage('Failed to combine video. Please try again.', 'error');
     }
   };
 
@@ -888,7 +895,7 @@ export default function GeneratePage() {
               onClick={handleCombineVideo}
               className="px-4 py-2 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors"
             >
-              Combine Video
+              Generate Video
             </button>
           </div>
 
@@ -907,57 +914,13 @@ export default function GeneratePage() {
         </div>
       </div>
 
-      {/* Animated Toaster */}
-      {showToaster && (
-        <div className="fixed bottom-4 right-4 z-50">
-          <div
-            className={`
-              bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg 
-              flex items-center space-x-3 max-w-sm
-              transform transition-all duration-300 ease-in-out
-              ${
-                showToaster
-                  ? 'translate-x-0 opacity-100'
-                  : 'translate-x-full opacity-0'
-              }
-            `}
-          >
-            {/* Warning Icon */}
-            <div className="flex-shrink-0">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                <path
-                  fillRule="evenodd"
-                  d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM12 9a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0112 9zm0 8a1 1 0 100-2 1 1 0 000 2z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-
-            {/* Message */}
-            <div className="font-medium">{toasterMessage}</div>
-
-            {/* Close Button */}
-            <button
-              onClick={() => setShowToaster(false)}
-              className="flex-shrink-0 ml-4 text-white hover:text-gray-200 transition-colors"
-            >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Toaster */}
+      <Toaster
+        message={toasterMessage}
+        type={toasterType}
+        isVisible={showToaster}
+        onClose={() => setShowToaster(false)}
+      />
     </MainLayout>
   );
 }
