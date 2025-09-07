@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '../../components/MainLayout';
 import ProgressSteps from '../../components/ProgressSteps';
 import VideoCreator from '../../components/VideoCreator';
-import EditScene from '../../components/EditScene';
+import EditScene, { Scene } from '../../components/EditScene';
 import EditSceneSkeleton from '../../components/EditSceneSkeleton';
 import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../../lib/constants';
 import AddSceneButton from '../../components/AddSceneButton';
@@ -49,11 +49,41 @@ export default function GeneratePage() {
   const [toasterMessage, setToasterMessage] = useState('');
   const [toasterType, setToasterType] = useState<'success' | 'error'>('error');
 
+  // Additional scenes state (for user-added scenes with position tracking)
+  const [additionalScenes, setAdditionalScenes] = useState<
+    { scene: Scene; position: number }[]
+  >([]);
+
   // Helper function to show toaster messages
   const showToasterMessage = (message: string, type: 'success' | 'error') => {
     setToasterMessage(message);
     setToasterType(type);
     setShowToaster(true);
+  };
+
+  // Custom handleAddScene function to add new scenes
+  const handleAddSceneCustom = (position: number) => {
+    const newScene = {
+      id: Date.now(), // Use timestamp as unique ID
+      sceneIndex: position, // Will be properly reindexed later
+      description: `New scene ${additionalScenes.length + 1}`,
+      narration: 'Enter your scene description here...',
+      duration: 5, // Default duration
+      isUserAdded: true, // Flag to identify user-added scenes
+    };
+
+    // Add the new scene with its position
+    setAdditionalScenes((prev) => {
+      const updated = [...prev, { scene: newScene, position }];
+      console.log('📝 Added new scene:', newScene);
+      console.log('📝 Updated additionalScenes:', updated);
+      return updated;
+    });
+
+    showToasterMessage(
+      `New scene added at position ${position + 1}`,
+      'success',
+    );
   };
 
   // Custom hooks
@@ -258,42 +288,104 @@ export default function GeneratePage() {
   const exampleVideoUrl = '/assets/example.mp4';
 
   // Create scenes from subtitles data
-  const createScenesFromSubtitleFiles = useCallback(() => {
+  const createScenesFromSubtitleFiles = useCallback((): Scene[] => {
+    if (!videoGenerationState.manifest?.scenes) return [];
+
     const subtitles = getSubtitles();
-    const subtitleKeys = Object.keys(subtitles);
+    const subtitleKeys = Object.keys(subtitles).sort((a, b) => {
+      const indexA = parseInt(a.match(/scene-(\d+)\./)?.[1] || '0');
+      const indexB = parseInt(b.match(/scene-(\d+)\./)?.[1] || '0');
+      return indexA - indexB;
+    });
 
-    console.log('Creating scenes from subtitles:', subtitles);
-    console.log('Subtitle keys:', subtitleKeys);
-
-    if (subtitleKeys.length === 0) {
-      return [];
-    }
-
-    return subtitleKeys.map((subtitleKey, index) => {
+    return subtitleKeys.map((subtitleKey: string, index: number) => {
       // Extract the actual scene index from the subtitle key
       const sceneIndexMatch = subtitleKey.match(/scene-(\d+)\./);
       const sceneIndex = sceneIndexMatch ? parseInt(sceneIndexMatch[1]) : index;
 
       const narration = subtitles[subtitleKey] || `Scene ${sceneIndex + 1}`;
 
-      const scene = videoGenerationState.manifest;
-      console.log('Creating scene:', { id: sceneIndex, narration });
+      // Make sure videoGenerationState.manifest is not null or undefined
+      const sceneManifest = videoGenerationState.manifest;
 
       return {
         id: sceneIndex,
         description: `Scene ${sceneIndex + 1}`,
         narration: narration,
         duration: Math.floor(
-          (scene?.totalDuration || 30) / (scene?.sceneCount || 3),
+          (sceneManifest?.totalDuration || 30) /
+            (sceneManifest?.sceneCount || 3),
         ),
+        sceneIndex: index, // Ensure sceneIndex is set for original scenes
       };
     });
-  }, [getSubtitles]);
+  }, [getSubtitles, videoGenerationState.manifest]);
 
-  const scenes = useMemo(
+  // Combine original scenes with additional user-added scenes
+  const originalScenes = useMemo(
     () => createScenesFromSubtitleFiles(),
     [createScenesFromSubtitleFiles],
   );
+
+  const scenes = useMemo(() => {
+    // Start with original scenes
+    let allScenes: Scene[] = [...originalScenes];
+
+    console.log(
+      '🔄 Initial allScenes (from originalScenes):',
+      allScenes.map((s) => ({ id: s.id, description: s.description })),
+    );
+
+    // Sort additional scenes by position and insert them correctly
+    const sortedAdditionalScenes = [...additionalScenes].sort(
+      (a, b) => a.position - b.position,
+    );
+
+    console.log(
+      '📝 Sorted additionalScenes to insert:',
+      sortedAdditionalScenes.map((item) => ({
+        id: item.scene.id,
+        position: item.position,
+        description: item.scene.description,
+      })),
+    );
+
+    // Insert additional scenes at their correct positions
+    sortedAdditionalScenes.forEach(
+      ({ scene, position }: { scene: Scene; position: number }) => {
+        // Simple approach: insert at the exact position requested
+        // But ensure we don't go beyond the current array length
+        const insertPosition = Math.min(position, allScenes.length);
+
+        console.log(
+          `Inserting scene (ID: ${scene.id}, Desc: ${scene.description}) at position ${position}, actual insert at ${insertPosition}. Current array length: ${allScenes.length}`,
+        );
+
+        allScenes.splice(insertPosition, 0, scene);
+
+        console.log(
+          '🖼️ allScenes after insertion:',
+          allScenes.map((s) => ({ id: s.id, description: s.description })),
+        );
+      },
+    );
+
+    // Reindex all scenes to have proper sequential sceneIndex
+    allScenes = allScenes.map((scene: Scene, index: number) => ({
+      ...scene,
+      sceneIndex: index, // Set proper sequential sceneIndex
+    }));
+
+    console.log(
+      '🔄 Final scenes with reindexed sceneIndex:',
+      allScenes.map((s) => ({
+        id: s.id,
+        sceneIndex: s.sceneIndex,
+        description: s.description,
+      })),
+    );
+    return allScenes;
+  }, [originalScenes, additionalScenes]);
 
   // Auto-select first scene when script data is loaded
   useEffect(() => {
@@ -784,17 +876,32 @@ export default function GeneratePage() {
                     <>
                       {/* Add scene button before first scene */}
                       <AddSceneButton
-                        onAddScene={handleAddScene}
+                        onAddScene={handleAddSceneCustom}
                         position={0}
                         isFirst={true}
-                        disabled={true}
+                        disabled={false}
                       />
 
                       {/* Scene Cards */}
                       {scenes.map((scene: any, index: number) => {
-                        // Get the image URL for this scene
-                        const imageKey = `${videoGenerationState.currentTimestamp}.scene-${index}.png`;
-                        const imageUrl = getMediaFiles()[imageKey];
+                        // Get the image URL for this scene (only for original scenes)
+                        // For original scenes, we need to find their original index in the manifest
+                        let imageUrl = undefined;
+                        if (
+                          !scene.isUserAdded &&
+                          videoGenerationState.manifest?.scenes
+                        ) {
+                          // Find the original scene index from the manifest
+                          const originalSceneIndex =
+                            videoGenerationState.manifest.scenes.findIndex(
+                              (manifestScene) =>
+                                manifestScene.sceneIndex === scene.id,
+                            );
+                          if (originalSceneIndex !== -1) {
+                            const imageKey = `${videoGenerationState.currentTimestamp}.scene-${originalSceneIndex}.png`;
+                            imageUrl = getMediaFiles()[imageKey];
+                          }
+                        }
 
                         return (
                           <div key={scene.id}>
@@ -855,9 +962,9 @@ export default function GeneratePage() {
                             {/* Add scene button after each scene (except the last one) */}
                             {index < scenes.length - 1 && (
                               <AddSceneButton
-                                onAddScene={handleAddScene}
+                                onAddScene={handleAddSceneCustom}
                                 position={index + 1}
-                                disabled={true}
+                                disabled={false}
                               />
                             )}
                           </div>
@@ -866,10 +973,10 @@ export default function GeneratePage() {
 
                       {/* Add scene button after last scene */}
                       <AddSceneButton
-                        onAddScene={handleAddScene}
+                        onAddScene={handleAddSceneCustom}
                         position={scenes.length}
                         isLast={true}
-                        disabled={true}
+                        disabled={false}
                       />
                     </>
                   )}

@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 
-interface Scene {
+export interface Scene {
   id: number;
   description: string;
   narration: string;
   duration: number;
+  isUserAdded?: boolean;
+  sceneIndex?: number;
 }
 
 interface EditSceneProps {
@@ -201,7 +203,7 @@ export default function EditScene({
         {/* Scene Label */}
         <div className="mb-2">
           <h3 className="text-white text-lg font-semibold">
-            Scene {scene.id + 1}
+            Scene {(scene.sceneIndex ?? scene.id) + 1}
           </h3>
         </div>
 
@@ -238,7 +240,7 @@ export default function EditScene({
             >
               <img
                 src={currentImageUrl}
-                alt={`Scene ${scene.id + 1}`}
+                alt={`Scene ${(scene.sceneIndex ?? scene.id) + 1}`}
                 className="w-full h-full object-contain rounded-xl"
                 onError={(e) => {
                   // Hide the image if it fails to load
@@ -269,6 +271,59 @@ export default function EditScene({
                       strokeLinejoin="round"
                       strokeWidth={2}
                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          ) : scene.isUserAdded ? (
+            <div
+              className="flex-shrink-0 rounded-xl flex items-center justify-center relative group"
+              style={{
+                width: '7.0rem', // Reduced by 15% more from 8.23rem
+                height: '12.43rem', // Reduced by 15% more from 14.62rem
+                backgroundColor: '#374151',
+                border: '2px dashed #6B7280',
+              }}
+            >
+              <div className="flex flex-col items-center space-y-2 text-gray-400">
+                <svg
+                  className="w-8 h-8"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                  />
+                </svg>
+                <span className="text-xs text-center">No Image</span>
+              </div>
+
+              {/* Hover Overlay with Edit Icon */}
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsImageEditModalOpen(true);
+                  }}
+                  className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-full transition-colors duration-200"
+                  title="Add Image"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 4v16m8-8H4"
                     />
                   </svg>
                 </button>
@@ -482,7 +537,7 @@ export default function EditScene({
                   <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
                     <img
                       src={imageUrl}
-                      alt={`Scene ${scene.id + 1}`}
+                      alt={`Scene ${(scene.sceneIndex ?? scene.id) + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -690,7 +745,7 @@ export default function EditScene({
                   <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
                     <img
                       src={currentImageUrl || imageUrl}
-                      alt={`Scene ${scene.id + 1}`}
+                      alt={`Scene ${(scene.sceneIndex ?? scene.id) + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </div>
