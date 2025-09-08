@@ -9,6 +9,7 @@ import VideoCreator from '../../components/VideoCreator';
 import EditScene, { Scene } from '../../components/EditScene';
 import EditSceneSkeleton from '../../components/EditSceneSkeleton';
 import RightSidebar from '../../components/RightSidebar';
+import SceneCardsContainer from '../../components/SceneCardsContainer';
 import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../../lib/constants';
 import AddSceneButton from '../../components/AddSceneButton';
 import ExportVideo from '../../components/ExportVideo';
@@ -747,149 +748,22 @@ export default function GeneratePage() {
             }`}
           >
             {/* Scene Cards Container */}
-            <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4 custom-scrollbar">
-              {videoGenerationState.isLoadingVideoScenes && (
-                <div className="flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center space-x-2 mb-2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                      <span className="text-lg font-medium text-gray-700">
-                        Loading your videos...
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Scene Cards */}
-              {videoGenerationState.isLoadingAudioSubtitles
-                ? // Show skeleton placeholders while loading audio/subtitles
-                  Array.from({ length: 3 }).map((_, index) => (
-                    <EditSceneSkeleton key={index} />
-                  ))
-                : scenes.length > 0 && (
-                    <>
-                      {/* Add scene button before first scene */}
-                      <AddSceneButton
-                        onAddScene={handleAddSceneCustom}
-                        position={0}
-                        isFirst={true}
-                        disabled={false}
-                      />
-
-                      {/* Scene Cards */}
-                      {scenes.map((scene: any, index: number) => {
-                        // Get the image URL for this scene (only for original scenes)
-                        // For original scenes, we need to find their original index in the manifest
-                        let imageUrl = undefined;
-                        if (
-                          !scene.isUserAdded &&
-                          videoGenerationState.manifest?.scenes
-                        ) {
-                          // Find the original scene index from the manifest
-                          const originalSceneIndex =
-                            videoGenerationState.manifest.scenes.findIndex(
-                              (manifestScene) =>
-                                manifestScene.sceneIndex === scene.id,
-                            );
-                          if (originalSceneIndex !== -1) {
-                            const imageKey = `${videoGenerationState.currentTimestamp}.scene-${originalSceneIndex}.png`;
-                            imageUrl = getMediaFiles()[imageKey];
-                          }
-                        }
-
-                        return (
-                          <div key={scene.id}>
-                            <EditScene
-                              scene={scene}
-                              editingScene={sceneState.editingScene}
-                              editedNarration={sceneState.editedNarration}
-                              onEditScene={handleEditSceneWithSubtitle}
-                              setIsLoadingVideoScenes={(value: boolean) =>
-                                setVideoGenerationState((prev) => ({
-                                  ...prev,
-                                  isLoadingVideoScenes: value,
-                                }))
-                              }
-                              onSaveEdit={(sceneId) =>
-                                handleSaveEdit(
-                                  sceneId,
-                                  scenes,
-                                  (updatedScenes) => {
-                                    // Update the subtitleFiles in video generation state
-                                    const updatedSubtitleFiles =
-                                      updatedScenes.map(
-                                        (scene: any, index: number) => {
-                                          const fileName = `${videoGenerationState.currentTimestamp}.scene-${index}.subtitle.json`;
-                                          return {
-                                            [fileName]: scene.narration,
-                                          };
-                                        },
-                                      );
-
-                                    // Update the subtitleFiles in video generation state
-                                    setVideoGenerationState((prev) => ({
-                                      ...prev,
-                                      subtitleFiles: updatedSubtitleFiles,
-                                    }));
-
-                                    // Update additionalScenes state for user-added scenes
-                                    setAdditionalScenes((prev) =>
-                                      prev.map((item) =>
-                                        item.scene.id === sceneId
-                                          ? {
-                                              ...item,
-                                              scene: {
-                                                ...item.scene,
-                                                narration:
-                                                  sceneState.editedNarration,
-                                              },
-                                            }
-                                          : item,
-                                      ),
-                                    );
-                                  },
-                                )
-                              }
-                              onCancelEdit={handleCancelEdit}
-                              onEditedNarrationChange={(value) => {
-                                // Update the edited narration in the scene management state
-                                sceneDispatch({
-                                  type: 'SET_EDITED_NARRATION',
-                                  payload: value,
-                                });
-                              }}
-                              onRegenerateAudio={handleRegenerateAudio}
-                              imageUrl={imageUrl}
-                              isSelected={
-                                sceneState.selectedSceneId === scene.id
-                              }
-                              onSelect={handleSceneSelection}
-                              regeneratingSceneId={regeneratingSceneId}
-                            />
-
-                            {/* Add scene button after each scene (except the last one) */}
-                            {index < scenes.length - 1 && (
-                              <AddSceneButton
-                                onAddScene={handleAddSceneCustom}
-                                position={index + 1}
-                                disabled={false}
-                              />
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {/* Add scene button after last scene */}
-                      <AddSceneButton
-                        onAddScene={handleAddSceneCustom}
-                        position={scenes.length}
-                        isLast={true}
-                        disabled={false}
-                      />
-                    </>
-                  )}
-            </div>
+            <SceneCardsContainer
+              videoGenerationState={videoGenerationState}
+              scenes={scenes}
+              sceneState={sceneState}
+              handleEditSceneWithSubtitle={handleEditSceneWithSubtitle}
+              setVideoGenerationState={setVideoGenerationState}
+              handleSaveEdit={handleSaveEdit}
+              handleCancelEdit={handleCancelEdit}
+              sceneDispatch={sceneDispatch}
+              handleRegenerateAudio={handleRegenerateAudio}
+              getMediaFiles={getMediaFiles}
+              handleSceneSelection={handleSceneSelection}
+              regeneratingSceneId={regeneratingSceneId}
+              handleAddSceneCustom={handleAddSceneCustom}
+              setAdditionalScenes={setAdditionalScenes}
+            />
           </div>
 
           {/* Back Button */}
