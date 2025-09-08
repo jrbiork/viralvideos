@@ -21,11 +21,23 @@ export interface SubtitleData {
   sceneIndex: number;
   words: SubtitleWord[];
   fullText: string;
+  duration?: number;
 }
 
 export interface NarrationResult {
   subtitles: SubtitleData[];
-  narrationUrls: Array<{ [key: string]: string }>; // Format: [{ "timestamp.scene-id.mp3": "signed-url" }]
+}
+
+export interface TranscriptionResponse {
+  task: string;
+  language: string;
+  duration: number;
+  text: string;
+  words: SubtitleWord[];
+  usage: {
+    type: string;
+    seconds: number;
+  };
 }
 
 /**
@@ -58,6 +70,8 @@ export async function generateNarration(
         instructions: `Speak clearly and keep duration in ${scene.duration}s hard cap. Avoid long pauses.`,
         input: scene.narration,
       });
+      // Check if response has duration metadata
+      console.log('Response audio data:', JSON.stringify(response, null, 2));
 
       const originalAudioBuffer = Buffer.from(await response.arrayBuffer());
 
@@ -89,13 +103,13 @@ export async function generateNarration(
       // Create file object for OpenAI API
       const audioFile = fs.createReadStream(tempAudioPath);
 
-      const transcription = await openai.audio.transcriptions.create({
+      const transcription = (await openai.audio.transcriptions.create({
         file: audioFile,
         model: 'whisper-1',
         response_format: 'verbose_json',
         timestamp_granularities: ['word'],
         language: language,
-      });
+      })) as TranscriptionResponse;
 
       // Save transcription to S3
       // const transcriptionKey = `${userId}/${timestamp}.scene-${scene.id}.transcription.json`;
@@ -123,6 +137,7 @@ export async function generateNarration(
           start: word.start,
           end: word.end,
         }));
+        subtitleData.duration = transcription.usage.seconds;
         console.log(`🔍 Scene ${i}: Word timestamps extracted successfully`);
         // Word timestamps extracted successfully
       } else {
@@ -165,29 +180,10 @@ export async function generateNarration(
     const audioKeys = results.map((result) => result.audioKey);
     const subtitles = results.map((result) => result.subtitleData);
 
-    // Generate signed URLs for all audio files with filename mapping
-    const narrationUrls = await Promise.all(
-      audioKeys.map(async (audioKey) => {
-        const signedUrl = await getSignedUrl(
-          s3,
-          new GetObjectCommand({
-            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-            Key: audioKey,
-          }),
-          { expiresIn: 36000 }, // 10 hours expiration
-        );
-
-        // Extract filename without user prefix (e.g., "1004.scene-1.mp3")
-        const filename = audioKey.replace(`${userId}/`, '');
-
-        return { [filename]: signedUrl };
-      }),
-    );
-
     console.log(
       `✅ Generated narration for ${results.length} scenes in parallel`,
     );
-    return { subtitles, narrationUrls };
+    return { subtitles };
   } catch (error) {
     console.error('❌ Error in generateNarration:', error);
     throw error;

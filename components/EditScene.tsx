@@ -22,7 +22,10 @@ interface EditSceneProps {
   isSelected?: boolean;
   onSelect?: (sceneId: number) => void;
   regeneratingSceneId?: number | null;
+  creatingSceneId?: number | null;
+  setCreatingSceneId?: React.Dispatch<React.SetStateAction<number | null>>;
   setIsLoadingVideoScenes: (value: boolean) => void;
+  timestamp?: string;
 }
 
 export default function EditScene({
@@ -38,7 +41,10 @@ export default function EditScene({
   isSelected = false,
   onSelect,
   regeneratingSceneId,
+  creatingSceneId,
+  setCreatingSceneId,
   setIsLoadingVideoScenes,
+  timestamp,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -69,6 +75,57 @@ export default function EditScene({
 
   const isEditing = editingScene === scene.id;
   const isRegenerating = regeneratingSceneId === scene.id;
+  const isCreatingScene = creatingSceneId === scene.id;
+
+  const handleCreateScene = async () => {
+    try {
+      const currentTimestamp = timestamp || queryParams.get('timestamp');
+      if (!currentTimestamp) throw new Error('No timestamp found');
+      if (!currentImageUrl && !imageUrl)
+        throw new Error('No image available to create scene');
+
+      // Set the creating scene ID to show loading overlay
+      if (setCreatingSceneId) {
+        setCreatingSceneId(scene.id);
+      }
+
+      const payload = {
+        imageUrl: currentImageUrl || imageUrl!,
+        sceneId: Number(scene.sceneIndex ?? scene.id), // Use displayed scene ID
+        sceneIndex: Number(scene.sceneIndex ?? scene.id), // Position in the sequence
+        timestamp: currentTimestamp,
+        captionText: scene.narration,
+      };
+
+      const res = await fetch('/api/create-scene', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to create scene');
+      }
+
+      const data = await res.json();
+      console.log('✅ Scene creation requested:', data);
+      setIsLoadingVideoScenes(true);
+
+      // Note: Don't clear creatingSceneId here - it will be cleared by WebSocket 'preview_completed' message
+    } catch (e) {
+      console.error('❌ Error creating scene:', e);
+      alert(
+        `Failed to create scene: ${
+          e instanceof Error ? e.message : 'Unknown error'
+        }`,
+      );
+      // Clear creating scene ID on error
+      if (setCreatingSceneId) {
+        setCreatingSceneId(null);
+      }
+    }
+  };
 
   const handleAnimation = async () => {
     try {
@@ -224,6 +281,18 @@ export default function EditScene({
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
                 <span className="text-white text-sm font-medium">
                   Generating Audio and Captions...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Create Scene Loading Overlay */}
+          {isCreatingScene && (
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center z-50">
+              <div className="flex flex-col items-center space-y-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
+                <span className="text-white text-sm font-medium">
+                  Creating Scene...
                 </span>
               </div>
             </div>
@@ -468,25 +537,37 @@ export default function EditScene({
                     {scene.isUserAdded ? (
                       /* Create Scene Button for user-added scenes */
                       <button
-                        onClick={() => {
-                          setIsImageEditModalOpen(true);
-                        }}
-                        className="relative flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl text-white text-sm font-medium transition-all duration-300 overflow-hidden bg-green-600 hover:bg-green-700"
+                        onClick={handleCreateScene}
+                        disabled={isCreatingScene}
+                        className={`relative flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl text-white text-sm font-medium transition-all duration-300 overflow-hidden ${
+                          isCreatingScene
+                            ? 'bg-gray-500 cursor-not-allowed'
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
                       >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M12 4v16m8-8H4"
-                          />
-                        </svg>
-                        <span>Create Scene</span>
+                        {isCreatingScene ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                            <span>Creating...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 4v16m8-8H4"
+                              />
+                            </svg>
+                            <span>Create Scene</span>
+                          </>
+                        )}
                       </button>
                     ) : (
                       /* AI Animation Button for original scenes */

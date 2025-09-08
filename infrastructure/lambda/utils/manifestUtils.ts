@@ -11,6 +11,9 @@ export async function createManifest(
   timestamp: string,
   scenes: Scene[],
   totalDuration: number,
+  voiceToneInstruction: string,
+  voice: string,
+  language: string,
 ): Promise<string> {
   try {
     const prefix = `${userId}/${timestamp}.scene-`;
@@ -26,6 +29,9 @@ export async function createManifest(
       generatedAt: timestamp,
       updatedAt: currentTime,
       sceneCount: scenes.length,
+      voiceToneInstruction,
+      voice,
+      language,
       scenes: scenes.map((scene, index) => ({
         sceneIndex: scene.id,
         files: {
@@ -99,12 +105,49 @@ export async function addSceneToManifest(
   existingManifest: Manifest,
   scene: ManifestScene,
 ): Promise<Manifest> {
+  // Create a copy of existing scenes
+  const updatedScenes = [...existingManifest.scenes];
+
+  // Insert the new scene at the correct position based on sceneIndex
+  updatedScenes.splice(scene.sceneIndex, 0, scene);
+
+  // Bump up sceneIndex for all subsequent scenes
+  for (let i = scene.sceneIndex + 1; i < updatedScenes.length; i++) {
+    updatedScenes[i] = {
+      ...updatedScenes[i],
+      sceneIndex: updatedScenes[i].sceneIndex + 1,
+    };
+  }
+
   const updatedManifest: Manifest = {
     ...existingManifest,
-    scenes: [...existingManifest.scenes, scene],
+    scenes: updatedScenes,
+    sceneCount: updatedScenes.length,
+    updatedAt: Date.now().toString(),
   };
+
   await uploadJsonToS3(JSON.stringify(updatedManifest), existingManifest.key);
   return updatedManifest;
+}
+
+// create a function to create a single manifest scene from a Scene object
+export function createManifestScene(
+  scene: Scene,
+  userId: string,
+  timestamp: string,
+): ManifestScene {
+  return {
+    sceneIndex: scene.id,
+    files: {
+      mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
+      mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
+      combined: `${userId}/${timestamp}.scene-${scene.id}-combined.mp4`,
+      png: `${userId}/${timestamp}.scene-${scene.id}.png`,
+      subtitle: `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`,
+      ass: `${userId}/${timestamp}.scene-${scene.id}.ass`,
+      duration: scene.duration,
+    },
+  };
 }
 
 // create a function to hydrate scenes from manifest
@@ -204,6 +247,7 @@ export async function hydrateManifest(
         png: imageUrl,
         ass: assContent || '',
         subtitle: subtitleContent || '',
+        duration: scene.files.duration,
       },
     };
 

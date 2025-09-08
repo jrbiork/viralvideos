@@ -108,7 +108,7 @@ export const handler = async (
     }
 
     // Step 3: Generate audio narration with word-level timestamps
-    const { subtitles, narrationUrls } = await generateNarration(
+    const { subtitles } = await generateNarration(
       [scene],
       userId,
       timestamp,

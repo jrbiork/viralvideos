@@ -31,6 +31,8 @@ interface SceneCardsContainerProps {
   getMediaFiles: () => Record<string, string>;
   handleSceneSelection: (sceneId: number) => void;
   regeneratingSceneId: number | null;
+  creatingSceneId: number | null;
+  setCreatingSceneId: React.Dispatch<React.SetStateAction<number | null>>;
   handleAddSceneCustom: (position: number) => void;
   setAdditionalScenes: React.Dispatch<
     React.SetStateAction<{ scene: Scene; position: number }[]>
@@ -50,6 +52,8 @@ export default function SceneCardsContainer({
   getMediaFiles,
   handleSceneSelection,
   regeneratingSceneId,
+  creatingSceneId,
+  setCreatingSceneId,
   handleAddSceneCustom,
   setAdditionalScenes,
 }: SceneCardsContainerProps) {
@@ -112,7 +116,7 @@ export default function SceneCardsContainer({
                       editedNarration={sceneState.editedNarration}
                       onEditScene={handleEditSceneWithSubtitle}
                       setIsLoadingVideoScenes={(value: boolean) =>
-                        setVideoGenerationState((prev) => ({
+                        setVideoGenerationState((prev: any) => ({
                           ...prev,
                           isLoadingVideoScenes: value,
                         }))
@@ -130,7 +134,7 @@ export default function SceneCardsContainer({
                           );
 
                           // Update the subtitleFiles in video generation state
-                          setVideoGenerationState((prev) => ({
+                          setVideoGenerationState((prev: any) => ({
                             ...prev,
                             subtitleFiles: updatedSubtitleFiles,
                           }));
@@ -164,6 +168,9 @@ export default function SceneCardsContainer({
                       isSelected={sceneState.selectedSceneId === scene.id}
                       onSelect={handleSceneSelection}
                       regeneratingSceneId={regeneratingSceneId}
+                      creatingSceneId={creatingSceneId}
+                      setCreatingSceneId={setCreatingSceneId}
+                      timestamp={videoGenerationState.currentTimestamp}
                     />
 
                     {/* Add scene button after each scene (except the last one) */}

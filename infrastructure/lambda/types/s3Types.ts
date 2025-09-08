@@ -28,4 +28,7 @@ export interface Manifest {
   finalVideoUrl: string;
   scenes: ManifestScene[];
   videoGenerated: boolean;
+  voiceToneInstruction: string;
+  voice: string;
+  language: string;
 }

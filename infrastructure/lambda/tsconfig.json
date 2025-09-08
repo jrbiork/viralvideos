@@ -45,7 +45,8 @@
     "utils/s3Uploader.ts",
     "utils/videoEffects.ts",
     "utils/manifestUtils.ts",
-    "utils/assUtils.ts"
+    "utils/assUtils.ts",
+    "utils/broadcastProgress.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

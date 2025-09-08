@@ -8,12 +8,21 @@ export interface SubtitleData {
     sceneIndex: number;
     words: SubtitleWord[];
     fullText: string;
+    duration?: number;
 }
 export interface NarrationResult {
     subtitles: SubtitleData[];
-    narrationUrls: Array<{
-        [key: string]: string;
-    }>;
+}
+export interface TranscriptionResponse {
+    task: string;
+    language: string;
+    duration: number;
+    text: string;
+    words: SubtitleWord[];
+    usage: {
+        type: string;
+        seconds: number;
+    };
 }
 /**
  * Adjusts audio duration to match target duration using FFmpeg

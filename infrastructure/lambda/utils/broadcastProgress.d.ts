@@ -1,0 +1,1 @@
+export declare function broadcastProgress(action: 'script_created' | 'image_created' | 'audio_subtitle_created' | 'video_scene_created' | 'preview_completed' | 'video_completed' | 'credit_updated' | 'insufficient_credits', userId: string, timestamp: string, data?: any, message?: string): Promise<void>;

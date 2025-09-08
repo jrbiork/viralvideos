@@ -12,11 +12,13 @@ interface UseWebSocketHandlersProps {
     }>
   >;
   showToasterMessage: (message: string, type: 'success' | 'error') => void;
+  setCreatingSceneId?: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 export function useWebSocketHandlers({
   setVideoGenerationState,
   showToasterMessage,
+  setCreatingSceneId,
 }: UseWebSocketHandlersProps) {
   // Handle video completion
   const handleVideoCompleted = useCallback(
@@ -89,9 +91,14 @@ export function useWebSocketHandlers({
           isLoadingVideoScenes: false,
           isLoadingAudioSubtitles: false,
         }));
+
+        // Clear creating scene ID when preview is completed
+        if (setCreatingSceneId) {
+          setCreatingSceneId(null);
+        }
       }
     },
-    [setVideoGenerationState],
+    [setVideoGenerationState, setCreatingSceneId],
   );
 
   // Handle insufficient credits

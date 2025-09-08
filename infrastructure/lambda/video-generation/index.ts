@@ -1,4 +1,3 @@
-// Updated: Added fluent-ffmpeg dependency support
 import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
 
 import { SQSClient } from '@aws-sdk/client-sqs';
@@ -10,13 +9,11 @@ import {
   VideoGenerationRequest,
 } from './processVideoGeneration';
 import { processVideoCombine } from './processVideoCombine';
+import { processCreateScene } from './processCreateScene';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export const handler = async (event: SQSEvent): Promise<SQSBatchResponse> => {
-  console.log(
-    '🔄 Video Generation Lambda started - Updated with fluent-ffmpeg support',
-  );
   return await handleSQSEvent(event);
 };
 
@@ -39,6 +36,8 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
         await processAnimateImage(request as any, record);
       } else if (request.type === 'combine-video') {
         await processVideoCombine(request as any, record);
+      } else if (request.type === 'create-scene') {
+        await processCreateScene(request as any, record);
       } else {
         await processVideoGeneration(request, record);
       }

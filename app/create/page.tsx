@@ -30,6 +30,7 @@ export default function GeneratePage() {
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
+  const [creatingSceneId, setCreatingSceneId] = useState<number | null>(null);
   const autoPlayRef = useRef<{
     selectedSceneId: number | null;
     timestamp: string;
@@ -112,6 +113,7 @@ export default function GeneratePage() {
   const { handleWebSocketMessage } = useWebSocketHandlers({
     setVideoGenerationState,
     showToasterMessage,
+    setCreatingSceneId,
   });
 
   // WebSocket hook for real-time updates
@@ -661,6 +663,8 @@ export default function GeneratePage() {
               getMediaFiles={getMediaFiles}
               handleSceneSelection={handleSceneSelection}
               regeneratingSceneId={regeneratingSceneId}
+              creatingSceneId={creatingSceneId}
+              setCreatingSceneId={setCreatingSceneId}
               handleAddSceneCustom={handleAddSceneCustom}
               setAdditionalScenes={setAdditionalScenes}
             />

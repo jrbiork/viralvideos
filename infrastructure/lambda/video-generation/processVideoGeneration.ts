@@ -26,7 +26,12 @@ import { broadcastProgress } from './broadcastProgress';
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export interface VideoGenerationRequest {
-  type?: 'generate-video' | 'save-image' | 'animate-image' | 'combine-video';
+  type?:
+    | 'generate-video'
+    | 'save-image'
+    | 'animate-image'
+    | 'combine-video'
+    | 'create-scene';
   prompt?: string;
   userId: string;
   timestamp: string;
@@ -73,23 +78,6 @@ export async function processVideoGeneration(
         message: 'Video already generated',
         manifest: manifestHydrated,
       };
-    } else {
-      scenes = Array.from({ length: request.sceneCount }, (_, i) => ({
-        id: i,
-        description: '',
-        duration: sceneDuration,
-        narration: '',
-      }));
-
-      // Create manifest and upload to s3
-      await createManifest(
-        request.userId,
-        timestamp,
-        scenes,
-        request.totalDuration,
-      );
-
-      manifest = await getManifest(request.userId, request.timestamp);
     }
 
     // Check if there is already script generated in the s3 bucket for the timestamp
@@ -129,8 +117,6 @@ export async function processVideoGeneration(
       console.log('❌ Error: Failed to get or generate story breakdown');
       throw new Error('Failed to get or generate story breakdown');
     }
-
-    console.log('🎥 Manifest created and uploaded:');
 
     console.log('🎥 Story breakdown generated:', scenes);
 
@@ -239,9 +225,33 @@ export async function processVideoGeneration(
         request.language || DEFAULT_LANGUAGE,
       );
 
+      // update scenes duration
+      scenes.forEach((scene, i) => {
+        scene.duration = subtitles[i].duration || 10;
+        console.log('subtitles[i].duration:', subtitles[i].duration);
+      });
+
       // Step 4: Generate subtitle file
       await generateSubtitles(scenes, request.userId, timestamp, subtitles);
     }
+
+    console.log(
+      '🎥 Scenes before creating manifest:',
+      JSON.stringify(scenes, null, 2),
+    );
+
+    // Create manifest and upload to s3
+    await createManifest(
+      request.userId,
+      timestamp,
+      scenes,
+      request.totalDuration,
+      voiceToneInstruction,
+      request.voice || DEFAULT_VOICE,
+      request.language || DEFAULT_LANGUAGE,
+    );
+
+    manifest = await getManifest(request.userId, request.timestamp);
 
     let manifestHydrated = await hydrateManifest(manifest);
 

@@ -6,6 +6,7 @@ export interface ManifestFile {
     png?: string;
     subtitle: string;
     ass: string;
+    duration: number;
 }
 export interface ManifestScene {
     sceneIndex: number;
@@ -25,4 +26,7 @@ export interface Manifest {
     finalVideoUrl: string;
     scenes: ManifestScene[];
     videoGenerated: boolean;
+    voiceToneInstruction: string;
+    voice: string;
+    language: string;
 }
