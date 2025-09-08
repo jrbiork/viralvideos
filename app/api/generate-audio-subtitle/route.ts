@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
       cognitoToken.length,
     );
 
-    const { scene, instructions, timestamp, voice } = await request.json();
+    const { scene, instructions, timestamp, voice, broadcastProgress } =
+      await request.json();
 
     if (!scene) {
       return NextResponse.json(
@@ -89,6 +90,7 @@ export async function POST(request: NextRequest) {
       scene,
       voiceToneInstruction: instructions,
       voice: voice || 'alloy',
+      broadcastProgress: broadcastProgress || false,
     };
 
     // Call the API Gateway endpoint with timestamp as query string

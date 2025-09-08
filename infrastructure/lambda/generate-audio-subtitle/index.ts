@@ -17,11 +17,13 @@ import {
 const DEFAULT_LANGUAGE = 'en';
 
 interface RequestBody {
-  scenes: Scene[];
+  scene: Scene;
   userId: string;
   timestamp: string;
+  language?: string;
   voiceToneInstruction?: string;
   voice?: string;
+  broadcastProgress?: boolean;
 }
 
 export const handler = async (
@@ -57,10 +59,11 @@ export const handler = async (
     }
 
     // get one scene object from body
-    const requestBody = JSON.parse(event.body);
-    const scene = requestBody.scene as Scene;
+    const requestBody = JSON.parse(event.body) as RequestBody;
+    const scene = requestBody.scene;
     const voice = requestBody.voice || 'alloy';
     const language = requestBody.language || DEFAULT_LANGUAGE;
+    const broadcast = requestBody.broadcastProgress;
 
     if (!scene) {
       return {
