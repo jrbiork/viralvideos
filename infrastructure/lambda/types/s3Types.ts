@@ -6,6 +6,7 @@ export interface ManifestFile {
   png?: string;
   subtitle: string;
   ass: string;
+  duration: number;
 }
 
 export interface ManifestScene {

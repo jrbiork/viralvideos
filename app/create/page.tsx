@@ -18,6 +18,7 @@ import { parseColoredText, parseAssFile } from '../../lib/subtitle-utils';
 import { useVideoGeneration } from '../../hooks/useVideoGeneration';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
 import VideoSkeleton from '../../components/VideoSkeleton';
 import { Manifest } from '../types/manifest';
 import { WebSocketMessage } from '../types/websocket';
@@ -26,7 +27,6 @@ export default function GeneratePage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE); // Track voice selection
-  const [selectedLanguage, setSelectedLanguage] = useState(DEFAULT_LANGUAGE); // Track language selection
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
@@ -108,33 +108,15 @@ export default function GeneratePage() {
     setupVideoEventListeners,
   } = useSceneManagement();
 
+  // WebSocket handlers hook
+  const { handleWebSocketMessage } = useWebSocketHandlers({
+    setVideoGenerationState,
+    showToasterMessage,
+  });
+
   // WebSocket hook for real-time updates
   const { isConnected } = useWebSocket({
-    onMessage: (message: WebSocketMessage) => {
-      console.log('WebSocket message:', message);
-
-      // Handle different message types
-      switch (message.action) {
-        case 'image_created':
-          handleImageCreated(message.data);
-          break;
-        case 'audio_subtitle_created':
-          handleAudioSubtitleCreated(message.data);
-          break;
-        // case 'video_scene_created':
-        //   handleVideoSceneCreated(message.data);
-        //   break;
-        case 'preview_completed':
-          handlePreviewCompleted(message.data);
-          break;
-        case 'video_completed':
-          handleVideoCompleted(message.data);
-          break;
-        default:
-          // Unknown message type
-          break;
-      }
-    },
+    onMessage: handleWebSocketMessage,
     onConnect: () => {
       // WebSocket connected
       console.log('WebSocket connected: ', isConnected);
@@ -147,88 +129,6 @@ export default function GeneratePage() {
       console.error('WebSocket error:', error);
     },
   });
-
-  // Handle video completion
-  const handleVideoCompleted = (data: any) => {
-    // Show browser notification when video generation is completed
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('Your video is ready!', {
-        body: 'Your video has been generated successfully!',
-        icon: '/favicon.ico',
-        badge: '/favicon.ico',
-      });
-    } else if (
-      'Notification' in window &&
-      Notification.permission !== 'denied'
-    ) {
-      Notification.requestPermission().then((permission) => {
-        if (permission === 'granted') {
-          new Notification('Your video is ready!', {
-            body: 'Your video has been generated successfully!',
-            icon: '/favicon.ico',
-            badge: '/favicon.ico',
-          });
-        }
-      });
-    }
-
-    // set toaster message
-    showToasterMessage('Video generated successfully', 'success');
-  };
-
-  // Handle image creation
-  const handleImageCreated = (data: any) => {
-    if (data.manifest) {
-      setVideoGenerationState((prev) => ({
-        ...prev,
-        currentTimestamp: data.timestamp || prev.currentTimestamp,
-        manifest: data.manifest,
-      }));
-    }
-  };
-
-  // Handle audio and subtitle creation
-  const handleAudioSubtitleCreated = (data: any) => {
-    if (data.manifest) {
-      setVideoGenerationState((prev) => ({
-        ...prev,
-        currentTimestamp: data.timestamp || prev.currentTimestamp,
-        manifest: data.manifest,
-        isLoadingAudioSubtitles: false, // Set to false when audio/subtitles are ready
-      }));
-    }
-  };
-
-  // Handle video scene creation
-  // const handleVideoSceneCreated = (data: any) => {
-  //   if (data.manifest) {
-  //     setVideoGenerationState((prev) => ({
-  //       ...prev,
-  //       isLoadingVideoScenes: false, // Set to false when video scenes are created
-  //       currentTimestamp: data.timestamp || prev.currentTimestamp,
-  //       manifest: data.manifest,
-  //     }));
-  //   }
-  // };
-
-  // Handle video completion
-  const handlePreviewCompleted = (data: any) => {
-    if (data.manifest) {
-      setVideoGenerationState((prev) => ({
-        ...prev,
-        currentTimestamp: data.timestamp || prev.currentTimestamp,
-        manifest: data.manifest,
-        isLoadingVideoScenes: false,
-        isLoadingAudioSubtitles: false,
-      }));
-    }
-  };
-
-  // Handle insufficient credits
-  const handleInsufficientCredits = (data: any) => {
-    console.log('Insufficient credits:', data);
-    showToasterMessage('Insufficient credits', 'error');
-  };
 
   // Helper functions to extract data from manifest
   const getMediaFiles = useCallback(() => {

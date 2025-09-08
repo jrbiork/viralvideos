@@ -35,6 +35,7 @@ export async function createManifest(
           png: `${userId}/${timestamp}.scene-${scene.id}.png`,
           subtitle: `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`,
           ass: `${userId}/${timestamp}.scene-${scene.id}.ass`,
+          duration: scene.duration,
         },
       })),
       totalDuration,

@@ -186,7 +186,8 @@ export function useSceneManagement() {
 
         // Start the selected video after a longer delay to avoid conflicts
         setTimeout(() => {
-          const videoKey = `${currentTimestamp}.scene-${selectedSceneIndex}.mp4`;
+          const selectedScene = scenes[selectedSceneIndex];
+          const videoKey = `${currentTimestamp}.scene-${selectedScene.id}.mp4`;
           console.log('🎬 Looking for video with key:', videoKey);
           const videoElement = document.querySelector(
             `video[src*="${videoKey}"]`,
@@ -252,7 +253,7 @@ export function useSceneManagement() {
     const updateSubtitle = async () => {
       // Get the latest assFiles from the video element (now expected to hold inline contents)
       const latestAssFiles = JSON.parse(videoRef.dataset.assFiles || '{}');
-      const assKey = `${currentTimestamp}.scene-${sceneIndex}.ass`;
+      const assKey = `${currentTimestamp}.scene-${scene.id}.ass`;
       const assContent = latestAssFiles[assKey];
 
       if (assContent) {

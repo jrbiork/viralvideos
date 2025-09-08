@@ -1,6 +1,10 @@
 import { SQSRecord } from 'aws-lambda';
 import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
-import { getManifest, hydrateManifest } from '../utils/manifestUtils';
+import {
+  getManifest,
+  hydrateManifest,
+  updateManifest,
+} from '../utils/manifestUtils';
 import { generateVideoClip } from '../utils/video';
 import { broadcastProgress } from './broadcastProgress';
 import {
@@ -84,6 +88,13 @@ export async function processAnimateImage(
       imageUrl,
     );
     console.log(`✅ Animated video created for scene ${sceneId}: ${videoKey}`);
+
+    // update manifest for the particular scene with the video key
+    await updateManifest(manifest, {
+      scenes: manifest.scenes.map((scene) =>
+        scene.sceneIndex === sceneId ? { ...scene, duration } : scene,
+      ),
+    });
 
     // Deduct credits
     const newCurrentCredits = await updateCreditBalanceByUserId(

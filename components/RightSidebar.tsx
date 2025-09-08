@@ -71,8 +71,8 @@ export default function RightSidebar({
         scenes.length > 0 && (
           <>
             {scenes.map((scene: any, index: number) => {
-              const videoKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp4`;
-              const assKey = `${videoGenerationState.currentTimestamp}.scene-${index}.ass`;
+              const videoKey = `${videoGenerationState.currentTimestamp}.scene-${scene.id}.mp4`;
+              const assKey = `${videoGenerationState.currentTimestamp}.scene-${scene.id}.ass`;
               const isVisible = sceneState.selectedSceneId === scene.id;
 
               // Find the correct index for the selected scene
@@ -131,7 +131,7 @@ export default function RightSidebar({
 
             {/* Scene Audio - Hidden Controls */}
             {scenes.map((scene: any, index: number) => {
-              const audioKey = `${videoGenerationState.currentTimestamp}.scene-${index}.mp3`;
+              const audioKey = `${videoGenerationState.currentTimestamp}.scene-${scene.id}.mp3`;
               return getMediaFiles()[audioKey] ? (
                 <audio
                   key={scene.id}
