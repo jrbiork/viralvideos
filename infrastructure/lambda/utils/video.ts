@@ -14,7 +14,7 @@ export interface Scene {
 export async function generateVideoClip(
   description: string,
   duration: 5 | 10,
-  sceneIndex: number,
+  scenePosition: number,
   userId: string,
   timestamp: string,
   seed: number,
@@ -26,7 +26,7 @@ export async function generateVideoClip(
       apiKey: process.env.RUNWAY_API_KEY!,
     });
 
-    console.log(`🎬 Calling Runway SDK for scene ${sceneIndex}...`);
+    console.log(`🎬 Calling Runway SDK for scene ${scenePosition}...`);
     console.log('- Prompt:', description);
     console.log('- Duration:', duration, 'seconds');
 
@@ -100,7 +100,7 @@ export async function generateVideoClip(
         // If we've exhausted retries or it's not the specific error, throw
         if (retryCount >= maxRetries) {
           console.error(
-            `❌ All ${maxRetries} attempts failed for scene ${sceneIndex}`,
+            `❌ All ${maxRetries} attempts failed for scene ${scenePosition}`,
           );
           throw error;
         }
@@ -123,7 +123,7 @@ export async function generateVideoClip(
     console.log(`✅ Downloaded video, size: ${videoBuffer.length} bytes`);
 
     // Save video to video-parts bucket with timestamp prefix
-    const videoKey = `${userId}/${timestamp}.scene-${sceneIndex}.mp4`;
+    const videoKey = `${userId}/${timestamp}.scene-${scenePosition}.mp4`;
     console.log(
       `☁️ Uploading video part to S3: ${process.env.VIDEO_PARTS_BUCKET_NAME}/${videoKey}`,
     );
@@ -141,7 +141,7 @@ export async function generateVideoClip(
     return videoKey;
   } catch (error) {
     console.error(
-      `❌ Error in generateVideoClip for scene ${sceneIndex}:`,
+      `❌ Error in generateVideoClip for scene ${scenePosition}:`,
       error,
     );
     if (error && typeof error === 'object' && 'message' in error) {

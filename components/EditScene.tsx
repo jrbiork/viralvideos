@@ -6,7 +6,7 @@ export interface Scene {
   narration: string;
   duration: number;
   isUserAdded?: boolean;
-  sceneIndex?: number;
+  scenePosition?: number;
 }
 
 interface EditSceneProps {
@@ -91,8 +91,8 @@ export default function EditScene({
 
       const payload = {
         imageUrl: currentImageUrl || imageUrl!,
-        sceneId: Number(scene.sceneIndex ?? scene.id), // Use displayed scene ID
-        sceneIndex: Number(scene.sceneIndex ?? scene.id), // Position in the sequence
+        sceneId: scene.id,
+        scenePosition: scene.scenePosition,
         timestamp: currentTimestamp,
         captionText: scene.narration,
       };
@@ -260,7 +260,7 @@ export default function EditScene({
         {/* Scene Label */}
         <div className="mb-2">
           <h3 className="text-white text-lg font-semibold">
-            Scene {(scene.sceneIndex ?? scene.id) + 1}
+            Scene {(scene.scenePosition ?? scene.id) + 1}
           </h3>
         </div>
 
@@ -309,7 +309,7 @@ export default function EditScene({
             >
               <img
                 src={currentImageUrl}
-                alt={`Scene ${(scene.sceneIndex ?? scene.id) + 1}`}
+                alt={`Scene ${(scene.scenePosition ?? scene.id) + 1}`}
                 className="w-full h-auto object-contain object-top rounded-xl"
                 onError={(e) => {
                   // Hide the image if it fails to load
@@ -431,6 +431,25 @@ export default function EditScene({
                     placeholder="Enter scene narration..."
                   />
                 </div>
+                {/* Duration Badge - positioned below the textarea */}
+                <div className="flex justify-start mb-2">
+                  <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span>{scene.duration}s</span>
+                  </div>
+                </div>
                 <div className="flex justify-end space-x-3">
                   {scene.isUserAdded ? (
                     /* OK button for user-added scenes */
@@ -526,6 +545,25 @@ export default function EditScene({
                     >
                       {scene.narration}
                     </p>
+                  </div>
+                </div>
+                {/* Duration Badge - positioned below the text area */}
+                <div className="flex justify-start mb-2">
+                  <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span>{scene.duration}s</span>
                   </div>
                 </div>
                 <div className="grid grid-cols-3 items-center">
@@ -627,24 +665,6 @@ export default function EditScene({
                       <span>Edit</span>
                     </button>
                   </div>
-
-                  {/* Global Duration Badge (outside image area) */}
-                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>{scene.duration}s</span>
-                  </div>
                 </div>
               </div>
             )}
@@ -688,7 +708,7 @@ export default function EditScene({
                   <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
                     <img
                       src={imageUrl}
-                      alt={`Scene ${(scene.sceneIndex ?? scene.id) + 1}`}
+                      alt={`Scene ${(scene.scenePosition ?? scene.id) + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -896,7 +916,7 @@ export default function EditScene({
                   <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
                     <img
                       src={currentImageUrl || imageUrl}
-                      alt={`Scene ${(scene.sceneIndex ?? scene.id) + 1}`}
+                      alt={`Scene ${(scene.scenePosition ?? scene.id) + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </div>

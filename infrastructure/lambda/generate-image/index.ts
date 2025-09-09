@@ -76,7 +76,7 @@ export const handler = async (
     // get last 4 digits of timestamp
 
     const seed = Math.floor(Math.random() * 10000);
-    const sceneId = 99;
+    const sceneId = Date.now();
 
     const imageUrl = await generateNanoBananaImage(
       imagePrompt,

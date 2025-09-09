@@ -169,13 +169,13 @@ export function useSceneManagement() {
       scenes.length > 0 &&
       state.autoAdvanceEnabled
     ) {
-      const selectedSceneIndex = scenes.findIndex(
+      const selectedscenePosition = scenes.findIndex(
         (s: any) => s.id === state.selectedSceneId,
       );
 
-      console.log('🎬 Selected scene index:', selectedSceneIndex);
+      console.log('🎬 Selected scene index:', selectedscenePosition);
 
-      if (selectedSceneIndex !== -1) {
+      if (selectedscenePosition !== -1) {
         // Stop all videos first
         const allVideos = document.querySelectorAll('video');
         console.log('🎬 Stopping', allVideos.length, 'videos');
@@ -186,7 +186,7 @@ export function useSceneManagement() {
 
         // Start the selected video after a longer delay to avoid conflicts
         setTimeout(() => {
-          const selectedScene = scenes[selectedSceneIndex];
+          const selectedScene = scenes[selectedscenePosition];
           const videoKey = `${currentTimestamp}.scene-${selectedScene.id}.mp4`;
           console.log('🎬 Looking for video with key:', videoKey);
           const videoElement = document.querySelector(
@@ -238,7 +238,7 @@ export function useSceneManagement() {
     scenes: any[],
     assFiles: { [key: string]: string },
     currentTimestamp: string,
-    sceneIndex: number,
+    scenePosition: number,
   ) => {
     if (!videoRef || videoRef.dataset.initialized) return;
 
@@ -339,13 +339,13 @@ export function useSceneManagement() {
 
       // Auto-select next scene if available
       if (scenes && scenes.length > 0) {
-        const currentSceneIndex = scenes.findIndex(
+        const currentscenePosition = scenes.findIndex(
           (s: any) => s.id === scene.id,
         );
-        const nextSceneIndex = currentSceneIndex + 1;
+        const nextscenePosition = currentscenePosition + 1;
 
-        if (nextSceneIndex < scenes.length) {
-          const nextScene = scenes[nextSceneIndex];
+        if (nextscenePosition < scenes.length) {
+          const nextScene = scenes[nextscenePosition];
           dispatch({ type: 'SET_SELECTED_SCENE_ID', payload: nextScene.id });
         }
       }

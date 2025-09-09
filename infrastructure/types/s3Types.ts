@@ -9,7 +9,7 @@ export interface ManifestFile {
 }
 
 export interface ManifestScene {
-  sceneIndex: number;
+  scenePosition: number;
   files: ManifestFile;
 }
 

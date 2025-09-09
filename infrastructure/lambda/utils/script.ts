@@ -45,26 +45,29 @@ export async function generateStoryBreakdown(
     console.log('maxWordsPerScene:', maxWordsPerScene);
     const maxTotalWords = Math.floor(totalDuration * WPS);
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'gpt-5-nano',
       messages: [
         {
           role: 'system',
           content: `You are a short-form video scriptwriter for TikTok/Reels/Shorts.
                 Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
                 Strict rules:
-                - Narration per scene should have ${maxWordsPerScene} words (hard cap) and total words should be less than ${maxTotalWords}.
-                - Language: **use the same language as the user's input**.
-                - Each **description**: what viewers see. No dialogue. Keep it short and concise.
-                - Avoid filler and long pauses: max 1 comma per sentence, no parentheses, no ellipses.
-                - Prefer active voice and simple clauses.
-  `,
+                - **No brands, logos, trademarks, public figures, mascots, or celebrity likenesses.** If the user mentions any, **rewrite to a generic archetype** with descriptive traits (e.g., “an elderly Southern gentleman in a white suit and string tie”) and never use real names or marks.
+                - **No dialogue** in descriptions. Each scene has:
+                  • **description**: what viewers see (camera/framing, action, setting, mood) — concise, concrete, visual.
+                  • **narration**: what the voiceover says (<= ${maxWordsPerScene} words per scene, hard cap).
+                - Use **active voice**, avoid filler and long pauses.
+                - **Language**: exactly mirror the user’s input language.
+                - Keep visual cues safe for generative models (e.g., “monochrome portrait” instead of referencing specific photographers/brands).
+                - Do not include watermarks, text overlays, or UI elements in descriptions.
+              `,
         },
         {
           role: 'user',
           content: prompt,
         },
       ],
-      temperature: 0.7,
+      temperature: 1,
       response_format: {
         type: 'json_schema',
         json_schema: {

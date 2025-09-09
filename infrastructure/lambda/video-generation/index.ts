@@ -51,6 +51,3 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
     batchItemFailures,
   };
 }
-
-// Re-export the broadcastProgress function for backward compatibility
-export { broadcastProgress } from './broadcastProgress';

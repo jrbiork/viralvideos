@@ -33,7 +33,7 @@
     "axios": "^1.6.7",
     "fluent-ffmpeg": "^2.1.2",
     "jose": "^5.10.0",
-    "openai": "^4.28.0"
+    "openai": "^5.20.0"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.133",

@@ -71,15 +71,31 @@ export default function RightSidebar({
         scenes.length > 0 && (
           <>
             {scenes.map((scene: any, index: number) => {
-              const videoKey = `${videoGenerationState.currentTimestamp}.scene-${scene.id}.mp4`;
-              const assKey = `${videoGenerationState.currentTimestamp}.scene-${scene.id}.ass`;
+              // Get the actual scene number from the manifest file names
+              let sceneNumber = scene.id.toString();
+              if (videoGenerationState.manifest?.scenes) {
+                const manifestScene = videoGenerationState.manifest.scenes.find(
+                  (manifestScene) =>
+                    manifestScene.scenePosition === scene.scenePosition,
+                );
+                if (manifestScene?.files?.mp4) {
+                  const extractedNumber =
+                    manifestScene.files.mp4.match(/scene-(\d+)\./)?.[1];
+                  if (extractedNumber) {
+                    sceneNumber = extractedNumber;
+                  }
+                }
+              }
+
+              const videoKey = `${videoGenerationState.currentTimestamp}.scene-${sceneNumber}.mp4`;
+              const assKey = `${videoGenerationState.currentTimestamp}.scene-${sceneNumber}.ass`;
               const isVisible = sceneState.selectedSceneId === scene.id;
 
               // Find the correct index for the selected scene
-              const selectedSceneIndex = scenes.findIndex(
+              const selectedscenePosition = scenes.findIndex(
                 (s: any) => s.id === sceneState.selectedSceneId,
               );
-              const isVisibleByIndex = index === selectedSceneIndex;
+              const isVisibleByIndex = index === selectedscenePosition;
 
               return (
                 <div
@@ -131,7 +147,23 @@ export default function RightSidebar({
 
             {/* Scene Audio - Hidden Controls */}
             {scenes.map((scene: any, index: number) => {
-              const audioKey = `${videoGenerationState.currentTimestamp}.scene-${scene.id}.mp3`;
+              // Get the actual scene number from the manifest file names
+              let sceneNumber = scene.id.toString();
+              if (videoGenerationState.manifest?.scenes) {
+                const manifestScene = videoGenerationState.manifest.scenes.find(
+                  (manifestScene) =>
+                    manifestScene.scenePosition === scene.scenePosition,
+                );
+                if (manifestScene?.files?.mp3) {
+                  const extractedNumber =
+                    manifestScene.files.mp3.match(/scene-(\d+)\./)?.[1];
+                  if (extractedNumber) {
+                    sceneNumber = extractedNumber;
+                  }
+                }
+              }
+
+              const audioKey = `${videoGenerationState.currentTimestamp}.scene-${sceneNumber}.mp3`;
               return getMediaFiles()[audioKey] ? (
                 <audio
                   key={scene.id}

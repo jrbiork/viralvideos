@@ -9,7 +9,7 @@ export interface Scene {
 
 export async function generateImage(
   description: string,
-  sceneIndex: number,
+  scenePosition: number,
   userId: string,
   timestamp: string,
   seed: number,
@@ -22,7 +22,7 @@ export async function generateImage(
     });
 
     console.log(
-      `🎨 Calling Runway SDK for image generation in scene ${sceneIndex}...`,
+      `🎨 Calling Runway SDK for image generation in scene ${scenePosition}...`,
     );
     console.log('- Prompt:', description);
     console.log('- Aspect ratio: 9:16 (vertical)');
@@ -89,7 +89,7 @@ export async function generateImage(
         // If we've exhausted retries or it's not the specific error, throw
         if (imageRetryCount >= maxImageRetries) {
           console.error(
-            `❌ All ${maxImageRetries} image generation attempts failed for scene ${sceneIndex}`,
+            `❌ All ${maxImageRetries} image generation attempts failed for scene ${scenePosition}`,
           );
           throw error;
         }
@@ -113,7 +113,10 @@ export async function generateImage(
 
     return imageUrl;
   } catch (error) {
-    console.error(`❌ Error in generateImage for scene ${sceneIndex}:`, error);
+    console.error(
+      `❌ Error in generateImage for scene ${scenePosition}:`,
+      error,
+    );
     if (error && typeof error === 'object' && 'message' in error) {
       console.error('Error message:', error.message);
       console.error('Error name:', (error as any).name);

@@ -4,4 +4,4 @@ export interface Scene {
     narration: string;
     id: number;
 }
-export declare function generateImage(description: string, sceneIndex: number, userId: string, timestamp: string, seed: number, sceneId?: number): Promise<string>;
+export declare function generateImage(description: string, scenePosition: number, userId: string, timestamp: string, seed: number, sceneId?: number): Promise<string>;

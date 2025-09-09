@@ -9,7 +9,7 @@ export interface ManifestFile {
     duration: number;
 }
 export interface ManifestScene {
-    sceneIndex: number;
+    scenePosition: number;
     files: ManifestFile;
 }
 export interface Manifest {

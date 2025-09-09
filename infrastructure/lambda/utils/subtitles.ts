@@ -35,9 +35,9 @@ export async function generateSubtitles(
       let assContent: string;
 
       // Check if we have word-level subtitle data for this scene
-      // Use scene.id as sceneIndex since that's what we're passing from the lambda
+      // Use scene.id as scenePosition since that's what we're passing from the lambda
       const sceneSubtitleData = subtitleData?.find(
-        (data) => data.sceneIndex === scene.id,
+        (data) => data.scenePosition === scene.id,
       );
 
       if (sceneSubtitleData && sceneSubtitleData.words.length > 0) {

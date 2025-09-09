@@ -6,15 +6,15 @@ import {
   addSceneToManifest,
   createManifestScene,
 } from '../utils/manifestUtils';
-import { uploadImageToS3 } from '../utils/s3Uploader';
+
 import { generateSubtitles } from '../utils/subtitles';
 import { generateVideoEffects } from '../utils/videoEffects';
-import { broadcastProgress } from './broadcastProgress';
+import { broadcastProgress } from '../utils/broadcastProgress';
 
 export interface CreateSceneRequest {
   imageUrl: string;
   sceneId: number;
-  sceneIndex: number;
+  scenePosition: number;
   userId: string;
   timestamp: string;
   captionText: string;
@@ -24,14 +24,16 @@ export async function processCreateScene(
   request: CreateSceneRequest,
   record?: SQSRecord,
 ) {
-  const { imageUrl, sceneId, sceneIndex, captionText, userId, timestamp } =
+  const { imageUrl, sceneId, scenePosition, captionText, userId, timestamp } =
     request;
+
+  console.log('request:', JSON.stringify(request, null, 2));
 
   const scenes = [
     {
-      id: sceneIndex,
+      id: sceneId,
       description: '',
-      duration: 10, // Todo: get duration from audio
+      duration: 10,
       narration: captionText,
     },
   ];
@@ -43,9 +45,6 @@ export async function processCreateScene(
       body: JSON.stringify({ error: 'Manifest not found' }),
     };
   }
-
-  // save imageURL receive into s3 bucket video parts
-  await uploadImageToS3(imageUrl, userId, timestamp, sceneId);
 
   // generate audio and transcription
   const { subtitles } = await generateNarration(
@@ -73,18 +72,16 @@ export async function processCreateScene(
     scenes[0],
     request.userId,
     timestamp,
+    scenePosition,
   );
 
-  // Set the sceneIndex to the position where the scene should be inserted
-  manifestScene.sceneIndex = sceneIndex;
-
   // update manifest
-  await addSceneToManifest(manifest, manifestScene);
+  const updatedManifest = await addSceneToManifest(manifest, manifestScene);
 
   // hydrate manifest
-  const manifestHydrated = await hydrateManifest(manifest);
+  const manifestHydrated = await hydrateManifest(updatedManifest);
 
-  broadcastProgress('preview_completed', request.userId, timestamp, {
+  await broadcastProgress('preview_completed', request.userId, timestamp, {
     manifest: manifestHydrated,
   });
 

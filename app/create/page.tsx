@@ -67,13 +67,15 @@ export default function GeneratePage() {
   // Custom handleAddScene function to add new scenes
   const handleAddSceneCustom = (position: number) => {
     const newScene = {
-      id: Date.now(), // Use timestamp as unique ID
-      sceneIndex: position, // Will be properly reindexed later
+      id: scenes.length + 1,
+      scenePosition: position, // Will be properly reindexed later
       description: `New scene ${additionalScenes.length + 1}`,
       narration: 'Enter your scene description here...',
       duration: 5, // Default duration
       isUserAdded: true, // Flag to identify user-added scenes
     };
+
+    console.log('🔄 New scene:', newScene, additionalScenes.length + 1);
 
     // Add the new scene with its position
     setAdditionalScenes((prev) => {
@@ -139,13 +141,22 @@ export default function GeneratePage() {
 
     videoGenerationState.manifest.scenes.forEach((scene) => {
       const { files } = scene;
-      const sceneId = scene.sceneIndex;
       const timestamp = videoGenerationState.manifest!.generatedAt;
 
-      // Add all file types to mediaFiles
-      mediaFiles[`${timestamp}.scene-${sceneId}.png`] = files.png || '';
-      mediaFiles[`${timestamp}.scene-${sceneId}.mp3`] = files.mp3;
-      mediaFiles[`${timestamp}.scene-${sceneId}.mp4`] = files.mp4;
+      // Extract actual scene number from file names
+      const sceneNumber =
+        files.mp3?.match(/scene-(\d+)\./)?.[1] ||
+        scene.scenePosition.toString();
+
+      // Add all file types to mediaFiles using the actual scene number
+      if (files.png) {
+        mediaFiles[`${timestamp}.scene-${sceneNumber}.png`] = files.png;
+      }
+      if (files.jpg) {
+        mediaFiles[`${timestamp}.scene-${sceneNumber}.jpg`] = files.jpg;
+      }
+      mediaFiles[`${timestamp}.scene-${sceneNumber}.mp3`] = files.mp3;
+      mediaFiles[`${timestamp}.scene-${sceneNumber}.mp4`] = files.mp4;
     });
 
     return mediaFiles;
@@ -156,9 +167,12 @@ export default function GeneratePage() {
     const subtitles: { [key: string]: string } = {};
 
     videoGenerationState.manifest.scenes.forEach((scene) => {
-      const sceneId = scene.sceneIndex;
       const timestamp = videoGenerationState.manifest!.generatedAt;
-      const subtitleKey = `${timestamp}.scene-${sceneId}.subtitle`;
+      // Extract actual scene number from file names
+      const sceneNumber =
+        scene.files.mp3?.match(/scene-(\d+)\./)?.[1] ||
+        scene.scenePosition.toString();
+      const subtitleKey = `${timestamp}.scene-${sceneNumber}.subtitle`;
       subtitles[subtitleKey] = scene.files.subtitle;
     });
 
@@ -170,9 +184,12 @@ export default function GeneratePage() {
     const assFiles: { [key: string]: string } = {};
 
     videoGenerationState.manifest.scenes.forEach((scene) => {
-      const sceneId = scene.sceneIndex;
       const timestamp = videoGenerationState.manifest!.generatedAt;
-      const assKey = `${timestamp}.scene-${sceneId}.ass`;
+      // Extract actual scene number from file names
+      const sceneNumber =
+        scene.files.mp3?.match(/scene-(\d+)\./)?.[1] ||
+        scene.scenePosition.toString();
+      const assKey = `${timestamp}.scene-${sceneNumber}.ass`;
       assFiles[assKey] = scene.files.ass;
     });
 
@@ -191,39 +208,41 @@ export default function GeneratePage() {
   // Example video URL
   const exampleVideoUrl = '/assets/example.mp4';
 
-  // Create scenes from subtitles data
+  // Create scenes from manifest data
   const createScenesFromSubtitleFiles = useCallback((): Scene[] => {
     if (!videoGenerationState.manifest?.scenes) return [];
 
-    const subtitles = getSubtitles();
-    const subtitleKeys = Object.keys(subtitles).sort((a, b) => {
-      const indexA = parseInt(a.match(/scene-(\d+)\./)?.[1] || '0');
-      const indexB = parseInt(b.match(/scene-(\d+)\./)?.[1] || '0');
-      return indexA - indexB;
-    });
+    return videoGenerationState.manifest.scenes.map((manifestScene, index) => {
+      // Extract the actual scene ID from the file names in the manifest
+      const actualSceneId = manifestScene.files?.mp3
+        ? parseInt(
+            manifestScene.files.mp3.match(/scene-(\d+)\./)?.[1] ||
+              manifestScene.scenePosition.toString(),
+          )
+        : manifestScene.scenePosition;
 
-    return subtitleKeys.map((subtitleKey: string, index: number) => {
-      // Extract the actual scene index from the subtitle key
-      const sceneIndexMatch = subtitleKey.match(/scene-(\d+)\./);
-      const sceneIndex = sceneIndexMatch ? parseInt(sceneIndexMatch[1]) : index;
+      // Get the narration from the subtitle field
+      const narration =
+        manifestScene.files?.subtitle ||
+        `Scene ${manifestScene.scenePosition + 1}`;
 
-      const narration = subtitles[subtitleKey] || `Scene ${sceneIndex + 1}`;
-
-      // Make sure videoGenerationState.manifest is not null or undefined
-      const sceneManifest = videoGenerationState.manifest;
+      // Get duration from manifest scene files, fallback to calculated duration
+      const actualDuration =
+        manifestScene?.files?.duration ||
+        Math.floor(
+          (videoGenerationState.manifest?.totalDuration || 30) /
+            (videoGenerationState.manifest?.sceneCount || 3),
+        );
 
       return {
-        id: sceneIndex,
-        description: `Scene ${sceneIndex + 1}`,
+        id: actualSceneId,
+        description: `Scene ${manifestScene.scenePosition + 1}`,
         narration: narration,
-        duration: Math.floor(
-          (sceneManifest?.totalDuration || 30) /
-            (sceneManifest?.sceneCount || 3),
-        ),
-        sceneIndex: index, // Ensure sceneIndex is set for original scenes
+        duration: actualDuration,
+        scenePosition: manifestScene.scenePosition,
       };
     });
-  }, [getSubtitles, videoGenerationState.manifest]);
+  }, [videoGenerationState.manifest]);
 
   // Combine original scenes with additional user-added scenes
   const originalScenes = useMemo(
@@ -274,17 +293,17 @@ export default function GeneratePage() {
       },
     );
 
-    // Reindex all scenes to have proper sequential sceneIndex
+    // Reindex all scenes to have proper sequential scenePosition
     allScenes = allScenes.map((scene: Scene, index: number) => ({
       ...scene,
-      sceneIndex: index, // Set proper sequential sceneIndex
+      scenePosition: index, // Set proper sequential scenePosition
     }));
 
     console.log(
-      '🔄 Final scenes with reindexed sceneIndex:',
+      '🔄 Final scenes with reindexed scenePosition:',
       allScenes.map((s) => ({
         id: s.id,
-        sceneIndex: s.sceneIndex,
+        scenePosition: s.scenePosition,
         description: s.description,
       })),
     );
@@ -495,7 +514,7 @@ export default function GeneratePage() {
             const completeAssFiles: { [key: string]: string } = {};
 
             result.data.manifest.scenes.forEach((scene: any) => {
-              const assKey = `${timestamp}.scene-${scene.sceneIndex}.ass`;
+              const assKey = `${timestamp}.scene-${scene.scenePosition}.ass`;
               completeAssFiles[assKey] = scene.files.ass;
             });
 

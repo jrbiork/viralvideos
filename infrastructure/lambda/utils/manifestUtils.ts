@@ -33,7 +33,7 @@ export async function createManifest(
       voice,
       language,
       scenes: scenes.map((scene, index) => ({
-        sceneIndex: scene.id,
+        scenePosition: scene.id,
         files: {
           mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
           mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
@@ -108,22 +108,26 @@ export async function addSceneToManifest(
   // Create a copy of existing scenes
   const updatedScenes = [...existingManifest.scenes];
 
-  // Insert the new scene at the correct position based on sceneIndex
-  updatedScenes.splice(scene.sceneIndex, 0, scene);
+  // Insert the new scene at the correct position based on scenePosition
+  updatedScenes.splice(scene.scenePosition, 0, scene);
 
-  // Bump up sceneIndex for all subsequent scenes
-  for (let i = scene.sceneIndex + 1; i < updatedScenes.length; i++) {
-    updatedScenes[i] = {
-      ...updatedScenes[i],
-      sceneIndex: updatedScenes[i].sceneIndex + 1,
-    };
+  // bump up scenePosition for all subsequent scenes
+  for (let i = scene.scenePosition + 1; i < updatedScenes.length; i++) {
+    updatedScenes[i].scenePosition++;
   }
+
+  // recalculate total duration from all scenes
+  const totalDuration = updatedScenes.reduce(
+    (acc, scene) => acc + scene.files.duration,
+    0,
+  );
 
   const updatedManifest: Manifest = {
     ...existingManifest,
     scenes: updatedScenes,
     sceneCount: updatedScenes.length,
     updatedAt: Date.now().toString(),
+    totalDuration,
   };
 
   await uploadJsonToS3(JSON.stringify(updatedManifest), existingManifest.key);
@@ -135,9 +139,10 @@ export function createManifestScene(
   scene: Scene,
   userId: string,
   timestamp: string,
+  scenePosition: number,
 ): ManifestScene {
   return {
-    sceneIndex: scene.id,
+    scenePosition: scenePosition,
     files: {
       mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
       mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
@@ -170,7 +175,7 @@ export async function hydrateManifest(
     const files = scene.files;
 
     // Validate required file keys before making S3 requests
-    console.log(`🔍 Hydrating scene ${scene.sceneIndex}, files:`, files);
+    console.log(`🔍 Hydrating scene ${scene.scenePosition}, files:`, files);
 
     const [audioUrl, videoUrl, imageUrl, subtitleContent, assContent] =
       await Promise.all([
@@ -217,7 +222,7 @@ export async function hydrateManifest(
           })
           .catch((error) => {
             console.warn(
-              `⚠️ Failed to fetch subtitle for scene ${scene.sceneIndex}:`,
+              `⚠️ Failed to fetch subtitle for scene ${scene.scenePosition}:`,
               error.message,
             );
             return '';
@@ -230,7 +235,7 @@ export async function hydrateManifest(
           })
           .catch((error) => {
             console.warn(
-              `⚠️ Failed to fetch ass for scene ${scene.sceneIndex}:`,
+              `⚠️ Failed to fetch ass for scene ${scene.scenePosition}:`,
               error.message,
             );
             return null;
@@ -239,7 +244,7 @@ export async function hydrateManifest(
 
     // create a scene object
     const sceneObject: ManifestScene = {
-      sceneIndex: scene.sceneIndex,
+      scenePosition: scene.scenePosition,
       files: {
         mp3: audioUrl,
         mp4: videoUrl,

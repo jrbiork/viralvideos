@@ -4,7 +4,7 @@ import { generateNarration } from '../utils/audio';
 import { generateSubtitles, ASSContentResult } from '../utils/subtitles';
 import { Scene } from '../utils/script';
 
-import { broadcastProgress } from '../video-generation';
+import { broadcastProgress } from '../utils/broadcastProgress';
 import { CREDITS_COST } from '../utils/credits';
 
 import { getManifest, hydrateManifest } from '../utils/manifestUtils';

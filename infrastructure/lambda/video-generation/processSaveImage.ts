@@ -3,7 +3,7 @@ import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { getManifest, hydrateManifest } from '../utils/manifestUtils';
 import { uploadImageToS3 } from '../utils/s3Uploader';
 import { generateVideoEffects } from '../utils/videoEffects';
-import { broadcastProgress } from './broadcastProgress';
+import { broadcastProgress } from '../utils/broadcastProgress';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 

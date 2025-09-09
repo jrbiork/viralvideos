@@ -219,7 +219,7 @@ async function concatenateScenes(
  * @param videoFile S3 object containing video file info
  * @param audioFile S3 object containing audio file info (optional)
  * @param subtitleFile S3 object containing subtitle file info (optional)
- * @param sceneIndex Index of the scene being processed
+ * @param scenePosition Index of the scene being processed
  * @param userId User ID for S3 operations
  * @param timestamp Timestamp for S3 operations
  * @returns Path to the combined scene file
@@ -228,20 +228,20 @@ async function processScene(
   videoFile: any,
   audioFile: any,
   subtitleFile: any,
-  sceneIndex: number,
+  scenePosition: number,
   userId: string,
   timestamp: string,
 ): Promise<string> {
   // Extract the actual scene ID from the filename
   const sceneIdMatch = videoFile.Key.match(/scene-(\d+)\.mp4/);
-  const sceneId = sceneIdMatch ? parseInt(sceneIdMatch[1]) : sceneIndex;
+  const sceneId = sceneIdMatch ? parseInt(sceneIdMatch[1]) : scenePosition;
 
   console.log(
-    `🎬 Processing scene ${sceneIndex} (ID: ${sceneId}): combining video + audio + subtitle`,
+    `🎬 Processing scene ${scenePosition} (ID: ${sceneId}): combining video + audio + subtitle`,
   );
 
   // Download video file
-  const videoPath = path.join(os.tmpdir(), `scene-${sceneIndex}-video.mp4`);
+  const videoPath = path.join(os.tmpdir(), `scene-${scenePosition}-video.mp4`);
   const videoObject = await s3.send(
     new GetObjectCommand({
       Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -256,7 +256,7 @@ async function processScene(
   // Download audio file
   let audioPath: string | null = null;
   if (audioFile?.Key) {
-    audioPath = path.join(os.tmpdir(), `scene-${sceneIndex}-audio.mp3`);
+    audioPath = path.join(os.tmpdir(), `scene-${scenePosition}-audio.mp3`);
     const audioObject = await s3.send(
       new GetObjectCommand({
         Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -272,7 +272,10 @@ async function processScene(
   // Download subtitle file
   let subtitlePath: string | null = null;
   if (subtitleFile?.Key) {
-    subtitlePath = path.join(os.tmpdir(), `scene-${sceneIndex}-subtitle.ass`);
+    subtitlePath = path.join(
+      os.tmpdir(),
+      `scene-${scenePosition}-subtitle.ass`,
+    );
     const subtitleObject = await s3.send(
       new GetObjectCommand({
         Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -288,13 +291,15 @@ async function processScene(
   // Combine video + audio + subtitle for this scene
   const combinedScenePath = path.join(
     os.tmpdir(),
-    `scene-${sceneIndex}-combined.mp4`,
+    `scene-${scenePosition}-combined.mp4`,
   );
 
   return new Promise<string>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      console.error(`❌ Timeout combining scene ${sceneIndex} after 5 minutes`);
-      reject(new Error(`Timeout combining scene ${sceneIndex}`));
+      console.error(
+        `❌ Timeout combining scene ${scenePosition} after 5 minutes`,
+      );
+      reject(new Error(`Timeout combining scene ${scenePosition}`));
     }, 5 * 60 * 1000); // 5 minute timeout
 
     const command = ffmpeg()
@@ -341,12 +346,12 @@ async function processScene(
       .output(combinedScenePath)
       .on('end', async () => {
         clearTimeout(timeout);
-        console.log(`✅ Scene ${sceneIndex} combined successfully`);
+        console.log(`✅ Scene ${scenePosition} combined successfully`);
 
         // Save combined scene to S3 for testing purposes
         try {
           const combinedSceneBuffer = fs.readFileSync(combinedScenePath);
-          const combinedSceneKey = `${userId}/${timestamp}.scene-${sceneIndex}-combined.mp4`;
+          const combinedSceneKey = `${userId}/${timestamp}.scene-${scenePosition}-combined.mp4`;
 
           await s3.send(
             new PutObjectCommand({
@@ -358,11 +363,11 @@ async function processScene(
           );
 
           console.log(
-            `💾 Scene ${sceneIndex} (ID: ${sceneId}) combined file saved to S3: ${combinedSceneKey}`,
+            `💾 Scene ${scenePosition} (ID: ${sceneId}) combined file saved to S3: ${combinedSceneKey}`,
           );
         } catch (error) {
           console.warn(
-            `⚠️ Could not save combined scene ${sceneIndex} (ID: ${sceneId}) to S3:`,
+            `⚠️ Could not save combined scene ${scenePosition} (ID: ${sceneId}) to S3:`,
             error,
           );
         }
@@ -377,7 +382,7 @@ async function processScene(
       })
       .on('error', (err: any) => {
         clearTimeout(timeout);
-        console.error(`❌ Error combining scene ${sceneIndex}:`, err);
+        console.error(`❌ Error combining scene ${scenePosition}:`, err);
         reject(err);
       })
       .run();

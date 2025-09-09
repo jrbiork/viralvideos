@@ -14,14 +14,12 @@ import { generateNanoBananaImage } from '../utils/imageNanoBanana';
 const DEFAULT_VOICE = 'ash';
 const DEFAULT_LANGUAGE = 'en';
 import { getVideoEffectUrls } from '../utils/videoEffects';
-import { combineVideoAndAudio } from './videoCombiner';
 import {
   createManifest,
   getManifest,
   hydrateManifest,
 } from '../utils/manifestUtils';
-import { uploadImageToS3 } from '../utils/s3Uploader';
-import { broadcastProgress } from './broadcastProgress';
+import { broadcastProgress } from '../utils/broadcastProgress';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 

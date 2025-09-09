@@ -4,7 +4,7 @@ export interface SubtitleWord {
     end: number;
 }
 export interface SubtitleData {
-    sceneIndex: number;
+    scenePosition: number;
     words: SubtitleWord[];
     fullText: string;
 }

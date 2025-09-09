@@ -4,4 +4,4 @@ export interface Scene {
     narration: string;
     id: number;
 }
-export declare function generateNanoBananaImage(description: string, sceneIndex: number, userId: string, timestamp: string, seed: number, signedUrl?: boolean): Promise<string | null>;
+export declare function generateNanoBananaImage(description: string, scenePosition: number, userId: string, timestamp: string, seed: number, signedUrl?: boolean): Promise<string | null>;

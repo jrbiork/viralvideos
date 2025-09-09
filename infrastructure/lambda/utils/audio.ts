@@ -18,7 +18,7 @@ export interface SubtitleWord {
 }
 
 export interface SubtitleData {
-  sceneIndex: number;
+  scenePosition: number;
   words: SubtitleWord[];
   fullText: string;
   duration?: number;
@@ -125,7 +125,7 @@ export async function generateNarration(
       fs.unlinkSync(tempAudioPath);
 
       const subtitleData: SubtitleData = {
-        sceneIndex: scene.id,
+        scenePosition: scene.id,
         words: [],
         fullText: scene.narration, // Use original narration text instead of transcribed text
       };

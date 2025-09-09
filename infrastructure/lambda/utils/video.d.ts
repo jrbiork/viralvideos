@@ -4,4 +4,4 @@ export interface Scene {
     narration: string;
     id: number;
 }
-export declare function generateVideoClip(description: string, duration: 5 | 10, sceneIndex: number, userId: string, timestamp: string, seed: number, imageUrl?: string): Promise<string>;
+export declare function generateVideoClip(description: string, duration: 5 | 10, scenePosition: number, userId: string, timestamp: string, seed: number, imageUrl?: string): Promise<string>;

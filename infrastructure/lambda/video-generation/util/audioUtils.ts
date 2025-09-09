@@ -16,7 +16,7 @@ export interface SubtitleWord {
 }
 
 export interface SubtitleData {
-  sceneIndex: number;
+  scenePosition: number;
   words: SubtitleWord[];
   fullText: string;
 }
@@ -75,7 +75,7 @@ export async function fetchAudioFilesForTimestamp(
 
       // Extract scene index from the key
       const sceneMatch = audioKey.match(/scene-(\d+)\.mp3$/);
-      const sceneIndex = sceneMatch ? parseInt(sceneMatch[1]) : 0;
+      const scenePosition = sceneMatch ? parseInt(sceneMatch[1]) : 0;
 
       // Try to fetch subtitle data if it exists
       const subtitleKey = audioKey.replace('.mp3', '.subtitle.json');
@@ -94,21 +94,21 @@ export async function fetchAudioFilesForTimestamp(
           const subtitleData = JSON.parse(subtitleContent);
 
           subtitles.push({
-            sceneIndex,
+            scenePosition,
             words: subtitleData.words || [],
             fullText: subtitleData.text || '', // Use 'text' field from Whisper transcription
           });
 
-          console.log(`✅ Found subtitle data for scene ${sceneIndex}`);
+          console.log(`✅ Found subtitle data for scene ${scenePosition}`);
         }
       } catch (error) {
         console.log(
-          `⚠️ No subtitle data found for scene ${sceneIndex}, creating fallback`,
+          `⚠️ No subtitle data found for scene ${scenePosition}, creating fallback`,
         );
 
         // Create fallback subtitle data
         subtitles.push({
-          sceneIndex,
+          scenePosition,
           words: [],
           fullText: '',
         });
@@ -186,7 +186,7 @@ export async function checkAudioCaptionExists(
 
     // Check for each scene: .mp3, .subtitle.json, and .ass files
     for (const scene of scenes) {
-      const sceneId = scene.sceneIndex;
+      const sceneId = scene.scenePosition;
 
       // Check .mp3 file
       const mp3Key = `${userId}/${timestamp}.scene-${sceneId}.mp3`;

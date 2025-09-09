@@ -91,20 +91,31 @@ export default function SceneCardsContainer({
               {/* Scene Cards */}
               {scenes.map((scene: any, index: number) => {
                 // Get the image URL for this scene (only for original scenes)
-                // For original scenes, we need to find their original index in the manifest
+                // Use the actual file naming from the manifest
                 let imageUrl = undefined;
                 if (
                   !scene.isUserAdded &&
                   videoGenerationState.manifest?.scenes
                 ) {
-                  // Find the original scene index from the manifest
-                  const originalSceneIndex =
-                    videoGenerationState.manifest.scenes.findIndex(
-                      (manifestScene) => manifestScene.sceneIndex === scene.id,
+                  // Find the manifest scene by scenePosition
+                  const manifestScene =
+                    videoGenerationState.manifest.scenes.find(
+                      (manifestScene) =>
+                        manifestScene.scenePosition === scene.scenePosition,
                     );
-                  if (originalSceneIndex !== -1) {
-                    const imageKey = `${videoGenerationState.currentTimestamp}.scene-${originalSceneIndex}.png`;
-                    imageUrl = getMediaFiles()[imageKey];
+
+                  // Check for both PNG and JPG image files
+                  const imageFile =
+                    manifestScene?.files?.png || manifestScene?.files?.jpg;
+                  if (imageFile) {
+                    // Extract the actual scene number from the image file name
+                    const sceneNumber = imageFile.match(/scene-(\d+)\./)?.[1];
+                    if (sceneNumber) {
+                      // Determine the file extension (png or jpg)
+                      const extension = manifestScene.files.png ? 'png' : 'jpg';
+                      const imageKey = `${videoGenerationState.currentTimestamp}.scene-${sceneNumber}.${extension}`;
+                      imageUrl = getMediaFiles()[imageKey];
+                    }
                   }
                 }
 

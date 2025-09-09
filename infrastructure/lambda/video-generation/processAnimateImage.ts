@@ -6,7 +6,7 @@ import {
   updateManifest,
 } from '../utils/manifestUtils';
 import { generateVideoClip } from '../utils/video';
-import { broadcastProgress } from './broadcastProgress';
+import { broadcastProgress } from '../utils/broadcastProgress';
 import {
   CREDITS_COST,
   hasSufficientCreditsByUserId,
@@ -92,7 +92,7 @@ export async function processAnimateImage(
     // update manifest for the particular scene with the video key
     await updateManifest(manifest, {
       scenes: manifest.scenes.map((scene) =>
-        scene.sceneIndex === sceneId ? { ...scene, duration } : scene,
+        scene.scenePosition === sceneId ? { ...scene, duration } : scene,
       ),
     });
 

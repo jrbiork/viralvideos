@@ -1,7 +1,6 @@
 import { SQSRecord } from 'aws-lambda';
 import { combineVideoAndAudio } from './videoCombiner';
-import { Scene } from './videoCombiner';
-import { broadcastProgress } from './broadcastProgress';
+import { broadcastProgress } from '../utils/broadcastProgress';
 import {
   getManifest,
   hydrateManifest,

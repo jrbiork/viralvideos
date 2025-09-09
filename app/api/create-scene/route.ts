@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
     // Get parameters from request body
     const body = await request.json();
 
-    const { imageUrl, sceneId, timestamp, captionText, sceneIndex } = body;
+    const { imageUrl, sceneId, timestamp, captionText, scenePosition } = body;
 
     console.log('🔍 Extracted values:', {
       imageUrl,
       sceneId,
       timestamp,
       captionText,
-      sceneIndex,
+      scenePosition,
     });
 
     if (!imageUrl) {
@@ -49,9 +49,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (sceneIndex === undefined || sceneIndex === null) {
+    if (scenePosition === undefined || scenePosition === null) {
       return NextResponse.json(
-        { error: 'Missing sceneIndex' },
+        { error: 'Missing scenePosition' },
         { status: 400 },
       );
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       userId,
       timestamp,
       sceneId,
-      sceneIndex,
+      scenePosition,
       imageUrl,
       captionText,
     };

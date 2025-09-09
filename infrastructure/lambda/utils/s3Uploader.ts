@@ -118,8 +118,8 @@ export async function getObjectFromS3(
  * @param imageUrl - The URL of the image to download
  * @param userId - The user ID for the S3 key
  * @param timestamp - The timestamp for the S3 key
- * @param sceneId - The scene ID (optional, falls back to sceneIndex)
- * @param sceneIndex - The scene index (optional, falls back to sceneId)
+ * @param sceneId - The scene ID (optional, falls back to scenePosition)
+ * @param scenePosition - The scene index (optional, falls back to sceneId)
  * @returns Promise<string> - The S3 key where the image was uploaded
  */
 export async function uploadImageToS3(

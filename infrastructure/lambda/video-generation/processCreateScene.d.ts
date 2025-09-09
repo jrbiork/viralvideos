@@ -2,7 +2,7 @@ import { SQSRecord } from 'aws-lambda';
 export interface CreateSceneRequest {
     imageUrl: string;
     sceneId: number;
-    sceneIndex: number;
+    scenePosition: number;
     userId: string;
     timestamp: string;
     captionText: string;

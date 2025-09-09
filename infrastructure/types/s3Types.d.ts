@@ -8,7 +8,7 @@ export interface ManifestFile {
     ass: string;
 }
 export interface ManifestScene {
-    sceneIndex: number;
+    scenePosition: number;
     files: ManifestFile;
 }
 export interface Manifest {
