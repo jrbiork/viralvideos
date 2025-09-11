@@ -41,7 +41,7 @@ export async function generateNanoBananaImage(
     // Generate an image using Gemini Nano Banana
     console.log('🎨 genai - Generating image from text...');
 
-    const prompt = `${description} - photorealistic, film grain, 50mm lens, dramatic rim light`;
+    const prompt = `anime-style: ${description}`;
 
     // Retry logic for image generation
     let response;
