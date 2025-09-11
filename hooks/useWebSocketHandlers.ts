@@ -13,6 +13,7 @@ interface UseWebSocketHandlersProps {
   >;
   showToasterMessage: (message: string, type: 'success' | 'error') => void;
   setCreatingSceneId?: React.Dispatch<React.SetStateAction<number | null>>;
+  creatingSceneId?: number | null;
   setAdditionalScenes?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
@@ -20,6 +21,7 @@ export function useWebSocketHandlers({
   setVideoGenerationState,
   showToasterMessage,
   setCreatingSceneId,
+  creatingSceneId,
   setAdditionalScenes,
 }: UseWebSocketHandlersProps) {
   // Handle video completion
@@ -94,19 +96,30 @@ export function useWebSocketHandlers({
           isLoadingAudioSubtitles: false,
         }));
 
+        // Remove the specific scene that was just saved from additionalScenes
+        // This prevents duplicates since the scene is now part of the manifest
+        if (
+          setAdditionalScenes &&
+          creatingSceneId !== null &&
+          creatingSceneId !== undefined
+        ) {
+          setAdditionalScenes((prev) =>
+            prev.filter((item) => item.scene.id !== creatingSceneId),
+          );
+        }
+
         // Clear creating scene ID when preview is completed
         if (setCreatingSceneId) {
           setCreatingSceneId(null);
         }
-
-        // Clear all in-memory scenes when a new manifest is received
-        // This prevents duplicate scenes when the WebSocket response includes the newly created scene
-        if (setAdditionalScenes) {
-          setAdditionalScenes([]);
-        }
       }
     },
-    [setVideoGenerationState, setCreatingSceneId, setAdditionalScenes],
+    [
+      setVideoGenerationState,
+      setCreatingSceneId,
+      creatingSceneId,
+      setAdditionalScenes,
+    ],
   );
 
   // Handle insufficient credits

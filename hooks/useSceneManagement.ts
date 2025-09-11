@@ -106,10 +106,23 @@ export function useSceneManagement() {
     dispatch({ type: 'DELETE_SCENE', payload: sceneId });
   };
 
-  const handleAddScene = (position: number) => {
+  const handleAddScene = (
+    position: number,
+    existingScenes: any[] = [],
+    additionalScenes: any[] = [],
+  ) => {
+    // Generate a unique ID that is +1 from the maximum existing scene ID
+    // Consider both existing scenes and additional user-added scenes
+    const allSceneIds = [
+      ...existingScenes.map((s) => s.id),
+      ...additionalScenes.map((item) => item.scene?.id || item.id),
+    ];
+    const maxId = allSceneIds.length > 0 ? Math.max(...allSceneIds) : 0;
+    const newId = maxId + 1;
+
     // Create a new scene object
     const newScene = {
-      id: Date.now(), // Use timestamp as temporary ID
+      id: newId,
       description: `New scene at position ${position + 1}`,
       narration: 'Enter scene narration here...',
       duration: 5, // Default duration

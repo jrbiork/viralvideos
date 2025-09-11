@@ -66,8 +66,17 @@ export default function GeneratePage() {
 
   // Custom handleAddScene function to add new scenes
   const handleAddSceneCustom = (position: number) => {
+    // Generate a unique ID that is +1 from the maximum existing scene ID
+    // Consider both original scenes and additional user-added scenes
+    const allSceneIds = [
+      ...scenes.map((s) => s.id),
+      ...additionalScenes.map((item) => item.scene.id),
+    ];
+    const maxId = allSceneIds.length > 0 ? Math.max(...allSceneIds) : 0;
+    const newId = maxId + 1;
+
     const newScene = {
-      id: scenes.length + 1,
+      id: newId,
       scenePosition: position, // Will be properly reindexed later
       description: `New scene ${additionalScenes.length + 1}`,
       narration: 'Enter your scene description here...',
@@ -124,6 +133,7 @@ export default function GeneratePage() {
     setVideoGenerationState,
     showToasterMessage,
     setCreatingSceneId,
+    creatingSceneId,
     setAdditionalScenes,
   });
 
@@ -316,6 +326,7 @@ export default function GeneratePage() {
         id: s.id,
         scenePosition: s.scenePosition,
         description: s.description,
+        narration: s.narration,
       })),
     );
     return allScenes;

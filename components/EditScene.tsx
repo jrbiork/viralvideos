@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import AIAnimationModal from './modals/AIAnimationModal';
+import ImageEditModal from './modals/ImageEditModal';
 
 export interface Scene {
   id: number;
@@ -71,6 +73,7 @@ export default function EditScene({
   const [isAiAnimationModalOpen, setIsAiAnimationModalOpen] = useState(false);
   const [animationPrompt, setAnimationPrompt] = useState('');
   const [animationDuration, setAnimationDuration] = useState('5s');
+  const [validationErrors, setValidationErrors] = useState({ image: false });
 
   React.useEffect(() => {
     setCurrentImageUrl(imageUrl || null);

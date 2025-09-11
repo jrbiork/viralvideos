@@ -13,7 +13,8 @@ export default function Toaster({
   isVisible,
   onClose,
 }: ToasterProps) {
-  const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-500';
+  const bgColor = type === 'success' ? 'bg-green-500' : 'bg-red-200';
+  const textColor = type === 'success' ? 'text-white' : 'text-red-800';
   const icon =
     type === 'success' ? (
       // Success checkmark icon
@@ -35,15 +36,13 @@ export default function Toaster({
       </svg>
     );
 
-  if (!isVisible) return null;
-
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed top-4 right-4 z-50">
       <div
         className={`
-          ${bgColor} text-white px-6 py-3 rounded-lg shadow-lg 
+          ${bgColor} ${textColor} px-6 py-3 rounded-lg shadow-lg 
           flex items-center space-x-3 max-w-sm
-          transform transition-all duration-300 ease-in-out
+          transform transition-all duration-500 ease-in-out
           ${
             isVisible
               ? 'translate-x-0 opacity-100'
