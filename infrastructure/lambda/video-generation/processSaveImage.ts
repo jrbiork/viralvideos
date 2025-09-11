@@ -14,6 +14,7 @@ export interface SaveImageRequest {
   sceneId: number;
   generatedImageUrl: string;
   duration?: number;
+  inMemoryEditScene?: boolean;
 }
 
 export async function processSaveImage(
@@ -36,6 +37,19 @@ export async function processSaveImage(
 
     const { userId, timestamp, sceneId, generatedImageUrl, duration } = request;
 
+    // Form the imageKey
+    const imageKey = `${userId}/${timestamp}.scene-${sceneId}.png`;
+    console.log(`🔑 Formed image key: ${imageKey}`);
+
+    await uploadImageToS3(generatedImageUrl, userId, timestamp, sceneId);
+    console.log(`✅ Image uploaded successfully`);
+
+    // when its a in memory edit scene
+    if (request.inMemoryEditScene) {
+      console.log('🔑 In memory edit scene, skipping video effects generation');
+      return { message: 'Image saved successfully' };
+    }
+
     const manifest = await getManifest(userId, timestamp);
     if (!manifest) {
       return {
@@ -43,13 +57,6 @@ export async function processSaveImage(
         body: JSON.stringify({ error: 'Manifest not found' }),
       };
     }
-
-    // Form the imageKey
-    const imageKey = `${userId}/${timestamp}.scene-${sceneId}.png`;
-    console.log(`🔑 Formed image key: ${imageKey}`);
-
-    await uploadImageToS3(generatedImageUrl, userId, timestamp, sceneId);
-    console.log(`✅ Image replaced successfully`);
 
     let hydratedManifest = await hydrateManifest(manifest);
 

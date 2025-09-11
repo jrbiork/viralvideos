@@ -370,6 +370,7 @@ export class ViralVideosStack extends cdk.Stack {
       }),
       environment: {
         VIDEO_BUCKET_NAME: videoBucket.bucketName,
+        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
       },
     });
 

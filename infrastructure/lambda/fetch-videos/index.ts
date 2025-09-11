@@ -136,7 +136,13 @@ export const handler = async (
               key: firstScene.files.png,
               thumbnailUrl,
               timestamp,
-              lastModified: manifest.updatedAt,
+              createdAt: manifest.generatedAt
+                ? new Date(parseInt(manifest.generatedAt)).toISOString()
+                : new Date().toISOString(),
+              lastModified:
+                manifestObject.LastModified?.toISOString() ||
+                new Date().toISOString(),
+              size: manifestObject.Size || 0,
               videoGenerated: manifest.videoGenerated || false,
               finalVideoUrl,
             };

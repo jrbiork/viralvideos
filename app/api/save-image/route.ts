@@ -20,13 +20,20 @@ export async function POST(request: NextRequest) {
     // Get timestamp from request body
     const body = await request.json();
 
-    const { timestamp, sceneId, generatedImageUrl, duration } = body;
+    const {
+      timestamp,
+      sceneId,
+      generatedImageUrl,
+      duration,
+      inMemoryEditScene,
+    } = body;
 
     console.log('🔍 Extracted values:', {
       timestamp,
       sceneId,
       generatedImageUrl,
       duration,
+      inMemoryEditScene,
     });
 
     if (!timestamp) {
@@ -69,6 +76,7 @@ export async function POST(request: NextRequest) {
       sceneId,
       generatedImageUrl,
       duration,
+      inMemoryEditScene,
     };
 
     const command = new SendMessageCommand({

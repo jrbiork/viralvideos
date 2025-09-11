@@ -1,5 +1,10 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  DeleteObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
+} from '@aws-sdk/client-s3';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -61,6 +66,7 @@ export const handler = async (
 
     // Construct the video key based on the timestamp
     const videoKey = `${userId}/${timestamp}-final-video.mp4`;
+    const videoPartsPrefix = `${userId}/${timestamp}`;
 
     console.log('🗑️ Deleting video with key:', videoKey);
 
@@ -71,14 +77,57 @@ export const handler = async (
     });
 
     await s3.send(deleteCommand);
-
     console.log('✅ Video deleted successfully:', videoKey);
+
+    // Delete all video parts from the video parts bucket
+    if (process.env.VIDEO_PARTS_BUCKET_NAME) {
+      console.log('🗑️ Deleting video parts with prefix:', videoPartsPrefix);
+
+      // List all objects with the prefix
+      const listCommand = new ListObjectsV2Command({
+        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+        Prefix: videoPartsPrefix,
+      });
+
+      const listResponse = await s3.send(listCommand);
+      const objectsToDelete = listResponse.Contents || [];
+
+      if (objectsToDelete.length > 0) {
+        console.log(
+          `🗑️ Found ${objectsToDelete.length} objects to delete in video parts bucket`,
+        );
+
+        // Delete all objects in batches of 1000 (S3 limit)
+        const deletePromises = [];
+        for (let i = 0; i < objectsToDelete.length; i += 1000) {
+          const batch = objectsToDelete.slice(i, i + 1000);
+          const deleteObjectsCommand = new DeleteObjectsCommand({
+            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+            Delete: {
+              Objects: batch.map((obj) => ({ Key: obj.Key! })),
+              Quiet: false,
+            },
+          });
+          deletePromises.push(s3.send(deleteObjectsCommand));
+        }
+
+        await Promise.all(deletePromises);
+        console.log(
+          `✅ Successfully deleted ${objectsToDelete.length} video parts`,
+        );
+      } else {
+        console.log('⚠️ No video parts found to delete');
+      }
+    } else {
+      console.log('❌ Error: VIDEO_PARTS_BUCKET_NAME is not set');
+    }
 
     return {
       statusCode: 200,
       body: JSON.stringify({
-        message: 'Video deleted successfully',
-        deletedKey: videoKey,
+        message: 'Video and all associated files deleted successfully',
+        deletedVideoKey: videoKey,
+        deletedPartsPrefix: videoPartsPrefix,
       }),
     };
   } catch (error) {

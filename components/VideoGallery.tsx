@@ -12,6 +12,8 @@ import {
   Edit,
 } from 'lucide-react';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
+import DeleteConfirmationModal from './DeleteConfirmationModal';
+import Toaster from './Toaster';
 
 interface Video {
   key?: string;
@@ -35,7 +37,27 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toasterMessage, setToasterMessage] = useState<string | null>(null);
+  const [toasterType, setToasterType] = useState<'success' | 'error'>(
+    'success',
+  );
+  const [showToaster, setShowToaster] = useState(false);
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
+
+  // Helper function to show toaster messages
+  const showToasterMessage = (message: string, type: 'success' | 'error') => {
+    setToasterMessage(message);
+    setToasterType(type);
+    setShowToaster(true);
+
+    // Auto-hide toaster after 3 seconds
+    setTimeout(() => {
+      setShowToaster(false);
+    }, 3000);
+  };
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -132,24 +154,39 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   const handleDelete = async (video: Video, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenMenu(null);
+    setVideoToDelete(video);
+    setDeleteModalOpen(true);
+  };
 
-    if (confirm('Are you sure you want to delete this video?')) {
-      try {
-        await authenticatedFetch(
-          `/api/delete-video?timestamp=${video.timestamp}`,
-          {
-            method: 'DELETE',
-          },
-        );
-        setVideos(videos.filter((v) => v.timestamp !== video.timestamp));
-        if (selectedVideo?.timestamp === video.timestamp) {
-          setSelectedVideo(null);
-        }
-      } catch (error) {
-        console.error('Error deleting video:', error);
-        alert('Failed to delete video. Please try again.');
+  const confirmDelete = async () => {
+    if (!videoToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      await authenticatedFetch(
+        `/api/delete-video?timestamp=${videoToDelete.timestamp}`,
+        {
+          method: 'DELETE',
+        },
+      );
+      setVideos(videos.filter((v) => v.timestamp !== videoToDelete.timestamp));
+      if (selectedVideo?.timestamp === videoToDelete.timestamp) {
+        setSelectedVideo(null);
       }
+      setDeleteModalOpen(false);
+      setVideoToDelete(null);
+      showToasterMessage('Video deleted successfully', 'success');
+    } catch (error) {
+      console.error('Error deleting video:', error);
+      showToasterMessage('Failed to delete video. Please try again.', 'error');
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const cancelDelete = () => {
+    setDeleteModalOpen(false);
+    setVideoToDelete(null);
   };
 
   const handleEdit = (video: Video, e: React.MouseEvent) => {
@@ -169,13 +206,39 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   };
 
   const formatDate = (dateString: string): string => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
+    try {
+      let date: Date;
+
+      // Check if it's a timestamp string (all digits)
+      if (/^\d+$/.test(dateString)) {
+        // It's a timestamp in milliseconds
+        date = new Date(parseInt(dateString));
+      } else {
+        // It's a regular date string
+        date = new Date(dateString);
+      }
+
+      if (isNaN(date.getTime())) {
+        console.warn('Invalid date string:', dateString);
+        return 'Invalid date';
+      }
+
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      console.error(
+        'Error formatting date:',
+        error,
+        'Date string:',
+        dateString,
+      );
+      return 'Invalid date';
+    }
   };
 
   if (loading) {
@@ -418,6 +481,23 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
           </div>
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={cancelDelete}
+        onConfirm={confirmDelete}
+        video={videoToDelete}
+        isDeleting={isDeleting}
+      />
+
+      {/* Toaster */}
+      <Toaster
+        message={toasterMessage || ''}
+        type={toasterType}
+        isVisible={showToaster}
+        onClose={() => setShowToaster(false)}
+      />
     </div>
   );
 }

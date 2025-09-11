@@ -6,5 +6,6 @@ export interface SaveImageRequest {
     sceneId: number;
     generatedImageUrl: string;
     duration?: number;
+    inMemoryEditScene?: boolean;
 }
 export declare function processSaveImage(request: SaveImageRequest, record?: SQSRecord): Promise<any>;

@@ -200,6 +200,7 @@ export default function EditScene({
         sceneId: Number(scene.id),
         generatedImageUrl,
         duration: scene.duration,
+        inMemoryEditScene: scene.isUserAdded || false,
       };
 
       console.log('🚀 Sending request payload:', requestPayload);
