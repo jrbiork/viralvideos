@@ -10,6 +10,7 @@ import {
   MoreHorizontal,
   Trash2,
   Edit,
+  Clock,
 } from 'lucide-react';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
@@ -22,7 +23,8 @@ interface Video {
   timestamp: number | string;
   createdAt: string;
   lastModified: string;
-  size: number;
+  totalDuration: number;
+  sceneCount: number;
   videoGenerated: boolean;
 }
 
@@ -197,12 +199,16 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     router.push(`/create?timestamp=${video.timestamp}&step=2`);
   };
 
-  const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
-    const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const formatDuration = (seconds: number): string => {
+    if (seconds === 0) return '0s';
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+
+    if (minutes > 0) {
+      return `${minutes}m ${remainingSeconds}s`;
+    } else {
+      return `${remainingSeconds}s`;
+    }
   };
 
   const formatDate = (dateString: string): string => {
@@ -407,12 +413,30 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
                   </div>
 
                   <div className="space-y-2">
-                    <div className="flex items-center text-sm text-slate-400">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {formatDate(video.lastModified)}
+                    <div className="flex items-center justify-between text-sm text-slate-400">
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        {formatDate(video.lastModified)}
+                      </div>
+                      {video.videoGenerated && (
+                        <div className="relative group">
+                          <div className="w-5 h-5 bg-transparent border border-slate-400 rounded-full flex items-center justify-center">
+                            <span className="text-slate-400 text-xs font-bold">
+                              E
+                            </span>
+                          </div>
+                          <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
+                            Video generated.
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-slate-500">
-                      {formatFileSize(video.size)}
+                    <div className="flex items-center justify-between text-xs text-slate-500">
+                      <div className="flex items-center">
+                        <Clock className="w-3 h-3 mr-1" />
+                        <span>{formatDuration(video.totalDuration)}</span>
+                      </div>
+                      <span>{video.sceneCount} scenes</span>
                     </div>
                   </div>
                 </div>

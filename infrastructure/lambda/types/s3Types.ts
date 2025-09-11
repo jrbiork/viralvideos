@@ -22,12 +22,12 @@ export interface Manifest {
   userId: string;
   prefix: string;
   generatedAt: string;
+  videoGenerated: boolean;
   updatedAt: string;
   sceneCount: number;
   totalDuration: number;
   finalVideoUrl: string;
   scenes: ManifestScene[];
-  videoGenerated: boolean;
   voiceToneInstruction: string;
   voice: string;
   language: string;

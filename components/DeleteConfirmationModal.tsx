@@ -9,7 +9,8 @@ interface Video {
   timestamp: number | string;
   createdAt: string;
   lastModified: string;
-  size: number;
+  totalDuration: number;
+  sceneCount: number;
   videoGenerated: boolean;
 }
 

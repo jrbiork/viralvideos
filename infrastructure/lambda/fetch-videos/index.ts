@@ -3,8 +3,10 @@ import {
   S3Client,
   ListObjectsV2Command,
   GetObjectCommand,
+  HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Manifest } from '../types/s3Types';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -78,7 +80,7 @@ export const handler = async (
 
     if (manifestFiles.length > 0) {
       const videoData = await Promise.all(
-        manifestFiles.map(async (manifestObject: any) => {
+        manifestFiles.map(async (manifestObject) => {
           if (!manifestObject.Key) return null;
 
           try {
@@ -100,7 +102,7 @@ export const handler = async (
 
             const manifest = JSON.parse(
               (await manifestResponse.Body?.transformToString()) || '{}',
-            );
+            ) as Manifest;
 
             // Get the first scene's image file path from manifest
             const firstScene = manifest.scenes?.[0];
@@ -122,6 +124,7 @@ export const handler = async (
             });
 
             let finalVideoUrl = '';
+            let videoSize = 0;
             if (manifest.videoGenerated) {
               const videoCommand = new GetObjectCommand({
                 Bucket: process.env.VIDEO_BUCKET_NAME,
@@ -130,6 +133,25 @@ export const handler = async (
               finalVideoUrl = await getSignedUrl(s3, videoCommand, {
                 expiresIn: 36000,
               });
+
+              // Get video metadata to fetch its size
+              try {
+                const videoHeadCommand = new HeadObjectCommand({
+                  Bucket: process.env.VIDEO_BUCKET_NAME,
+                  Key: manifest.finalVideoUrl,
+                });
+                const videoMetadata = await s3.send(videoHeadCommand);
+                videoSize = videoMetadata.ContentLength || 0;
+                console.log(
+                  '📊 Video size:',
+                  videoSize,
+                  'bytes for video:',
+                  manifest.finalVideoUrl,
+                );
+              } catch (error) {
+                console.warn('⚠️ Could not fetch video metadata:', error);
+                videoSize = 0;
+              }
             }
 
             return {
@@ -142,9 +164,11 @@ export const handler = async (
               lastModified:
                 manifestObject.LastModified?.toISOString() ||
                 new Date().toISOString(),
-              size: manifestObject.Size || 0,
+              totalDuration: manifest.totalDuration || 0,
+              sceneCount: manifest.sceneCount || 0,
               videoGenerated: manifest.videoGenerated || false,
               finalVideoUrl,
+              size: videoSize,
             };
           } catch (error) {
             console.error(

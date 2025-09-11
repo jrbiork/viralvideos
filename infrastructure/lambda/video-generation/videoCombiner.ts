@@ -127,6 +127,11 @@ export async function combineVideoAndAudio(
         Key: finalVideoKey,
         Body: finalVideoBuffer,
         ContentType: 'video/mp4',
+        Metadata: {
+          size: finalVideoBuffer.length.toString(),
+          duration: manifest.totalDuration.toString(),
+          sceneCount: manifest.sceneCount.toString(),
+        },
       }),
     );
 

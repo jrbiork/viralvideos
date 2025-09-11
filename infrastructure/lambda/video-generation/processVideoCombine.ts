@@ -41,7 +41,10 @@ export async function processVideoCombine(
       manifest,
     );
 
-    await updateManifest(manifest, { videoGenerated: true });
+    await updateManifest(manifest, {
+      videoGenerated: true,
+      generatedAt: Date.now().toString(),
+    });
 
     const hydratedManifest = await hydrateManifest(manifest);
 
