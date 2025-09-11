@@ -91,6 +91,14 @@ export default function GeneratePage() {
     );
   };
 
+  // Handle deleting user-added scenes
+  const handleDeleteScene = (sceneId: number) => {
+    setAdditionalScenes((prev) =>
+      prev.filter((item) => item.scene.id !== sceneId),
+    );
+    showToasterMessage('Scene deleted successfully', 'success');
+  };
+
   // Custom hooks
   const {
     state: generationState,
@@ -116,6 +124,7 @@ export default function GeneratePage() {
     setVideoGenerationState,
     showToasterMessage,
     setCreatingSceneId,
+    setAdditionalScenes,
   });
 
   // WebSocket hook for real-time updates
@@ -293,10 +302,12 @@ export default function GeneratePage() {
       },
     );
 
-    // Reindex all scenes to have proper sequential scenePosition
+    // Assign scenePosition without breaking original manifest mapping
+    // - Keep original scenes' scenePosition unchanged (to match manifest)
+    // - Set scenePosition for user-added scenes based on their array position
     allScenes = allScenes.map((scene: Scene, index: number) => ({
       ...scene,
-      scenePosition: index, // Set proper sequential scenePosition
+      scenePosition: scene.isUserAdded ? index : scene.scenePosition,
     }));
 
     console.log(
@@ -686,6 +697,7 @@ export default function GeneratePage() {
               setCreatingSceneId={setCreatingSceneId}
               handleAddSceneCustom={handleAddSceneCustom}
               setAdditionalScenes={setAdditionalScenes}
+              handleDeleteScene={handleDeleteScene}
             />
           </div>
 

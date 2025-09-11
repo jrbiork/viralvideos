@@ -13,12 +13,14 @@ interface UseWebSocketHandlersProps {
   >;
   showToasterMessage: (message: string, type: 'success' | 'error') => void;
   setCreatingSceneId?: React.Dispatch<React.SetStateAction<number | null>>;
+  setAdditionalScenes?: React.Dispatch<React.SetStateAction<any[]>>;
 }
 
 export function useWebSocketHandlers({
   setVideoGenerationState,
   showToasterMessage,
   setCreatingSceneId,
+  setAdditionalScenes,
 }: UseWebSocketHandlersProps) {
   // Handle video completion
   const handleVideoCompleted = useCallback(
@@ -96,9 +98,15 @@ export function useWebSocketHandlers({
         if (setCreatingSceneId) {
           setCreatingSceneId(null);
         }
+
+        // Clear all in-memory scenes when a new manifest is received
+        // This prevents duplicate scenes when the WebSocket response includes the newly created scene
+        if (setAdditionalScenes) {
+          setAdditionalScenes([]);
+        }
       }
     },
-    [setVideoGenerationState, setCreatingSceneId],
+    [setVideoGenerationState, setCreatingSceneId, setAdditionalScenes],
   );
 
   // Handle insufficient credits

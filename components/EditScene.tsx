@@ -7,6 +7,7 @@ export interface Scene {
   duration: number;
   isUserAdded?: boolean;
   scenePosition?: number;
+  placeholderImageUrl?: string;
 }
 
 interface EditSceneProps {
@@ -26,6 +27,8 @@ interface EditSceneProps {
   setCreatingSceneId?: React.Dispatch<React.SetStateAction<number | null>>;
   setIsLoadingVideoScenes: (value: boolean) => void;
   timestamp?: string;
+  onDeleteScene?: (sceneId: number) => void;
+  displayIndex?: number; // The sequential display index for this scene
 }
 
 export default function EditScene({
@@ -45,6 +48,8 @@ export default function EditScene({
   setCreatingSceneId,
   setIsLoadingVideoScenes,
   timestamp,
+  onDeleteScene,
+  displayIndex = 0,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -260,7 +265,7 @@ export default function EditScene({
         {/* Scene Label */}
         <div className="mb-2">
           <h3 className="text-white text-lg font-semibold">
-            Scene {(scene.scenePosition ?? scene.id) + 1}
+            Scene {displayIndex + 1}
           </h3>
         </div>
 
@@ -298,8 +303,35 @@ export default function EditScene({
             </div>
           )}
 
+          {/* Delete Button for User-Added Scenes */}
+          {scene.isUserAdded && onDeleteScene && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteScene(scene.id);
+              }}
+              className="absolute top-2 right-2 z-10 text-purple-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-full p-1.5 transition-all duration-200"
+              title="Delete Scene"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
+
           {/* Scene Image */}
-          {currentImageUrl ? (
+          {currentImageUrl ||
+          (scene.isUserAdded && scene.placeholderImageUrl) ? (
             <div
               className="flex-shrink-0 rounded-xl overflow-hidden relative group"
               style={{
@@ -308,8 +340,11 @@ export default function EditScene({
               }}
             >
               <img
-                src={currentImageUrl}
-                alt={`Scene ${(scene.scenePosition ?? scene.id) + 1}`}
+                src={
+                  currentImageUrl ||
+                  (scene.isUserAdded ? scene.placeholderImageUrl : undefined)
+                }
+                alt={`Scene ${displayIndex + 1}`}
                 className="w-full h-auto object-contain object-top rounded-xl"
                 onError={(e) => {
                   // Hide the image if it fails to load
@@ -708,7 +743,7 @@ export default function EditScene({
                   <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
                     <img
                       src={imageUrl}
-                      alt={`Scene ${(scene.scenePosition ?? scene.id) + 1}`}
+                      alt={`Scene ${displayIndex + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </div>
@@ -916,7 +951,7 @@ export default function EditScene({
                   <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
                     <img
                       src={currentImageUrl || imageUrl}
-                      alt={`Scene ${(scene.scenePosition ?? scene.id) + 1}`}
+                      alt={`Scene ${displayIndex + 1}`}
                       className="w-full h-full object-cover"
                     />
                   </div>

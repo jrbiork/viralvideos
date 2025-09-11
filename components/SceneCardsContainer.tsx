@@ -37,6 +37,7 @@ interface SceneCardsContainerProps {
   setAdditionalScenes: React.Dispatch<
     React.SetStateAction<{ scene: Scene; position: number }[]>
   >;
+  handleDeleteScene: (sceneId: number) => void;
 }
 
 export default function SceneCardsContainer({
@@ -56,6 +57,7 @@ export default function SceneCardsContainer({
   setCreatingSceneId,
   handleAddSceneCustom,
   setAdditionalScenes,
+  handleDeleteScene,
 }: SceneCardsContainerProps) {
   return (
     <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4 custom-scrollbar">
@@ -182,6 +184,8 @@ export default function SceneCardsContainer({
                       creatingSceneId={creatingSceneId}
                       setCreatingSceneId={setCreatingSceneId}
                       timestamp={videoGenerationState.currentTimestamp}
+                      onDeleteScene={handleDeleteScene}
+                      displayIndex={index}
                     />
 
                     {/* Add scene button after each scene (except the last one) */}
