@@ -614,7 +614,7 @@ export default function EditScene({
                         disabled={isCreatingScene}
                         className={`relative flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl text-white text-sm font-medium transition-all duration-300 overflow-hidden ${
                           isCreatingScene
-                            ? 'bg-gray-500 cursor-not-allowed'
+                            ? 'bg-purple-600 cursor-not-allowed'
                             : 'bg-green-600 hover:bg-green-700'
                         }`}
                       >

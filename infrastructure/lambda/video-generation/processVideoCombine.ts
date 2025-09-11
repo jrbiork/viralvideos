@@ -35,7 +35,11 @@ export async function processVideoCombine(
       };
     }
 
-    const finalVideoUrl = await combineVideoAndAudio(userId, timestamp);
+    const finalVideoUrl = await combineVideoAndAudio(
+      userId,
+      timestamp,
+      manifest,
+    );
 
     await updateManifest(manifest, { videoGenerated: true });
 

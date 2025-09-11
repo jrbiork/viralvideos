@@ -5,10 +5,17 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { Manifest, ManifestScene } from '../types/s3Types';
+
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 const ffmpeg = require('fluent-ffmpeg');
+
+// S3 file object interface
+interface S3FileObject {
+  Key: string;
+}
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 
@@ -22,6 +29,7 @@ export interface Scene {
 export async function combineVideoAndAudio(
   userId: string,
   timestamp: string,
+  manifest: Manifest,
 ): Promise<string> {
   console.log(
     '🎬 Combining video, audio, and subtitles scene by scene for user:',
@@ -29,75 +37,74 @@ export async function combineVideoAndAudio(
   );
 
   try {
-    // List all files for the user with timestamp prefix
-    const listResponse = await s3.send(
-      new ListObjectsV2Command({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Prefix: `${userId}/${timestamp}.scene-`,
-        MaxKeys: 100,
-      }),
-    );
-
-    const objs = listResponse.Contents || [];
-
-    // Filter and sort files by scene id
-    const videoFiles = objs
-      .filter(
-        (obj) => obj.Key?.endsWith('.mp4') && !obj.Key?.includes('-combined'),
-      )
-      .sort((a, b) => {
-        const aId = parseInt(a.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
-        const bId = parseInt(b.Key?.match(/scene-(\d+)\.mp4/)?.[1] || '0');
-        return aId - bId;
-      });
-
     console.log(
-      '🔍 Found video files:',
-      videoFiles.map((f) => f.Key),
+      '🔍 Using manifest for scene ordering:',
+      manifest.scenes.length,
+      'scenes',
     );
 
-    const audioFiles = objs
-      .filter((obj) => obj.Key?.endsWith('.mp3'))
-      .sort((a, b) => {
-        const aId = parseInt(a.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
-        const bId = parseInt(b.Key?.match(/scene-(\d+)\.mp3/)?.[1] || '0');
-        return aId - bId;
-      });
-
-    const subtitleFiles = objs
-      .filter((obj) => obj.Key?.endsWith('.ass'))
-      .sort((a, b) => {
-        const aId = parseInt(a.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
-        const bId = parseInt(b.Key?.match(/scene-(\d+)\.ass/)?.[1] || '0');
-        return aId - bId;
-      });
-
-    console.log(
-      `📹 Found ${videoFiles.length} video files, ${audioFiles.length} audio files, ${subtitleFiles.length} subtitle files`,
-    );
-
-    if (videoFiles.length === 0) {
-      throw new Error('No video files found for user');
+    if (!manifest.scenes || manifest.scenes.length === 0) {
+      throw new Error('No scenes found in manifest');
     }
 
-    console.log('🔍 videoFiles start:', videoFiles);
+    // Sort scenes by scenePosition to ensure proper order
+    const sortedScenes = manifest.scenes.sort(
+      (a: ManifestScene, b: ManifestScene) => a.scenePosition - b.scenePosition,
+    );
+
+    console.log(
+      '🔍 Sorted scenes by scenePosition:',
+      sortedScenes.map((s: ManifestScene) => ({
+        scenePosition: s.scenePosition,
+        hasVideo: !!s.files?.mp4,
+        hasAudio: !!s.files?.mp3,
+        hasSubtitle: !!s.files?.ass,
+      })),
+    );
 
     // Process all scenes in parallel: combine video + audio + subtitle
-    const sceneProcessingPromises = videoFiles.map(async (videoFile, i) => {
-      const audioFile = audioFiles[i];
-      const subtitleFile = subtitleFiles[i];
+    const sceneProcessingPromises = sortedScenes.map(
+      async (scene: ManifestScene, i: number) => {
+        const scenePosition = scene.scenePosition;
 
-      if (!videoFile.Key) return null;
+        // Create file objects based on manifest
+        // Extract S3 key from URL if it's a full URL, otherwise use as-is
+        const extractS3Key = (url: string): string => {
+          if (url.startsWith('https://')) {
+            // Extract key from S3 URL
+            const urlParts = url.split('/');
+            return urlParts.slice(3).join('/'); // Remove bucket and domain parts
+          }
+          return url;
+        };
 
-      return await processScene(
-        videoFile,
-        audioFile,
-        subtitleFile,
-        i,
-        userId,
-        timestamp,
-      );
-    });
+        const videoFile = scene.files?.mp4
+          ? { Key: extractS3Key(scene.files.mp4) }
+          : null;
+        const audioFile = scene.files?.mp3
+          ? { Key: extractS3Key(scene.files.mp3) }
+          : null;
+        const subtitleFile = scene.files?.ass
+          ? { Key: extractS3Key(scene.files.ass) }
+          : null;
+
+        if (!videoFile?.Key) {
+          console.warn(
+            `⚠️ No video file found for scene at position ${scenePosition}`,
+          );
+          return null;
+        }
+
+        return await processScene(
+          videoFile,
+          audioFile,
+          subtitleFile,
+          scenePosition,
+          userId,
+          timestamp,
+        );
+      },
+    );
 
     const combinedScenePaths = (
       await Promise.all(sceneProcessingPromises)
@@ -205,7 +212,7 @@ async function concatenateScenes(
 
         resolve(finalOutputPath);
       })
-      .on('error', (err: any) => {
+      .on('error', (err: Error) => {
         clearTimeout(timeout);
         console.error('❌ Error concatenating scenes:', err);
         reject(err);
@@ -225,9 +232,9 @@ async function concatenateScenes(
  * @returns Path to the combined scene file
  */
 async function processScene(
-  videoFile: any,
-  audioFile: any,
-  subtitleFile: any,
+  videoFile: S3FileObject,
+  audioFile: S3FileObject | null,
+  subtitleFile: S3FileObject | null,
   scenePosition: number,
   userId: string,
   timestamp: string,
@@ -380,7 +387,7 @@ async function processScene(
 
         resolve(combinedScenePath);
       })
-      .on('error', (err: any) => {
+      .on('error', (err: Error) => {
         clearTimeout(timeout);
         console.error(`❌ Error combining scene ${scenePosition}:`, err);
         reject(err);
