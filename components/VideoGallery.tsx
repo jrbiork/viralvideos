@@ -45,6 +45,8 @@ export default function VideoGallery({}: VideoGalleryProps) {
     'success',
   );
   const [showToaster, setShowToaster] = useState(false);
+  const [videoModalOpen, setVideoModalOpen] = useState(false);
+  const [videoToPlay, setVideoToPlay] = useState<Video | null>(null);
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
 
   // Helper function to show toaster messages
@@ -187,6 +189,17 @@ export default function VideoGallery({}: VideoGalleryProps) {
 
     // Navigate to create page with the video's timestamp and step=2
     router.push(`/create?timestamp=${video.timestamp}&step=2`);
+  };
+
+  const handlePlayVideo = (video: Video, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setVideoToPlay(video);
+    setVideoModalOpen(true);
+  };
+
+  const closeVideoModal = () => {
+    setVideoModalOpen(false);
+    setVideoToPlay(null);
   };
 
   const formatDuration = (seconds: number): string => {
@@ -360,12 +373,27 @@ export default function VideoGallery({}: VideoGalleryProps) {
                       </div>
                     )}
 
+                    {/* Play Button - Only show for generated videos */}
+                    {video.videoGenerated && video.finalVideoUrl && (
+                      <button
+                        onClick={(e) => handlePlayVideo(video, e)}
+                        className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/20 transition-all duration-200 z-10 group"
+                      >
+                        <div className="w-12 h-12 bg-white/30 hover:bg-white/50 rounded-full flex items-center justify-center transition-all duration-200 group-hover:scale-110 backdrop-blur-sm">
+                          <Play
+                            className="w-6 h-6 text-white/80 ml-0.5"
+                            fill="currentColor"
+                          />
+                        </div>
+                      </button>
+                    )}
+
                     {/* Menu Button */}
                     <button
                       onClick={(e) =>
                         handleMenuToggle(String(video.timestamp), e)
                       }
-                      className="video-menu-button absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 z-10"
+                      className="video-menu-button absolute top-2 right-2 w-8 h-8 bg-black/50 hover:bg-black/70 rounded-full flex items-center justify-center transition-all duration-200 z-20"
                     >
                       <MoreHorizontal className="w-4 h-4 text-white" />
                     </button>
@@ -447,6 +475,60 @@ export default function VideoGallery({}: VideoGalleryProps) {
         video={videoToDelete}
         isDeleting={isDeleting}
       />
+
+      {/* Video Modal */}
+      {videoModalOpen && videoToPlay && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-slate-900 rounded-xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-700">
+              <h3 className="text-lg font-semibold text-white">
+                Video - {videoToPlay.timestamp}
+              </h3>
+              <button
+                onClick={closeVideoModal}
+                className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-full flex items-center justify-center transition-colors duration-200"
+              >
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+
+            {/* Video Player */}
+            <div className="p-4">
+              <div className="relative w-full max-w-sm mx-auto aspect-[9/16] bg-black rounded-lg overflow-hidden">
+                {videoToPlay.finalVideoUrl ? (
+                  <video
+                    className="w-full h-full object-contain"
+                    controls
+                    autoPlay
+                    src={videoToPlay.finalVideoUrl}
+                  >
+                    Your browser does not support the video tag.
+                  </video>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <p className="text-white text-center">
+                      Video not available
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toaster */}
       <Toaster
