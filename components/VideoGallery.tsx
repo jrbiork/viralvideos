@@ -29,16 +29,13 @@ interface Video {
   size?: number;
 }
 
-interface VideoGalleryProps {
-  onVideoSelect?: (video: Video) => void;
-}
+interface VideoGalleryProps {}
 
-export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
+export default function VideoGallery({}: VideoGalleryProps) {
   const router = useRouter();
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
@@ -98,11 +95,6 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleVideoSelect = (video: Video) => {
-    setSelectedVideo(video);
-    onVideoSelect?.(video);
   };
 
   const handleMenuToggle = (videoKey: string, e: React.MouseEvent) => {
@@ -173,9 +165,6 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
         },
       );
       setVideos(videos.filter((v) => v.timestamp !== videoToDelete.timestamp));
-      if (selectedVideo?.timestamp === videoToDelete.timestamp) {
-        setSelectedVideo(null);
-      }
       setDeleteModalOpen(false);
       setVideoToDelete(null);
       showToasterMessage('Video deleted successfully', 'success');
@@ -338,7 +327,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
   return (
     <div className="relative flex h-full">
       {/* Main Gallery */}
-      <div className="w-3/4 flex flex-col h-full">
+      <div className="w-full flex flex-col h-full">
         <div className="flex-1 overflow-y-auto">
           <div className="flex flex-wrap gap-7 pb-4 w-full p-8">
             {videos
@@ -350,12 +339,7 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
               .map((video) => (
                 <div
                   key={video.timestamp}
-                  className={`w-[247px] h-[382px] glass-effect rounded-xl p-4 cursor-pointer transition-all duration-300 hover:transform hover:scale-105 ${
-                    selectedVideo?.timestamp === video.timestamp
-                      ? 'ring-2 ring-blue-500 bg-blue-500/10'
-                      : 'hover:bg-slate-700/50'
-                  }`}
-                  onClick={() => handleVideoSelect(video)}
+                  className="w-[247px] h-[382px] glass-effect rounded-xl p-4 transition-all duration-300 hover:transform hover:scale-105 hover:bg-slate-700/50"
                 >
                   <div className="relative mb-4 h-72 overflow-hidden rounded-xl">
                     {video.thumbnailUrl ? (
@@ -453,67 +437,6 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
               ))}
           </div>
         </div>
-      </div>
-
-      {/* Video Player Sidebar */}
-      <div
-        className={`fixed inset-y-0 right-0 w-1/4 bg-slate-900/95 backdrop-blur-sm border-l border-slate-700 transform transition-transform duration-500 ease-in-out z-50 ${
-          selectedVideo ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
-        {selectedVideo && (
-          <div className="h-full flex flex-col">
-            {/* Header */}
-            <div className="flex items-center justify-end p-6 border-b border-slate-700">
-              <button
-                onClick={() => setSelectedVideo(null)}
-                className="w-8 h-8 bg-slate-700 hover:bg-slate-600 rounded-full flex items-center justify-center transition-colors duration-200"
-              >
-                <svg
-                  className="w-4 h-4 text-white"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
-              </button>
-            </div>
-
-            {/* Video Player */}
-            <div className="flex-1 p-4">
-              <div className="relative w-full h-full rounded-xl overflow-hidden bg-black">
-                {selectedVideo.thumbnailUrl ? (
-                  <div className="w-full h-full flex flex-col items-center justify-center">
-                    <img
-                      className="max-w-full max-h-full object-contain"
-                      src={selectedVideo.thumbnailUrl}
-                      alt={`Thumbnail for ${selectedVideo.timestamp}`}
-                    />
-                    <p className="text-white mt-4 text-center">
-                      Video preview not available
-                      <br />
-                      <span className="text-sm text-gray-400">
-                        Thumbnail only
-                      </span>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <p className="text-white text-center">
-                      No preview available
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Delete Confirmation Modal */}
