@@ -11,6 +11,7 @@ import {
   Trash2,
   Edit,
   Clock,
+  Share,
 } from 'lucide-react';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
@@ -200,6 +201,24 @@ export default function VideoGallery({}: VideoGalleryProps) {
   const closeVideoModal = () => {
     setVideoModalOpen(false);
     setVideoToPlay(null);
+  };
+
+  const handleShareLink = async (video: Video, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenMenu(null);
+
+    if (!video.finalVideoUrl) {
+      showToasterMessage('Video URL not available for sharing', 'error');
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(video.finalVideoUrl);
+      showToasterMessage('Video link copied to clipboard!', 'success');
+    } catch (error) {
+      console.error('Error copying to clipboard:', error);
+      showToasterMessage('Failed to copy link to clipboard', 'error');
+    }
   };
 
   const formatDuration = (seconds: number): string => {
@@ -420,6 +439,15 @@ export default function VideoGallery({}: VideoGalleryProps) {
                           <Download className="w-4 h-4" />
                           Export {!video.videoGenerated && '(Not Available)'}
                         </button>
+                        {video.videoGenerated && video.finalVideoUrl && (
+                          <button
+                            onClick={(e) => handleShareLink(video, e)}
+                            className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
+                          >
+                            <Share className="w-4 h-4" />
+                            Share Link
+                          </button>
+                        )}
                         <button
                           onClick={(e) => handleDelete(video, e)}
                           className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"
