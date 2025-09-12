@@ -24,8 +24,7 @@ export async function processCreateScene(
   request: CreateSceneRequest,
   record?: SQSRecord,
 ) {
-  const { imageUrl, sceneId, scenePosition, captionText, userId, timestamp } =
-    request;
+  const { sceneId, scenePosition, captionText, userId, timestamp } = request;
 
   console.log('request:', JSON.stringify(request, null, 2));
 

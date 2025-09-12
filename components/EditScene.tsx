@@ -31,6 +31,7 @@ interface EditSceneProps {
   timestamp?: string;
   onDeleteScene?: (sceneId: number) => void;
   displayIndex?: number; // The sequential display index for this scene
+  totalScenesCount?: number; // Total number of scenes (original + additional)
 }
 
 export default function EditScene({
@@ -52,6 +53,7 @@ export default function EditScene({
   timestamp,
   onDeleteScene,
   displayIndex = 0,
+  totalScenesCount = 0,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -84,6 +86,14 @@ export default function EditScene({
   const isEditing = editingScene === scene.id;
   const isRegenerating = regeneratingSceneId === scene.id;
   const isCreatingScene = creatingSceneId === scene.id;
+
+  // Validation logic for Create Scene button
+  const hasValidNarration =
+    scene.narration && scene.narration.trim().length > 0;
+  const hasValidImage = currentImageUrl || imageUrl;
+  const isUnderSceneLimit = totalScenesCount < 20;
+  const canCreateScene =
+    hasValidNarration && hasValidImage && isUnderSceneLimit;
 
   const handleCreateScene = async () => {
     try {
@@ -289,7 +299,7 @@ export default function EditScene({
               <div className="flex flex-col items-center space-y-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
                 <span className="text-white text-sm font-medium">
-                  Generating Audio and Captions...
+                  Regenerating Scene, Audio and Captions...
                 </span>
               </div>
             </div>
@@ -464,8 +474,11 @@ export default function EditScene({
                     <span className="text-white text-sm font-bold">T</span>
                   </div>
                   <textarea
-                    className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl p-4 pl-16 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                    style={{ margin: '8px 0 16px' }}
+                    className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    style={{
+                      margin: '8px 0 16px',
+                      padding: '20px 24px 24px 64px',
+                    }}
                     value={editedNarration}
                     onChange={(e) => onEditedNarrationChange(e.target.value)}
                     placeholder="Enter scene narration..."
@@ -537,7 +550,7 @@ export default function EditScene({
                           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                         />
                       </svg>
-                      <span>Generate Audio/Caption</span>
+                      <span>Regenerate Scene</span>
                     </button>
                   )}
                   <button
@@ -620,12 +633,23 @@ export default function EditScene({
                       /* Create Scene Button for user-added scenes */
                       <button
                         onClick={handleCreateScene}
-                        disabled={isCreatingScene}
+                        disabled={isCreatingScene || !canCreateScene}
                         className={`relative flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl text-white text-sm font-medium transition-all duration-300 overflow-hidden ${
-                          isCreatingScene
-                            ? 'bg-purple-600 cursor-not-allowed'
+                          isCreatingScene || !canCreateScene
+                            ? 'bg-gray-500 cursor-not-allowed'
                             : 'bg-green-600 hover:bg-green-700'
                         }`}
+                        title={
+                          isCreatingScene
+                            ? 'Creating scene...'
+                            : !hasValidNarration
+                            ? 'Please add narration text'
+                            : !hasValidImage
+                            ? 'Please select an image'
+                            : !isUnderSceneLimit
+                            ? 'Maximum 20 scenes allowed'
+                            : 'Create scene with current image and narration'
+                        }
                       >
                         {isCreatingScene ? (
                           <>

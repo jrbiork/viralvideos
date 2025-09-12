@@ -186,6 +186,7 @@ export default function SceneCardsContainer({
                       timestamp={videoGenerationState.currentTimestamp}
                       onDeleteScene={handleDeleteScene}
                       displayIndex={index}
+                      totalScenesCount={scenes.length}
                     />
 
                     {/* Add scene button after each scene (except the last one) */}

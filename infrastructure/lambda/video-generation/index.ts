@@ -10,6 +10,7 @@ import {
 } from './processVideoGeneration';
 import { processVideoCombine } from './processVideoCombine';
 import { processCreateScene } from './processCreateScene';
+import { processRegenerateAudioScene } from './processRegenerateAudioScene';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -38,6 +39,8 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
         await processVideoCombine(request as any, record);
       } else if (request.type === 'create-scene') {
         await processCreateScene(request as any, record);
+      } else if (request.type === 'regenerate-scene') {
+        await processRegenerateAudioScene(request as any, record);
       } else {
         await processVideoGeneration(request, record);
       }

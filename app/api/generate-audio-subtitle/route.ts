@@ -1,50 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifySession } from '../../../lib/session-utils';
-import { cookies } from 'next/headers';
-
-const COGNITO_TOKEN_COOKIE_NAME = 'viral-videos-cognito-token';
+import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
 
 export async function POST(request: NextRequest) {
   console.log('🚀 generate-audio-subtitle API route called');
 
   try {
-    // Verify session
-    console.log('🔍 Verifying session...');
+    // Verify session and get user info
     const session = await verifySession();
-    console.log('📋 Session verification result:', {
-      hasSession: !!session,
-      userId: session?.sub,
-      email: session?.email,
-    });
-
     if (!session) {
       console.log('❌ No valid session found, returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Use session user info
-    const userInfo = {
-      id: session.sub,
-      email: session.email,
-    };
-
-    // Get the Cognito JWT token from the httpOnly cookie
-    const cookieStore = cookies();
-    const cognitoTokenCookie = cookieStore.get(COGNITO_TOKEN_COOKIE_NAME);
-
-    if (!cognitoTokenCookie) {
-      console.log('❌ No Cognito JWT token found in cookie');
-      return NextResponse.json(
-        { error: 'Unauthorized: No valid Cognito token found' },
-        { status: 401 },
-      );
+    const userId = session.sub;
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID not found' }, { status: 400 });
     }
-
-    const cognitoToken = cognitoTokenCookie.value;
-    console.log(
-      '🔍 Found Cognito token in cookie, length:',
-      cognitoToken.length,
-    );
 
     const { scene, instructions, timestamp, voice, broadcastProgress } =
       await request.json();
@@ -73,91 +45,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🔧 Environment check (generate-audio-subtitle):', {
-      hasApiGatewayUrl: !!process.env.API_GATEWAY_URL,
-      apiGatewayUrl: process.env.API_GATEWAY_URL,
-    });
-
-    if (!process.env.API_GATEWAY_URL) {
+    // Enqueue to SQS so the shared consumer handles regenerate-scene
+    const queueUrl = process.env.VIDEO_QUEUE_URL;
+    if (!queueUrl) {
+      console.error('❌ VIDEO_QUEUE_URL environment variable not set');
       return NextResponse.json(
-        { error: 'API Gateway URL not configured' },
+        { error: 'SQS queue URL not configured' },
         { status: 500 },
       );
     }
 
-    // Prepare Lambda payload with userId and selected scene
-    const lambdaPayload = {
+    const sqs = new SQSClient({
+      region: process.env.AWS_REGION || 'us-east-1',
+    });
+
+    const messageBody = {
+      type: 'regenerate-scene' as const,
+      userId,
+      timestamp,
       scene,
       voiceToneInstruction: instructions,
       voice: voice || 'alloy',
       broadcastProgress: broadcastProgress || false,
     };
 
-    // Call the API Gateway endpoint with timestamp as query string
-    const apiGatewayUrl = `${
-      process.env.API_GATEWAY_URL
-    }generate-audio-subtitle?timestamp=${encodeURIComponent(timestamp)}`;
-
-    const authHeaderValue = `Bearer ${cognitoToken}`;
-
-    const lambdaResponse = await fetch(apiGatewayUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: authHeaderValue,
+    const command = new SendMessageCommand({
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify(messageBody),
+      MessageAttributes: {
+        RequestType: { DataType: 'String', StringValue: 'RegenerateScene' },
+        UserId: { DataType: 'String', StringValue: userId },
       },
-      body: JSON.stringify(lambdaPayload),
     });
 
-    console.log('📡 API Gateway response:', {
-      status: lambdaResponse.status,
-      statusText: lambdaResponse.statusText,
-      ok: lambdaResponse.ok,
-    });
-
-    if (!lambdaResponse.ok) {
-      const errorText = await lambdaResponse.text();
-      console.error('❌ API Gateway error response:', errorText);
-      return NextResponse.json(
-        {
-          error: `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
-          details: errorText,
-        },
-        { status: lambdaResponse.status },
-      );
-    }
-
-    // Parse the response JSON
-    const responsePayload = await lambdaResponse.json();
-    console.log('✅ API Gateway success response:', responsePayload);
-
-    if (responsePayload.error) {
-      return NextResponse.json(
-        { error: responsePayload.error },
-        { status: 500 },
-      );
-    }
+    const sqsResponse = await sqs.send(command);
+    console.log('✅ Enqueued regenerate-scene message:', sqsResponse.MessageId);
 
     return NextResponse.json({
-      data: responsePayload,
-      message: 'Audio and subtitles generated successfully',
+      status: 'queued',
+      messageId: sqsResponse.MessageId,
     });
   } catch (error) {
-    console.error('💥 Error in audio-subtitle generation:', error);
-    console.error(
-      'Error stack:',
-      error instanceof Error ? error.stack : 'No stack trace',
-    );
-    console.error(
-      'Error message:',
-      error instanceof Error ? error.message : 'Unknown error',
-    );
-
+    console.error('💥 Error in generate-audio-subtitle API route:', error);
     return NextResponse.json(
-      {
-        error: 'Failed to generate audio and subtitles',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
+      { error: 'Internal server error' },
       { status: 500 },
     );
   }

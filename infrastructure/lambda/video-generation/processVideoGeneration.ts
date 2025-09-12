@@ -29,7 +29,8 @@ export interface VideoGenerationRequest {
     | 'save-image'
     | 'animate-image'
     | 'combine-video'
-    | 'create-scene';
+    | 'create-scene'
+    | 'regenerate-scene';
   prompt?: string;
   userId: string;
   timestamp: string;

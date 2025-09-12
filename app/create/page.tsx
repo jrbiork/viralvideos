@@ -6,22 +6,21 @@ import { useRouter } from 'next/navigation';
 import MainLayout from '../../components/MainLayout';
 import ProgressSteps from '../../components/ProgressSteps';
 import VideoCreator from '../../components/VideoCreator';
-import EditScene, { Scene } from '../../components/EditScene';
-import EditSceneSkeleton from '../../components/EditSceneSkeleton';
+import { Scene } from '../../components/EditScene';
+
 import RightSidebar from '../../components/RightSidebar';
 import SceneCardsContainer from '../../components/SceneCardsContainer';
-import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../../lib/constants';
-import AddSceneButton from '../../components/AddSceneButton';
+import { DEFAULT_VOICE } from '../../lib/constants';
+
 import ExportVideo from '../../components/ExportVideo';
 import Toaster from '../../components/Toaster';
-import { parseColoredText, parseAssFile } from '../../lib/subtitle-utils';
+import { parseColoredText } from '../../lib/subtitle-utils';
 import { useVideoGeneration } from '../../hooks/useVideoGeneration';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
-import VideoSkeleton from '../../components/VideoSkeleton';
+
 import { Manifest } from '../types/manifest';
-import { WebSocketMessage } from '../types/websocket';
 
 export default function GeneratePage() {
   const router = useRouter();
@@ -135,6 +134,8 @@ export default function GeneratePage() {
     setCreatingSceneId,
     creatingSceneId,
     setAdditionalScenes,
+    currentEditingSceneId: sceneState.editingScene,
+    setRegeneratingSceneId,
   });
 
   // WebSocket hook for real-time updates
@@ -516,65 +517,20 @@ export default function GeneratePage() {
       const result = await response.json();
       console.log('📡 Response from generate-audio-subtitle API:', result);
 
-      // Update the video generation state with the new audio/subtitles
-      if (result.data && result.data.manifest) {
-        setVideoGenerationState((prev) => ({
-          ...prev,
-          manifest: result.data.manifest,
-        }));
+      // The API now returns a queued status - the actual result will come via WebSocket
+      if (result.status === 'queued') {
         console.log(
-          '✅ Audio/subtitles regenerated successfully:',
-          result.data.manifest,
+          '✅ Audio regeneration queued successfully:',
+          result.messageId,
         );
-
-        // Force video players to refresh their ASS and subtitle content
-        const videoElements = document.querySelectorAll('video');
-        videoElements.forEach((videoRef) => {
-          if (videoRef.dataset.initialized) {
-            // Build complete ASS files object from the updated manifest
-            const timestamp = result.data.manifest.generatedAt;
-            const completeAssFiles: { [key: string]: string } = {};
-
-            result.data.manifest.scenes.forEach((scene: any) => {
-              const assKey = `${timestamp}.scene-${scene.scenePosition}.ass`;
-              completeAssFiles[assKey] = scene.files.ass;
-            });
-
-            // Update the video element with complete ASS content
-            videoRef.dataset.assFiles = JSON.stringify(completeAssFiles);
-            console.log(
-              '🔄 Updated video player with complete ASS content:',
-              Object.keys(completeAssFiles),
-            );
-
-            // Force immediate subtitle update by triggering a timeupdate event
-            const timeupdateEvent = new Event('timeupdate', {
-              bubbles: true,
-            });
-            videoRef.dispatchEvent(timeupdateEvent);
-          }
-        });
+        // The WebSocket handler will process the preview_completed message
+        // and update the video generation state automatically
       } else {
         console.error('❌ Unexpected response format:', result);
       }
     } catch (error) {
       console.error('Error regenerating audio:', error);
       alert('Failed to regenerate audio. Please try again.');
-    } finally {
-      // Clear loading state
-      setRegeneratingSceneId(null);
-
-      // Reset the scene back to initial mode (showing edit button)
-      if (sceneState.editingScene === sceneId) {
-        sceneDispatch({
-          type: 'SET_EDITING_SCENE',
-          payload: null,
-        });
-        sceneDispatch({
-          type: 'SET_EDITED_NARRATION',
-          payload: '',
-        });
-      }
     }
   };
 

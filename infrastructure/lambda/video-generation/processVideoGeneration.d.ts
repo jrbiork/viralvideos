@@ -1,6 +1,6 @@
 import { SQSRecord } from 'aws-lambda';
 export interface VideoGenerationRequest {
-    type?: 'generate-video' | 'save-image' | 'animate-image' | 'combine-video' | 'create-scene';
+    type?: 'generate-video' | 'save-image' | 'animate-image' | 'combine-video' | 'create-scene' | 'regenerate-scene';
     prompt?: string;
     userId: string;
     timestamp: string;
