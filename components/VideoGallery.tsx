@@ -26,6 +26,7 @@ interface Video {
   totalDuration: number;
   sceneCount: number;
   videoGenerated: boolean;
+  size?: number;
 }
 
 interface VideoGalleryProps {
@@ -247,6 +248,12 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
     }
   };
 
+  const formatFileSize = (bytes: number): string => {
+    if (!bytes || bytes === 0) return '0 MB';
+    const mb = bytes / (1024 * 1024);
+    return `${mb.toFixed(1)}MB`;
+  };
+
   if (loading) {
     return (
       <div
@@ -434,9 +441,12 @@ export default function VideoGallery({ onVideoSelect }: VideoGalleryProps) {
                     <div className="flex items-center justify-between text-xs text-slate-500">
                       <div className="flex items-center">
                         <Clock className="w-3 h-3 mr-1" />
-                        <span>{formatDuration(video.totalDuration)}</span>
+                        <span>
+                          {formatDuration(video.totalDuration)} in{' '}
+                          {video.sceneCount} scenes
+                        </span>
                       </div>
-                      <span>{video.sceneCount} scenes</span>
+                      {video.size && <span>{formatFileSize(video.size)}</span>}
                     </div>
                   </div>
                 </div>
