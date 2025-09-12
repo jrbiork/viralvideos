@@ -93,7 +93,7 @@ export default function SceneCardsContainer({
               {/* Scene Cards */}
               {scenes.map((scene: any, index: number) => {
                 // Get the image URL for this scene (only for original scenes)
-                // Use the actual file naming from the manifest
+                // Use the hydrated image URLs directly from the manifest
                 let imageUrl = undefined;
                 if (
                   !scene.isUserAdded &&
@@ -106,19 +106,10 @@ export default function SceneCardsContainer({
                         manifestScene.scenePosition === scene.scenePosition,
                     );
 
-                  // Check for both PNG and JPG image files
-                  const imageFile =
+                  // Use the hydrated image URL directly from the manifest
+                  // The hydrateManifest function sets both png and jpg to the same signed URL
+                  imageUrl =
                     manifestScene?.files?.png || manifestScene?.files?.jpg;
-                  if (imageFile) {
-                    // Extract the actual scene number from the image file name
-                    const sceneNumber = imageFile.match(/scene-(\d+)\./)?.[1];
-                    if (sceneNumber) {
-                      // Determine the file extension (png or jpg)
-                      const extension = manifestScene.files.png ? 'png' : 'jpg';
-                      const imageKey = `${videoGenerationState.currentTimestamp}.scene-${sceneNumber}.${extension}`;
-                      imageUrl = getMediaFiles()[imageKey];
-                    }
-                  }
                 }
 
                 return (

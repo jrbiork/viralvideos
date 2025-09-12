@@ -14,7 +14,7 @@ import { broadcastProgress } from '../utils/broadcastProgress';
 export interface CreateSceneRequest {
   imageUrl: string;
   sceneId: number;
-  scenePosition: number;
+  scenePosition?: number;
   userId: string;
   timestamp: string;
   captionText: string;
@@ -31,6 +31,7 @@ export async function processCreateScene(
   const scenes = [
     {
       id: sceneId,
+      scenePosition: scenePosition || 0,
       description: '',
       duration: 10,
       narration: captionText,
@@ -71,7 +72,7 @@ export async function processCreateScene(
     scenes[0],
     request.userId,
     timestamp,
-    scenePosition,
+    scenePosition || 0,
   );
 
   // update manifest

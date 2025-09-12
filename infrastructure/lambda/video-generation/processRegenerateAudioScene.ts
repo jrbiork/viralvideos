@@ -1,13 +1,8 @@
 import { SQSRecord } from 'aws-lambda';
 import { generateNarration } from '../utils/audio';
-import {
-  getManifest,
-  hydrateManifest,
-  addSceneToManifest,
-  createManifestScene,
-} from '../utils/manifestUtils';
+import { getManifest, hydrateManifest } from '../utils/manifestUtils';
 
-import { generateSubtitles, ASSContentResult } from '../utils/subtitles';
+import { generateSubtitles } from '../utils/subtitles';
 import { generateVideoEffects } from '../utils/videoEffects';
 import { broadcastProgress } from '../utils/broadcastProgress';
 import { CREDITS_COST } from '../utils/credits';
@@ -16,6 +11,9 @@ import {
   updateCreditBalanceByUserId,
 } from '../utils/credits';
 import { Scene } from '../utils/script';
+
+import { updateManifest } from '../utils/manifestUtils';
+import { Manifest } from '../types/s3Types';
 
 export interface processRegenerateAudioSceneRequest {
   scene: Scene;
@@ -63,7 +61,7 @@ export async function processRegenerateAudioScene(
   console.log('userId:', userId);
   console.log('timestamp:', timestamp);
 
-  const manifest = await getManifest(userId, timestamp);
+  let manifest = await getManifest(userId, timestamp);
 
   console.log('manifest:', JSON.stringify(manifest, null, 2));
 
@@ -85,17 +83,23 @@ export async function processRegenerateAudioScene(
   );
   console.log('subtitles generated:', JSON.stringify(subtitles, null, 2));
 
-  // update scenes duration
-  scene.duration = subtitles[0].duration || 10;
+  await generateSubtitles([scene], userId, timestamp, subtitles);
 
-  console.log('scene duration:', scene.duration);
-
-  const assContentArray: ASSContentResult[] = await generateSubtitles(
-    [scene],
-    userId,
-    timestamp,
-    subtitles,
-  );
+  manifest = await updateManifest(manifest, {
+    scenes: manifest.scenes.map((manifestScene) => {
+      // Only update the duration for the specific scene that was regenerated
+      if (manifestScene.scenePosition === scene.scenePosition) {
+        return {
+          ...manifestScene,
+          files: {
+            ...manifestScene.files,
+            duration: subtitles[0].duration || 10,
+          },
+        };
+      }
+      return manifestScene;
+    }),
+  });
 
   const manifestHydrated = await hydrateManifest(manifest);
 

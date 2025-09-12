@@ -10,6 +10,9 @@ export interface Scene {
   duration: number;
   narration: string;
   id: number;
+  scenePosition: number;
+  /** Two short bylines repeated every scene, e.g., ["blonde Swiss woman, green-blue eyes", "muscular Brazilian man with mustache"] */
+  charactersBrief?: string[];
 }
 
 // Utility function to add IDs to scenes
@@ -17,6 +20,7 @@ export function addSceneIds(scenes: Scene[]): Scene[] {
   return scenes.map((scene: Scene, idx: number) => ({
     ...scene,
     id: idx,
+    scenePosition: idx,
   }));
 }
 
@@ -44,23 +48,71 @@ export async function generateStoryBreakdown(
     const maxWordsPerScene = Math.floor(sceneDuration * WPS);
     console.log('maxWordsPerScene:', maxWordsPerScene);
     const maxTotalWords = Math.floor(totalDuration * WPS);
+
+    // Build schema programmatically so `required` always matches `properties`
+    const sceneItemSchema = {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        description: { type: 'string' },
+        duration: { type: 'number' },
+        narration: { type: 'string' },
+        charactersBrief: {
+          type: 'array',
+          minItems: 2,
+          maxItems: 2,
+          items: { type: 'string', maxLength: 80 },
+        },
+      },
+      required: ['description', 'duration', 'narration', 'charactersBrief'],
+    } as const;
+
+    const topLevelProperties = {
+      videoScenes: {
+        type: 'array',
+        minItems: sceneCount,
+        maxItems: sceneCount,
+        items: sceneItemSchema,
+      },
+      voiceToneInstruction: { type: 'string', minLength: 1 },
+      charactersBylines: {
+        type: 'array',
+        minItems: 2,
+        maxItems: 2,
+        items: { type: 'string', maxLength: 80 },
+      },
+    } as const;
+
+    const jsonSchemaRoot = {
+      type: 'object',
+      additionalProperties: false,
+      properties: topLevelProperties,
+      required: Object.keys(topLevelProperties),
+    } as const;
+
+    console.log('🧪 Structured Output schema:', JSON.stringify(jsonSchemaRoot));
+
     const response = await openai.chat.completions.create({
       model: 'gpt-5-nano',
       messages: [
         {
           role: 'system',
           content: `You are a short-form video scriptwriter for TikTok/Reels/Shorts.
-                Break the user's idea into ${sceneCount} scenes for a ${totalDuration}-second, 9:16 vertical video; each scene lasts ${sceneDuration}s.
-                Strict rules:
-                - **No brands, logos, trademarks, public figures, mascots, or celebrity likenesses.** If the user mentions any, **rewrite to a generic archetype** with descriptive traits (e.g., “an elderly Southern gentleman in a white suit and string tie”) and never use real names or marks.
-                - **No dialogue** in descriptions. Each scene has:
-                  • **description**: what viewers see (camera/framing, action, setting, mood) — concise, concrete, visual.
-                  • **narration**: what the voiceover says (<= ${maxWordsPerScene} words per scene, hard cap).
-                - Use **active voice**, avoid filler and long pauses.
-                - **Language**: exactly mirror the user’s input language.
-                - Keep visual cues safe for generative models (e.g., “monochrome portrait” instead of referencing specific photographers/brands).
-                - Do not include watermarks, text overlays, or UI elements in descriptions.
-              `,
+Create a ${totalDuration}-second 9:16 vertical video split into exactly ${sceneCount} scenes (each ${sceneDuration}s).
+
+Strict rules:
+- **No brands, logos, trademarks, public figures, mascots, or celebrity likenesses.** If the user names any, **rewrite to a generic archetype** (e.g., “an elderly Southern gentleman in a white suit and string tie”)—never use real names or marks.
+- **Two concise character bylines at the top level** (<= 10 words each): \`charactersBylines = [female, male]\`.
+- **Every scene must:**
+  1) Start \`description\` with \`[FL: <female byline>] [ML: <male byline>]\` then the visual.
+  2) Include \`charactersBrief\` exactly equal to \`charactersBylines\` (verbatim strings, no paraphrasing).
+  3) Use **no dialogue**; keep descriptions visual, concrete, and concise.
+- Narration word cap per scene: <= ${maxWordsPerScene}. Total narration words < ${maxTotalWords}.
+- Use **active voice**; avoid filler and long pauses.
+- **Language**: exactly mirror the user’s input language.
+- Safe visual cues only; no watermarks, UI, or photographer/brand references.
+
+Output: **JSON only** following the provided schema.`,
         },
         {
           role: 'user',
@@ -72,23 +124,8 @@ export async function generateStoryBreakdown(
         type: 'json_schema',
         json_schema: {
           name: 'VideoScenes',
-          schema: {
-            type: 'object',
-            properties: {
-              videoScenes: {
-                type: 'array',
-                items: {
-                  type: 'object',
-                  properties: {
-                    description: { type: 'string' },
-                    duration: { type: 'number' },
-                    narration: { type: 'string' },
-                  },
-                },
-              },
-              voiceToneInstruction: { type: 'string' },
-            },
-          },
+          strict: true,
+          schema: jsonSchemaRoot,
         },
       },
     });
@@ -104,6 +141,8 @@ export async function generateStoryBreakdown(
     }
 
     const parsedResponse = JSON.parse(content);
+    const charactersBylines: string[] = parsedResponse.charactersBylines || [];
+    console.log('👥 charactersBylines:', charactersBylines);
     const scenes = parsedResponse.videoScenes || parsedResponse;
     const voiceToneInstruction =
       parsedResponse.voiceToneInstruction ||
@@ -114,33 +153,6 @@ export async function generateStoryBreakdown(
 
     console.log('✅ Story breakdown parsed and adjusted successfully');
     console.log('🎤 Voice tone instruction:', voiceToneInstruction);
-
-    // Save script response to S3
-    // const scriptKey = `${userId}/${timestamp}.script.txt`;
-    // const scriptContent = JSON.stringify(
-    //   {
-    //     prompt,
-    //     sceneCount,
-    //     sceneDuration,
-    //     totalDuration,
-    //     scenes: scenesWithIds,
-    //     voiceToneInstruction,
-    //     timestamp,
-    //   },
-    //   null,
-    //   2,
-    // );
-
-    // await s3.send(
-    //   new PutObjectCommand({
-    //     Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-    //     Key: scriptKey,
-    //     Body: scriptContent,
-    //     ContentType: 'text/plain',
-    //   }),
-    // );
-
-    // console.log(`💾 Script saved to S3: ${scriptKey}`);
 
     return { scenes: scenesWithIds, voiceToneInstruction };
   } catch (error) {

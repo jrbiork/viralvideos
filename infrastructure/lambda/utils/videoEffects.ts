@@ -283,7 +283,7 @@ async function generateSceneVideo(
       `[b1]boxblur=8:1[bb];` +
       `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[main];` +
       `[1:v]scale=200:-1[watermark];` +
-      `[main][watermark]overlay=(W-w)/2:10[v]`;
+      `[main][watermark]overlay=(W-w)/2:12[v]`;
 
     const ffmpegPath = resolveFfmpegPath();
 
