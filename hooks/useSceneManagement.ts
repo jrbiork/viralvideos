@@ -124,7 +124,7 @@ export function useSceneManagement() {
     const newScene = {
       id: newId,
       description: `New scene at position ${position + 1}`,
-      narration: 'Enter scene narration here...',
+      narration: '',
       duration: 5, // Default duration
     };
 

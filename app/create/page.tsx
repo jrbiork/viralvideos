@@ -79,7 +79,7 @@ export default function GeneratePage() {
       id: newId,
       scenePosition: position, // Will be properly reindexed later
       description: `New scene ${additionalScenes.length + 1}`,
-      narration: 'Enter your scene description here...',
+      narration: '',
       duration: 5, // Default duration
       isUserAdded: true, // Flag to identify user-added scenes
     };

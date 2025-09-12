@@ -465,30 +465,33 @@ export default function EditScene({
                   </div>
                   <textarea
                     className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl p-4 pl-16 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    style={{ margin: '8px 0 16px' }}
                     value={editedNarration}
                     onChange={(e) => onEditedNarrationChange(e.target.value)}
                     placeholder="Enter scene narration..."
                   />
                 </div>
-                {/* Duration Badge - positioned below the textarea */}
-                <div className="flex justify-start mb-2">
-                  <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>{scene.duration}s</span>
+                {/* Duration Badge - positioned below the textarea (only show for saved scenes) */}
+                {!scene.isUserAdded && (
+                  <div className="flex justify-start mb-2">
+                    <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span>{scene.duration}s</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="flex justify-end space-x-3">
                   {scene.isUserAdded ? (
                     /* OK button for user-added scenes */
@@ -582,29 +585,31 @@ export default function EditScene({
                       className="text-white text-sm leading-relaxed"
                       style={{ fontSize: '16px' }}
                     >
-                      {scene.narration}
+                      {scene.narration || 'Enter scene narration...'}
                     </p>
                   </div>
                 </div>
-                {/* Duration Badge - positioned below the text area */}
-                <div className="flex justify-start mb-2">
-                  <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
-                    <svg
-                      className="w-3.5 h-3.5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>{scene.duration}s</span>
+                {/* Duration Badge - positioned below the text area (only show for saved scenes) */}
+                {!scene.isUserAdded && (
+                  <div className="flex justify-start mb-2">
+                    <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
+                      <svg
+                        className="w-3.5 h-3.5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span>{scene.duration}s</span>
+                    </div>
                   </div>
-                </div>
+                )}
                 <div className="grid grid-cols-3 items-center">
                   {/* Empty space for left alignment */}
                   <div></div>
