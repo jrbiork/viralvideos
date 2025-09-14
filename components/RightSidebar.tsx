@@ -89,7 +89,7 @@ export default function RightSidebar({
                             manifestScene.scenePosition.toString(),
                         )
                       : manifestScene.scenePosition;
-                    
+
                     return manifestSceneId === scene.id;
                   },
                 );
@@ -177,7 +177,7 @@ export default function RightSidebar({
                             manifestScene.scenePosition.toString(),
                         )
                       : manifestScene.scenePosition;
-                    
+
                     return manifestSceneId === scene.id;
                   },
                 );
