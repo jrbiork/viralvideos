@@ -266,7 +266,9 @@ export function useSceneManagement() {
     const updateSubtitle = async () => {
       // Get the latest assFiles from the video element (now expected to hold inline contents)
       const latestAssFiles = JSON.parse(videoRef.dataset.assFiles || '{}');
-      const assKey = `${currentTimestamp}.scene-${scene.id}.ass`;
+      const assKey = `${currentTimestamp}.scene-${
+        scene.sceneNumber || scene.id
+      }.ass`;
       const assContent = latestAssFiles[assKey];
 
       if (assContent) {
@@ -285,6 +287,12 @@ export function useSceneManagement() {
         } catch (error) {
           console.error('Error parsing ASS content:', error);
         }
+      } else {
+        // Clear subtitle if no ASS content found
+        dispatch({
+          type: 'SET_CURRENT_SUBTITLE',
+          payload: '',
+        });
       }
     };
 

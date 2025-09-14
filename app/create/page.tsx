@@ -43,7 +43,7 @@ export default function GeneratePage() {
     isLoadingAudioSubtitles: true,
     isLoadingVideoScenes: true,
     currentTimestamp: '',
-    manifest: null as Manifest | null,
+    manifest: undefined as Manifest | undefined,
   });
 
   // Toaster state
@@ -294,11 +294,27 @@ export default function GeneratePage() {
     );
 
     // Insert additional scenes at their correct positions
+    // We need to insert them in the order they were added, but at the correct positions
+    // relative to the current state of the array
     sortedAdditionalScenes.forEach(
       ({ scene, position }: { scene: Scene; position: number }) => {
-        // Simple approach: insert at the exact position requested
-        // But ensure we don't go beyond the current array length
-        const insertPosition = Math.min(position, allScenes.length);
+        // Find the correct insertion position by counting how many scenes
+        // should come before this scene based on the original order
+        let insertPosition = 0;
+
+        // Count how many original scenes should come before this position
+        for (let i = 0; i < position && i < originalScenes.length; i++) {
+          // Check if this original scene is already in the array
+          if (allScenes.some((s) => s.id === originalScenes[i].id)) {
+            insertPosition++;
+          }
+        }
+
+        // Add any additional scenes that were inserted before this position
+        const scenesInsertedBefore = sortedAdditionalScenes.filter(
+          ({ position: otherPosition }) => otherPosition < position,
+        ).length;
+        insertPosition += scenesInsertedBefore;
 
         console.log(
           `Inserting scene (ID: ${scene.id}, Desc: ${scene.description}) at position ${position}, actual insert at ${insertPosition}. Current array length: ${allScenes.length}`,
@@ -313,12 +329,11 @@ export default function GeneratePage() {
       },
     );
 
-    // Assign scenePosition without breaking original manifest mapping
-    // - Keep original scenes' scenePosition unchanged (to match manifest)
-    // - Set scenePosition for user-added scenes based on their array position
+    // Calculate scenePosition values - use array index for all scenes
+    // Since we've already sorted the scenes correctly, the array index represents the final position
     allScenes = allScenes.map((scene: Scene, index: number) => ({
       ...scene,
-      scenePosition: scene.isUserAdded ? index : scene.scenePosition,
+      scenePosition: index,
     }));
 
     console.log(
@@ -426,7 +441,7 @@ export default function GeneratePage() {
           const manifest = response.manifest; // Extract the manifest from the response
           setVideoGenerationState((prev) => ({
             ...prev,
-            manifest: manifest,
+            manifest: manifest || undefined,
             isLoadingAudioSubtitles: false,
             isLoadingVideoScenes: false,
           }));

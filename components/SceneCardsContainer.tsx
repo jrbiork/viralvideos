@@ -2,15 +2,14 @@ import React from 'react';
 import EditScene, { Scene } from './EditScene';
 import EditSceneSkeleton from './EditSceneSkeleton';
 import AddSceneButton from './AddSceneButton';
+import { Manifest } from '@/app/types/manifest';
 
 interface SceneCardsContainerProps {
   videoGenerationState: {
     isLoadingVideoScenes: boolean;
     isLoadingAudioSubtitles: boolean;
     currentTimestamp: string;
-    manifest?: {
-      scenes: any[];
-    } | null;
+    manifest?: Manifest;
   };
   scenes: Scene[];
   sceneState: {
@@ -99,11 +98,22 @@ export default function SceneCardsContainer({
                   !scene.isUserAdded &&
                   videoGenerationState.manifest?.scenes
                 ) {
-                  // Find the manifest scene by scenePosition
+                  // Find the manifest scene by matching the scene ID
+                  // Extract the scene ID from the manifest file names to match with scene.id
                   const manifestScene =
                     videoGenerationState.manifest.scenes.find(
-                      (manifestScene) =>
-                        manifestScene.scenePosition === scene.scenePosition,
+                      (manifestScene) => {
+                        // Extract the scene ID from the manifest file names
+                        const manifestSceneId = manifestScene.files?.mp3
+                          ? parseInt(
+                              manifestScene.files.mp3.match(
+                                /scene-(\d+)\./,
+                              )?.[1] || manifestScene.scenePosition.toString(),
+                            )
+                          : manifestScene.scenePosition;
+
+                        return manifestSceneId === scene.id;
+                      },
                     );
 
                   // Use the hydrated image URL directly from the manifest

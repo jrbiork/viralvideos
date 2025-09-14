@@ -8,7 +8,7 @@ interface UseWebSocketHandlersProps {
       isLoadingAudioSubtitles: boolean;
       isLoadingVideoScenes: boolean;
       currentTimestamp: string;
-      manifest: Manifest | null;
+      manifest: Manifest | undefined;
     }>
   >;
   showToasterMessage: (message: string, type: 'success' | 'error') => void;
@@ -95,7 +95,7 @@ export function useWebSocketHandlers({
         setVideoGenerationState((prev) => ({
           ...prev,
           currentTimestamp: data.timestamp || prev.currentTimestamp,
-          manifest: data.manifest || null,
+          manifest: data.manifest || undefined,
           isLoadingVideoScenes: false,
           isLoadingAudioSubtitles: false,
         }));
