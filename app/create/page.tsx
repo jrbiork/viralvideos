@@ -21,6 +21,7 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
 
 import { Manifest } from '../types/manifest';
+import { WebSocketMessage } from '../types/websocket';
 
 export default function GeneratePage() {
   const router = useRouter();
@@ -30,6 +31,9 @@ export default function GeneratePage() {
     null,
   );
   const [creatingSceneId, setCreatingSceneId] = useState<number | null>(null);
+  const [isVideoGenerating, setIsVideoGenerating] = useState(false);
+  const [videoCompletionData, setVideoCompletionData] =
+    useState<Manifest | null>(null);
   const autoPlayRef = useRef<{
     selectedSceneId: number | null;
     timestamp: string;
@@ -49,7 +53,9 @@ export default function GeneratePage() {
   // Toaster state
   const [showToaster, setShowToaster] = useState(false);
   const [toasterMessage, setToasterMessage] = useState('');
-  const [toasterType, setToasterType] = useState<'success' | 'error'>('error');
+  const [toasterType, setToasterType] = useState<'success' | 'error' | 'info'>(
+    'error',
+  );
 
   // Additional scenes state (for user-added scenes with position tracking)
   const [additionalScenes, setAdditionalScenes] = useState<
@@ -65,7 +71,10 @@ export default function GeneratePage() {
   >(new Set());
 
   // Helper function to show toaster messages
-  const showToasterMessage = (message: string, type: 'success' | 'error') => {
+  const showToasterMessage = (
+    message: string,
+    type: 'success' | 'error' | 'info',
+  ) => {
     setToasterMessage(message);
     setToasterType(type);
     setShowToaster(true);
@@ -165,6 +174,8 @@ export default function GeneratePage() {
     setAdditionalScenes,
     currentEditingSceneId: sceneState.editingScene,
     setRegeneratingSceneId,
+    setIsVideoGenerating,
+    setVideoCompletionData,
   });
 
   // WebSocket hook for real-time updates
@@ -603,6 +614,13 @@ export default function GeneratePage() {
     }
 
     try {
+      showToasterMessage('Video combination started!', 'success');
+
+      // Set generating state and navigate to step 3
+      setIsVideoGenerating(true);
+      setVideoCompletionData(null);
+      setCurrentStep(3);
+
       const response = await fetch('/api/combine-video', {
         method: 'POST',
         headers: {
@@ -620,7 +638,27 @@ export default function GeneratePage() {
 
       const result = await response.json();
       console.log('🎬 Combine video request queued:', result);
-      showToasterMessage('Video combination started!', 'success');
+
+      // mock response
+      // setTimeout(() => {
+      //   setIsVideoGenerating(false);
+      //   setVideoCompletionData({
+      //     schemaVersion: videoGenerationState.manifest?.schemaVersion || 1,
+      //     userId: videoGenerationState.manifest?.userId || '',
+      //     bucket: videoGenerationState.manifest?.bucket || '',
+      //     prefix: videoGenerationState.manifest?.prefix || '',
+      //     generatedAt: Date.now().toString(),
+      //     updatedAt: new Date().toISOString(),
+      //     sceneCount: videoGenerationState.manifest?.sceneCount || 0,
+      //     scenes:
+      //       videoGenerationState.manifest?.scenes.map((scene) => ({
+      //         ...scene,
+      //         removed: removedOriginalScenes.has(scene.id),
+      //       })) || [],
+      //     finalVideoUrl: 'https://example.com/mock-video.mp4', // Mock final video URL
+      //   });
+      //   showToasterMessage('Video generated successfully!', 'success');
+      // }, 3000);
     } catch (error) {
       console.error('Error combining video:', error);
       showToasterMessage('Failed to combine video. Please try again.', 'error');
@@ -756,6 +794,13 @@ export default function GeneratePage() {
               onExportVideo={handleExportVideo}
               isExporting={sceneState.isExporting}
               onBack={() => setCurrentStep(2)}
+              isVideoGenerating={isVideoGenerating}
+              videoCompletionData={videoCompletionData}
+              onRemoveWatermark={() => {
+                // TODO: Implement watermark removal
+                console.log('Remove watermark clicked');
+              }}
+              showToasterMessage={showToasterMessage}
             />
           </div>
         </div>

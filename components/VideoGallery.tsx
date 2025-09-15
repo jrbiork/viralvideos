@@ -16,6 +16,7 @@ import {
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 import DeleteConfirmationModal from './DeleteConfirmationModal';
 import Toaster from './Toaster';
+import { handleExportVideo, formatFileSize } from '../lib/export-utils';
 
 interface Video {
   key?: string;
@@ -109,44 +110,16 @@ export default function VideoGallery({}: VideoGalleryProps) {
     e.stopPropagation();
     setOpenMenu(null);
 
-    if (!video.videoGenerated) {
-      alert('Video URL not available for export');
+    if (!video.videoGenerated || !video.finalVideoUrl) {
+      showToasterMessage('Video URL not available for export', 'error');
       return;
     }
 
-    try {
-      // Use our proxy API endpoint - authentication is handled via cookies
-      const response = await fetch(
-        `/api/download-video?url=${encodeURIComponent(
-          video.finalVideoUrl || '',
-        )}&filename=video-${video.timestamp}.mp4`,
-        {
-          method: 'GET',
-          credentials: 'include', // Include cookies for authentication
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to download video: ${response.status}`);
-      }
-
-      // Get the video as blob and download
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `video-${video.timestamp}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-
-      // Clean up
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
-    } catch (error) {
-      console.error('Error exporting video:', error);
-      alert('Failed to export video. Please try again.');
-    }
+    await handleExportVideo({
+      finalVideoUrl: video.finalVideoUrl,
+      filename: `video-${video.timestamp}.mp4`,
+      showToasterMessage,
+    });
   };
 
   const handleDelete = async (video: Video, e: React.MouseEvent) => {
@@ -267,12 +240,6 @@ export default function VideoGallery({}: VideoGalleryProps) {
       );
       return 'Invalid date';
     }
-  };
-
-  const formatFileSize = (bytes: number): string => {
-    if (!bytes || bytes === 0) return '0 MB';
-    const mb = bytes / (1024 * 1024);
-    return `${mb.toFixed(1)}MB`;
   };
 
   if (loading) {

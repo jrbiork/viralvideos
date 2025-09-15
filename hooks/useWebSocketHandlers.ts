@@ -17,6 +17,10 @@ interface UseWebSocketHandlersProps {
   setAdditionalScenes?: React.Dispatch<React.SetStateAction<any[]>>;
   currentEditingSceneId?: number | null;
   setRegeneratingSceneId?: React.Dispatch<React.SetStateAction<number | null>>;
+  setIsVideoGenerating?: React.Dispatch<React.SetStateAction<boolean>>;
+  setVideoCompletionData?: React.Dispatch<
+    React.SetStateAction<Manifest | null>
+  >;
 }
 
 export function useWebSocketHandlers({
@@ -27,10 +31,24 @@ export function useWebSocketHandlers({
   setAdditionalScenes,
   currentEditingSceneId,
   setRegeneratingSceneId,
+  setIsVideoGenerating,
+  setVideoCompletionData,
 }: UseWebSocketHandlersProps) {
   // Handle video completion
   const handleVideoCompleted = useCallback(
-    (data: any) => {
+    (data: { manifest?: Manifest }) => {
+      if (!data.manifest) return;
+
+      // Set video completion data
+      if (setVideoCompletionData) {
+        setVideoCompletionData(data.manifest);
+      }
+
+      // Stop video generating state
+      if (setIsVideoGenerating) {
+        setIsVideoGenerating(false);
+      }
+
       // Show browser notification when video generation is completed
       if ('Notification' in window && Notification.permission === 'granted') {
         new Notification('Your video is ready!', {
@@ -54,9 +72,9 @@ export function useWebSocketHandlers({
       }
 
       // set toaster message
-      showToasterMessage('Video generated successfully', 'success');
+      showToasterMessage('Video generated successfully!', 'success');
     },
-    [showToasterMessage],
+    [showToasterMessage, setVideoCompletionData, setIsVideoGenerating],
   );
 
   // Handle image creation

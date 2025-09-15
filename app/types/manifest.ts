@@ -28,4 +28,5 @@ export interface Manifest {
   timestamp?: string;
   finalVideoUrl?: string;
   totalDuration?: number;
+  size?: string;
 }

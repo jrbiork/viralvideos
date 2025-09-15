@@ -21,6 +21,7 @@ export async function createManifest(
 
     const manifest: Manifest = {
       schemaVersion: 1,
+      size: '0',
       key: `${userId}/${timestamp}.manifest.json`,
       userId,
       timestamp,
@@ -47,7 +48,7 @@ export async function createManifest(
         },
       })),
       totalDuration,
-      finalVideoUrl: `${userId}/${timestamp}-final-video.mp4`,
+      finalVideoUrl: '',
       videoGenerated: false,
     };
 
@@ -173,6 +174,7 @@ export async function hydrateManifest(
 
   const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
   const expiresIn = 3600; // 1 hour
+  const bucketVideoName = process.env.VIDEO_BUCKET_NAME || '';
   const bucketName = VIDEO_PARTS_BUCKET_NAME;
 
   for (const scene of manifest.scenes) {

@@ -42,7 +42,7 @@ export async function processVideoCombine(
       };
     }
 
-    const finalVideoUrl = await combineVideoAndAudio(
+    const { finalVideoSignedUrl, size } = await combineVideoAndAudio(
       userId,
       timestamp,
       manifest,
@@ -52,6 +52,7 @@ export async function processVideoCombine(
     //
     await updateManifest(manifest, {
       videoGenerated: true,
+      finalVideoUrl: `${userId}/${timestamp}-final-video.mp4`,
       scenes: manifest.scenes.map((scene: ManifestScene) => ({
         ...scene,
         removed: removedScenes.includes(scene.id),
@@ -62,7 +63,11 @@ export async function processVideoCombine(
     const hydratedManifest = await hydrateManifest(manifest);
 
     await broadcastProgress('video_completed', userId, timestamp, {
-      manifest: hydratedManifest,
+      manifest: {
+        ...hydratedManifest,
+        finalVideoUrl: finalVideoSignedUrl,
+        size: size,
+      },
     });
     console.log('✅ Video combined completed');
 
@@ -75,7 +80,7 @@ export async function processVideoCombine(
       await sqs.send(deleteCommand);
     }
 
-    console.log('🎬 Video combined completed', finalVideoUrl);
+    console.log('🎬 Video combined completed', finalVideoSignedUrl);
   } catch (error) {
     console.error('Error in processVideoCombine:', error);
     throw error;

@@ -27,6 +27,7 @@ export interface Manifest {
     sceneCount: number;
     totalDuration: number;
     finalVideoUrl: string;
+    size: string;
     scenes: ManifestScene[];
     voiceToneInstruction: string;
     voice: string;

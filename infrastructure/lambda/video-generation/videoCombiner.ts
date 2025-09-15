@@ -32,7 +32,7 @@ export async function combineVideoAndAudio(
   timestamp: string,
   manifest: Manifest,
   removedScenes: number[] = [],
-): Promise<string> {
+): Promise<{ finalVideoSignedUrl: string; size: string }> {
   console.log(
     '🎬 Combining video, audio, and subtitles scene by scene for user:',
     userId,
@@ -133,7 +133,7 @@ export async function combineVideoAndAudio(
     // Upload final video to S3
     const finalVideoBuffer = fs.readFileSync(finalOutputPath);
     const finalVideoKey = `${userId}/${timestamp}-final-video.mp4`;
-
+    const size = finalVideoBuffer.length.toString();
     await s3.send(
       new PutObjectCommand({
         Bucket: process.env.VIDEO_BUCKET_NAME,
@@ -141,7 +141,7 @@ export async function combineVideoAndAudio(
         Body: finalVideoBuffer,
         ContentType: 'video/mp4',
         Metadata: {
-          size: finalVideoBuffer.length.toString(),
+          size,
           duration: manifest.totalDuration.toString(),
           sceneCount: manifest.sceneCount.toString(),
         },
@@ -167,7 +167,7 @@ export async function combineVideoAndAudio(
       fs.unlinkSync(finalOutputPath);
     }
 
-    return finalVideoSignedUrl;
+    return { finalVideoSignedUrl, size };
   } catch (error) {
     console.error('❌ Error in combineVideoAndAudio:', error);
     throw error;
