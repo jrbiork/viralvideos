@@ -8,12 +8,14 @@ import {
 } from '../utils/manifestUtils';
 import { DeleteMessageCommand } from '@aws-sdk/client-sqs';
 import { SQSClient } from '@aws-sdk/client-sqs';
+import { ManifestScene } from '../types/s3Types';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export interface VideoCombineRequest {
   userId: string;
   timestamp: string;
+  removedScenes?: number[];
 }
 
 export async function processVideoCombine(
@@ -21,11 +23,16 @@ export async function processVideoCombine(
   record?: SQSRecord,
 ): Promise<any> {
   try {
-    const { userId, timestamp } = request;
+    const { userId, timestamp, removedScenes = [] } = request;
 
     if (!userId || !timestamp) {
       throw new Error('Missing userId or timestamp');
     }
+
+    console.log(
+      '🎬 Processing video combine with removed scenes:',
+      removedScenes,
+    );
 
     const manifest = await getManifest(userId, timestamp);
     if (!manifest) {
@@ -39,10 +46,16 @@ export async function processVideoCombine(
       userId,
       timestamp,
       manifest,
+      removedScenes,
     );
 
+    //
     await updateManifest(manifest, {
       videoGenerated: true,
+      scenes: manifest.scenes.map((scene: ManifestScene) => ({
+        ...scene,
+        removed: removedScenes.includes(scene.id),
+      })),
       generatedAt: Date.now().toString(),
     });
 

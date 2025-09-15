@@ -20,10 +20,11 @@ export async function POST(request: NextRequest) {
     // Get parameters from request body
     const body = await request.json();
 
-    const { timestamp } = body;
+    const { timestamp, removedScenes } = body;
 
     console.log('🔍 Extracted values:', {
       timestamp,
+      removedScenes,
     });
 
     if (!timestamp) {
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       type: 'combine-video' as const,
       userId,
       timestamp,
+      removedScenes: removedScenes || [],
     };
 
     const command = new SendMessageCommand({

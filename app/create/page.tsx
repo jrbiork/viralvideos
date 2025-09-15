@@ -590,6 +590,7 @@ export default function GeneratePage() {
         },
         body: JSON.stringify({
           timestamp: videoGenerationState.currentTimestamp,
+          removedScenes: Array.from(removedOriginalScenes),
         }),
       });
 

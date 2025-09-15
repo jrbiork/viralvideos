@@ -10,6 +10,7 @@ import { Manifest, ManifestScene } from '../types/s3Types';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { updateManifest } from '../utils/manifestUtils';
 const ffmpeg = require('fluent-ffmpeg');
 
 // S3 file object interface
@@ -30,6 +31,7 @@ export async function combineVideoAndAudio(
   userId: string,
   timestamp: string,
   manifest: Manifest,
+  removedScenes: number[] = [],
 ): Promise<string> {
   console.log(
     '🎬 Combining video, audio, and subtitles scene by scene for user:',
@@ -42,13 +44,24 @@ export async function combineVideoAndAudio(
       manifest.scenes.length,
       'scenes',
     );
+    console.log('🔍 Removed scenes to exclude:', removedScenes);
 
     if (!manifest.scenes || manifest.scenes.length === 0) {
       throw new Error('No scenes found in manifest');
     }
 
-    // Sort scenes by scenePosition to ensure proper order
-    const sortedScenes = manifest.scenes.sort(
+    // Filter out removed scenes and sort by scenePosition to ensure proper order
+    const filteredScenes = manifest.scenes.filter((scene: ManifestScene) => {
+      const isRemoved = removedScenes.includes(scene.id);
+      if (isRemoved) {
+        console.log(
+          `🚫 Excluding removed scene ID: ${scene.id} (position: ${scene.scenePosition})`,
+        );
+      }
+      return !isRemoved;
+    });
+
+    const sortedScenes = filteredScenes.sort(
       (a: ManifestScene, b: ManifestScene) => a.scenePosition - b.scenePosition,
     );
 

@@ -33,7 +33,9 @@ export async function createManifest(
       voice,
       language,
       scenes: scenes.map((scene, index) => ({
+        id: scene.id,
         scenePosition: scene.id,
+        removed: false,
         files: {
           mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
           mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
@@ -143,6 +145,8 @@ export function createManifestScene(
 ): ManifestScene {
   return {
     scenePosition: scenePosition,
+    removed: false,
+    id: scene.id,
     files: {
       mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
       mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
@@ -245,6 +249,8 @@ export async function hydrateManifest(
     // create a scene object
     const sceneObject: ManifestScene = {
       scenePosition: scene.scenePosition,
+      id: scene.id,
+      removed: scene.removed,
       files: {
         mp3: audioUrl,
         mp4: videoUrl,
