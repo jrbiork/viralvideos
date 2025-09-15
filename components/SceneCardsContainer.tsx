@@ -38,6 +38,10 @@ interface SceneCardsContainerProps {
     React.SetStateAction<{ scene: Scene; position: number }[]>
   >;
   handleDeleteScene: (sceneId: number) => void;
+  handleDeleteUserAddedScene: (sceneId: number) => void;
+  deletingSceneId: number | null;
+  removedOriginalScenes: Set<number>;
+  onRestoreOriginalScene?: (sceneId: number) => void;
 }
 
 export default function SceneCardsContainer({
@@ -59,6 +63,10 @@ export default function SceneCardsContainer({
   additionalScenes,
   setAdditionalScenes,
   handleDeleteScene,
+  handleDeleteUserAddedScene,
+  deletingSceneId,
+  removedOriginalScenes,
+  onRestoreOriginalScene,
 }: SceneCardsContainerProps) {
   return (
     <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4 custom-scrollbar">
@@ -88,7 +96,9 @@ export default function SceneCardsContainer({
                 onAddScene={handleAddSceneCustom}
                 position={0}
                 isFirst={true}
-                disabled={additionalScenes.length > 0}
+                disabled={
+                  additionalScenes.length > 0 || deletingSceneId !== null
+                }
               />
 
               {/* Scene Cards */}
@@ -188,8 +198,13 @@ export default function SceneCardsContainer({
                       setCreatingSceneId={setCreatingSceneId}
                       timestamp={videoGenerationState.currentTimestamp}
                       onDeleteScene={handleDeleteScene}
+                      onDeleteUserAddedScene={handleDeleteUserAddedScene}
+                      onRestoreOriginalScene={onRestoreOriginalScene}
                       displayIndex={index}
                       totalScenesCount={scenes.length}
+                      isDisabled={
+                        deletingSceneId === scene.id && !scene.isUserAdded
+                      }
                     />
 
                     {/* Add scene button after each scene (except the last one) */}
@@ -197,7 +212,10 @@ export default function SceneCardsContainer({
                       <AddSceneButton
                         onAddScene={handleAddSceneCustom}
                         position={index + 1}
-                        disabled={additionalScenes.length > 0}
+                        disabled={
+                          additionalScenes.length > 0 ||
+                          deletingSceneId !== null
+                        }
                       />
                     )}
                   </div>
@@ -209,7 +227,9 @@ export default function SceneCardsContainer({
                 onAddScene={handleAddSceneCustom}
                 position={scenes.length}
                 isLast={true}
-                disabled={additionalScenes.length > 0}
+                disabled={
+                  additionalScenes.length > 0 || deletingSceneId !== null
+                }
               />
             </>
           )}

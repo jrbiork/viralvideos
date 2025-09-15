@@ -56,6 +56,14 @@ export default function GeneratePage() {
     { scene: Scene; position: number }[]
   >([]);
 
+  // State to track which scene is being deleted
+  const [deletingSceneId, setDeletingSceneId] = useState<number | null>(null);
+
+  // State to track which original scenes are removed
+  const [removedOriginalScenes, setRemovedOriginalScenes] = useState<
+    Set<number>
+  >(new Set());
+
   // Helper function to show toaster messages
   const showToasterMessage = (message: string, type: 'success' | 'error') => {
     setToasterMessage(message);
@@ -108,12 +116,24 @@ export default function GeneratePage() {
     );
   };
 
-  // Handle deleting user-added scenes
+  // Handle deleting original scenes (mark as removed)
   const handleDeleteScene = (sceneId: number) => {
+    // Set the deleting state to show disabled overlay
+    setDeletingSceneId(sceneId);
+
+    console.log('[Scenes] Marking original scene as removed:', sceneId);
+    // Mark original scene as removed
+    setRemovedOriginalScenes((prev) => new Set(prev).add(sceneId));
+    showToasterMessage('Scene marked as removed', 'success');
+    setDeletingSceneId(null);
+  };
+
+  // Handle deleting user-added scenes (actually remove from array)
+  const handleDeleteUserAddedScene = (sceneId: number) => {
+    // Remove user-added scene from array immediately
     setAdditionalScenes((prev) =>
       prev.filter((item) => item.scene.id !== sceneId),
     );
-    showToasterMessage('Scene deleted successfully', 'success');
   };
 
   // Custom hooks
@@ -269,9 +289,10 @@ export default function GeneratePage() {
         narration: narration,
         duration: actualDuration,
         scenePosition: manifestScene.scenePosition,
+        removed: removedOriginalScenes.has(actualSceneId), // Check if this scene is removed
       };
     });
-  }, [videoGenerationState.manifest]);
+  }, [videoGenerationState.manifest, removedOriginalScenes]);
 
   // Combine original scenes with additional user-added scenes
   const originalScenes = useMemo(
@@ -666,6 +687,18 @@ export default function GeneratePage() {
               additionalScenes={additionalScenes}
               setAdditionalScenes={setAdditionalScenes}
               handleDeleteScene={handleDeleteScene}
+              handleDeleteUserAddedScene={handleDeleteUserAddedScene}
+              onRestoreOriginalScene={(sceneId: number) => {
+                console.log('[Scenes] Restoring original scene:', sceneId);
+                setRemovedOriginalScenes((prev) => {
+                  const next = new Set(prev);
+                  next.delete(sceneId);
+                  return next;
+                });
+                showToasterMessage('Scene restored', 'success');
+              }}
+              deletingSceneId={deletingSceneId}
+              removedOriginalScenes={removedOriginalScenes}
             />
           </div>
 

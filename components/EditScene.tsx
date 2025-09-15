@@ -10,6 +10,7 @@ export interface Scene {
   isUserAdded?: boolean;
   scenePosition?: number;
   placeholderImageUrl?: string;
+  removed?: boolean;
 }
 
 interface EditSceneProps {
@@ -30,8 +31,11 @@ interface EditSceneProps {
   setIsLoadingVideoScenes: (value: boolean) => void;
   timestamp?: string;
   onDeleteScene?: (sceneId: number) => void;
+  onDeleteUserAddedScene?: (sceneId: number) => void;
+  onRestoreOriginalScene?: (sceneId: number) => void;
   displayIndex?: number; // The sequential display index for this scene
   totalScenesCount?: number; // Total number of scenes (original + additional)
+  isDisabled?: boolean; // Whether the scene is disabled (e.g., during deletion)
 }
 
 export default function EditScene({
@@ -52,8 +56,11 @@ export default function EditScene({
   setIsLoadingVideoScenes,
   timestamp,
   onDeleteScene,
+  onDeleteUserAddedScene,
+  onRestoreOriginalScene,
   displayIndex = 0,
   totalScenesCount = 0,
+  isDisabled = false,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -289,9 +296,14 @@ export default function EditScene({
             isSelected
               ? 'border-purple-500 shadow-lg shadow-purple-500/25'
               : 'border-slate-700/50 hover:border-slate-600'
-          }`}
+          } ${isDisabled ? 'opacity-50 pointer-events-none' : ''}`}
           style={{ padding: '2rem' }}
-          onClick={() => onSelect && onSelect(scene.id)}
+          onClick={() =>
+            !isDisabled &&
+            !(scene.removed && !scene.isUserAdded) &&
+            onSelect &&
+            onSelect(scene.id)
+          }
         >
           {/* Loading Overlay */}
           {isRegenerating && (
@@ -301,6 +313,67 @@ export default function EditScene({
                 <span className="text-white text-sm font-medium">
                   Regenerating Scene, Audio and Captions...
                 </span>
+              </div>
+            </div>
+          )}
+
+          {/* Disabled Overlay */}
+          {isDisabled && (
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-sm rounded-xl flex items-center justify-center z-40">
+              <div className="flex flex-col items-center space-y-2">
+                <div className="w-8 h-8 bg-red-500/20 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-red-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </div>
+                <span className="text-white text-sm font-medium">
+                  Scene is being deleted...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Removed Overlay - Only for original scenes */}
+          {scene.removed && !scene.isUserAdded && (
+            <div className="absolute inset-0 bg-gray-500/60 backdrop-blur-sm rounded-xl flex items-center justify-center z-40">
+              <div className="flex flex-col items-center space-y-3">
+                <div className="w-8 h-8 bg-gray-500/30 rounded-full flex items-center justify-center">
+                  <svg
+                    className="w-4 h-4 text-gray-200"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </div>
+                <span className="text-white text-sm font-medium">
+                  Scene removed
+                </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRestoreOriginalScene && onRestoreOriginalScene(scene.id);
+                  }}
+                  className="px-3 py-1.5 rounded-md bg-white/90 text-slate-900 text-xs font-semibold hover:bg-white transition-colors shadow"
+                >
+                  Restore scene
+                </button>
               </div>
             </div>
           )}
@@ -317,14 +390,40 @@ export default function EditScene({
             </div>
           )}
 
-          {/* Delete Button for User-Added Scenes */}
-          {scene.isUserAdded && onDeleteScene && (
+          {/* Delete Button for Original Scenes (to mark as removed) */}
+          {!scene.isUserAdded && onDeleteScene && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onDeleteScene(scene.id);
               }}
               className="absolute top-2 right-2 z-10 text-purple-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-full p-1.5 transition-all duration-200"
+              title="Delete Scene"
+            >
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          )}
+
+          {/* Delete Button for User-Added Scenes (actually remove) */}
+          {scene.isUserAdded && onDeleteUserAddedScene && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteUserAddedScene(scene.id);
+              }}
+              className="absolute top-2 right-2 z-10 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-full p-1.5 transition-all duration-200"
               title="Delete Scene"
             >
               <svg
