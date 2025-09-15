@@ -289,7 +289,7 @@ export default function GeneratePage() {
         narration: narration,
         duration: actualDuration,
         scenePosition: manifestScene.scenePosition,
-        removed: removedOriginalScenes.has(actualSceneId), // Check if this scene is removed
+        removed: removedOriginalScenes.has(actualSceneId), // Use local state for removed scenes
       };
     });
   }, [videoGenerationState.manifest, removedOriginalScenes]);
@@ -445,6 +445,26 @@ export default function GeneratePage() {
           // handle response from fetch-preview api that is a manifest
           const response = await previewResponse.json();
           const manifest = response.manifest; // Extract the manifest from the response
+
+          // Initialize removedOriginalScenes from manifest
+          if (manifest?.scenes) {
+            const removedScenes = new Set<number>();
+            manifest.scenes.forEach((scene: any) => {
+              if (scene.removed) {
+                // Extract scene ID from file names
+                const sceneIdMatch =
+                  scene.files?.mp3?.match(/scene-(\d+)\./) ||
+                  scene.files?.mp4?.match(/scene-(\d+)\./) ||
+                  scene.files?.ass?.match(/scene-(\d+)\./);
+                const sceneId = sceneIdMatch
+                  ? parseInt(sceneIdMatch[1])
+                  : scene.id;
+                removedScenes.add(sceneId);
+              }
+            });
+            setRemovedOriginalScenes(removedScenes);
+          }
+
           setVideoGenerationState((prev) => ({
             ...prev,
             manifest: manifest || undefined,

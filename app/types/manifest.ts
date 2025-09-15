@@ -11,6 +11,8 @@ export interface ManifestFile {
 
 export interface ManifestScene {
   scenePosition: number;
+  id: number;
+  removed?: boolean;
   files: ManifestFile;
 }
 
