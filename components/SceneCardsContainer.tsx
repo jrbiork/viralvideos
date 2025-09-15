@@ -33,6 +33,7 @@ interface SceneCardsContainerProps {
   creatingSceneId: number | null;
   setCreatingSceneId: React.Dispatch<React.SetStateAction<number | null>>;
   handleAddSceneCustom: (position: number) => void;
+  additionalScenes: { scene: Scene; position: number }[];
   setAdditionalScenes: React.Dispatch<
     React.SetStateAction<{ scene: Scene; position: number }[]>
   >;
@@ -55,6 +56,7 @@ export default function SceneCardsContainer({
   creatingSceneId,
   setCreatingSceneId,
   handleAddSceneCustom,
+  additionalScenes,
   setAdditionalScenes,
   handleDeleteScene,
 }: SceneCardsContainerProps) {
@@ -86,7 +88,7 @@ export default function SceneCardsContainer({
                 onAddScene={handleAddSceneCustom}
                 position={0}
                 isFirst={true}
-                disabled={false}
+                disabled={additionalScenes.length > 0}
               />
 
               {/* Scene Cards */}
@@ -195,7 +197,7 @@ export default function SceneCardsContainer({
                       <AddSceneButton
                         onAddScene={handleAddSceneCustom}
                         position={index + 1}
-                        disabled={false}
+                        disabled={additionalScenes.length > 0}
                       />
                     )}
                   </div>
@@ -207,7 +209,7 @@ export default function SceneCardsContainer({
                 onAddScene={handleAddSceneCustom}
                 position={scenes.length}
                 isLast={true}
-                disabled={false}
+                disabled={additionalScenes.length > 0}
               />
             </>
           )}

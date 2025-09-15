@@ -65,6 +65,15 @@ export default function GeneratePage() {
 
   // Custom handleAddScene function to add new scenes
   const handleAddSceneCustom = (position: number) => {
+    // Validation: Only allow one additional scene to be added at a time
+    if (additionalScenes.length > 0) {
+      showToasterMessage(
+        'Please complete the current scene before adding another one',
+        'error',
+      );
+      return;
+    }
+
     // Generate a unique ID that is +1 from the maximum existing scene ID
     // Consider both original scenes and additional user-added scenes
     const allSceneIds = [
@@ -654,6 +663,7 @@ export default function GeneratePage() {
               creatingSceneId={creatingSceneId}
               setCreatingSceneId={setCreatingSceneId}
               handleAddSceneCustom={handleAddSceneCustom}
+              additionalScenes={additionalScenes}
               setAdditionalScenes={setAdditionalScenes}
               handleDeleteScene={handleDeleteScene}
             />
