@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Manifest } from '../app/types/manifest';
 import { handleExportVideo, formatFileSize } from '../lib/export-utils';
+import VideoPreview from './VideoPreview';
 interface ExportVideoProps {
   onExportVideo: () => void;
   isExporting?: boolean;
@@ -85,7 +86,7 @@ export default function ExportVideo({
 
       {/* Main Card */}
       <div className="bg-gray-900 border border-purple-500/20 rounded-2xl p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Final Preview Section */}
           <div>
             <h2 className="text-xl font-semibold text-white mb-4">
@@ -121,7 +122,7 @@ export default function ExportVideo({
             </div>
           </div>
 
-          {/* Export Details Section */}
+          {/* Export Details Section (Center) */}
           <div>
             <h2 className="text-xl font-semibold text-white mb-6">
               Export Details
@@ -213,6 +214,26 @@ export default function ExportVideo({
                   <div className="text-gray-300 text-sm">Included</div>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Right Side: Final Video Player */}
+          <div>
+            <div className="flex-1 order-1 md:order-2 overflow-hidden">
+              <h2 className="text-xl font-semibold text-white mb-4">
+                Final Video
+              </h2>
+              {videoCompletionData?.finalVideoUrl ? (
+                <VideoPreview
+                  videoUrl={videoCompletionData.finalVideoUrl}
+                  autoPlay
+                  loop={false}
+                />
+              ) : (
+                <div className="bg-slate-900 border border-slate-700 rounded-2xl h-96 flex items-center justify-center text-gray-400">
+                  Video not ready yet
+                </div>
+              )}
             </div>
           </div>
         </div>

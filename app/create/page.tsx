@@ -708,7 +708,7 @@ export default function GeneratePage() {
   return (
     <MainLayout
       showCreditsUpgrade={true}
-      rightSidebarContent={rightSidebarContent}
+      rightSidebarContent={currentStep === 1 ? rightSidebarContent : undefined}
       backgroundColor={currentStep === 1 ? '#090526' : '#0F0A1E'}
       progressSteps={<ProgressSteps currentStep={currentStep} />}
       showFooter
