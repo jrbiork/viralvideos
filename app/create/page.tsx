@@ -15,6 +15,7 @@ import { DEFAULT_VOICE } from '../../lib/constants';
 import ExportVideo from '../../components/ExportVideo';
 import Toaster from '../../components/Toaster';
 import { parseColoredText } from '../../lib/subtitle-utils';
+import { handleExportVideo as exportVideoUtil } from '../../lib/export-utils';
 import { useVideoGeneration } from '../../hooks/useVideoGeneration';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -39,6 +40,7 @@ export default function GeneratePage() {
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
   const [videoCompletionData, setVideoCompletionData] =
     useState<Manifest | null>(null);
+  const [isExportingFinalVideo, setIsExportingFinalVideo] = useState(false);
   const autoPlayRef = useRef<{
     selectedSceneId: number | null;
     timestamp: string;
@@ -651,6 +653,19 @@ export default function GeneratePage() {
       setVideoCompletionData(null);
       setCurrentStep(3);
 
+      // Update URL to reflect step 3, preserving timestamp
+      try {
+        const params = new URLSearchParams(window.location.search);
+        params.set('step', '3');
+        if (videoGenerationState.currentTimestamp) {
+          params.set('timestamp', videoGenerationState.currentTimestamp);
+        }
+        const newUrl = `${window.location.pathname}?${params.toString()}`;
+        window.history.replaceState(null, '', newUrl);
+      } catch (e) {
+        console.warn('Failed to update URL to step=3', e);
+      }
+
       const response = await fetch('/api/combine-video', {
         method: 'POST',
         headers: {
@@ -700,7 +715,7 @@ export default function GeneratePage() {
       footerContent={
         currentStep === 2 ? (
           <div
-            className="ml-auto pr-4 flex items-center justify-end gap-3"
+            className="ml-auto pr-4 flex items-center justify-end gap-12"
             style={{ width: '65%' }}
           >
             <button
@@ -728,8 +743,93 @@ export default function GeneratePage() {
               <span>Generate Video</span>
             </button>
           </div>
-        ) : (
-          <div className="pl-6 flex items-center gap-12">
+        ) : currentStep === 3 ? (
+          <div
+            className="ml-auto pr-4 flex items-center justify-end gap-12"
+            style={{ width: '65%' }}
+          >
+            <button
+              onClick={() => {
+                setCurrentStep(2);
+                try {
+                  const params = new URLSearchParams(window.location.search);
+                  params.set('step', '2');
+                  if (videoGenerationState.currentTimestamp) {
+                    params.set(
+                      'timestamp',
+                      videoGenerationState.currentTimestamp,
+                    );
+                  }
+                  const newUrl = `${
+                    window.location.pathname
+                  }?${params.toString()}`;
+                  window.history.replaceState(null, '', newUrl);
+                } catch (e) {
+                  console.warn('Failed to update URL to step=2', e);
+                }
+              }}
+              className="h-12 px-5 min-w-[150px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white bg-transparent transition-all duration-200 hover:bg-white/10 hover:-translate-y-[1px]"
+              style={{
+                borderColor: '#5B5BFF',
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+              }}
+            >
+              <img src="/back.svg" alt="Back" className="w-4 h-4" />
+              <span>Back to Preview</span>
+            </button>
+            <button
+              onClick={async () => {
+                if (!videoCompletionData?.finalVideoUrl) {
+                  showToasterMessage(
+                    'Video URL not available for export',
+                    'error',
+                  );
+                  return;
+                }
+                try {
+                  setIsExportingFinalVideo(true);
+                  await exportVideoUtil({
+                    finalVideoUrl: videoCompletionData.finalVideoUrl,
+                    filename: `video-${videoCompletionData.generatedAt}.mp4`,
+                    showToasterMessage,
+                  });
+                } finally {
+                  setIsExportingFinalVideo(false);
+                }
+              }}
+              disabled={
+                isExportingFinalVideo || !videoCompletionData?.finalVideoUrl
+              }
+              className={`h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95 ${
+                isExportingFinalVideo || !videoCompletionData?.finalVideoUrl
+                  ? 'opacity-50 cursor-not-allowed'
+                  : ''
+              }`}
+              style={{
+                background:
+                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+              }}
+            >
+              {isExportingFinalVideo ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                  <span>Exporting...</span>
+                </>
+              ) : !videoCompletionData?.finalVideoUrl ? (
+                <span>Video Not Ready</span>
+              ) : (
+                <span>Export Video</span>
+              )}
+            </button>
+          </div>
+        ) : currentStep === 1 ? (
+          <div
+            className="ml-auto pr-4 flex items-center justify-end gap-12"
+            style={{ width: '65%' }}
+          >
             <button
               onClick={handleMagicScript}
               disabled={isGeneratingScript}
@@ -793,7 +893,7 @@ export default function GeneratePage() {
               )}
             </button>
           </div>
-        )
+        ) : null
       }
     >
       {/* WebSocket Status for Testing */}
@@ -884,9 +984,9 @@ export default function GeneratePage() {
             }`}
           >
             <ExportVideo
-              onExportVideo={handleExportVideo}
+              onExportVideo={() => {}}
               isExporting={sceneState.isExporting}
-              onBack={() => setCurrentStep(2)}
+              onBack={undefined}
               isVideoGenerating={isVideoGenerating}
               videoCompletionData={videoCompletionData}
               onRemoveWatermark={() => {

@@ -217,39 +217,6 @@ export default function ExportVideo({
           </div>
         </div>
       </div>
-
-      {/* Action Buttons */}
-      <div className="flex justify-center gap-4 mt-8">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="px-6 py-3 border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
-          >
-            ← Back
-          </button>
-        )}
-
-        <button
-          onClick={handleExport}
-          disabled={isExporting || !videoCompletionData?.finalVideoUrl}
-          className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
-            isExporting || !videoCompletionData?.finalVideoUrl
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-green-600 hover:bg-green-700 text-white'
-          }`}
-        >
-          {isExporting ? (
-            <div className="flex items-center space-x-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-              <span>Exporting...</span>
-            </div>
-          ) : !videoCompletionData?.finalVideoUrl ? (
-            'Video Not Ready'
-          ) : (
-            'Export Video'
-          )}
-        </button>
-      </div>
     </div>
   );
 }
