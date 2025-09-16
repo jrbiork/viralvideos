@@ -708,10 +708,11 @@ export default function GeneratePage() {
   return (
     <MainLayout
       showCreditsUpgrade={true}
-      rightSidebarContent={currentStep === 1 ? rightSidebarContent : undefined}
+      rightSidebarContent={rightSidebarContent}
       backgroundColor={currentStep === 1 ? '#090526' : '#0F0A1E'}
       progressSteps={<ProgressSteps currentStep={currentStep} />}
       showFooter
+      currentStep={currentStep}
       footerContent={
         currentStep === 2 ? (
           <div
@@ -749,7 +750,7 @@ export default function GeneratePage() {
             style={{ width: '65%' }}
           >
             <button
-              onClick={() => {
+              onClick={async () => {
                 setCurrentStep(2);
                 try {
                   const params = new URLSearchParams(window.location.search);
@@ -764,8 +765,55 @@ export default function GeneratePage() {
                     window.location.pathname
                   }?${params.toString()}`;
                   window.history.replaceState(null, '', newUrl);
+
+                  // Call fetch-preview API to reload the preview data
+                  if (videoGenerationState.currentTimestamp) {
+                    setVideoGenerationState((prev) => ({
+                      ...prev,
+                      isLoadingAudioSubtitles: true,
+                      isLoadingVideoScenes: true,
+                    }));
+
+                    const previewResponse = await fetch(
+                      `/api/fetch-preview?timestamp=${videoGenerationState.currentTimestamp}`,
+                      {
+                        method: 'GET',
+                      },
+                    );
+
+                    const response = await previewResponse.json();
+                    const manifest = response.manifest;
+
+                    // Initialize removedOriginalScenes from manifest
+                    if (manifest?.scenes) {
+                      const removedScenes = new Set<number>();
+                      manifest.scenes.forEach((scene: any) => {
+                        if (scene.removed) {
+                          const sceneIdMatch =
+                            scene.files?.mp3?.match(/scene-(\d+)\./) ||
+                            scene.files?.mp4?.match(/scene-(\d+)\./) ||
+                            scene.files?.ass?.match(/scene-(\d+)\./);
+                          const sceneId = sceneIdMatch
+                            ? parseInt(sceneIdMatch[1])
+                            : scene.id;
+                          removedScenes.add(sceneId);
+                        }
+                      });
+                      setRemovedOriginalScenes(removedScenes);
+                    }
+
+                    setVideoGenerationState((prev) => ({
+                      ...prev,
+                      manifest: manifest || undefined,
+                      isLoadingAudioSubtitles: false,
+                      isLoadingVideoScenes: false,
+                    }));
+                  }
                 } catch (e) {
-                  console.warn('Failed to update URL to step=2', e);
+                  console.warn(
+                    'Failed to update URL to step=2 or fetch preview',
+                    e,
+                  );
                 }
               }}
               className="h-12 px-5 min-w-[150px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white bg-transparent transition-all duration-200 hover:bg-white/10 hover:-translate-y-[1px]"

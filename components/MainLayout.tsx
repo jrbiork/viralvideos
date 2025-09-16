@@ -15,6 +15,7 @@ interface MainLayoutProps {
   progressSteps?: ReactNode;
   showFooter?: boolean;
   footerContent?: ReactNode;
+  currentStep?: number;
 }
 
 export default function MainLayout({
@@ -26,6 +27,7 @@ export default function MainLayout({
   progressSteps,
   showFooter = false,
   footerContent,
+  currentStep,
 }: MainLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -128,7 +130,7 @@ export default function MainLayout({
             style={{ backgroundColor: '#090526' }}
           >
             <div className="flex-[1.86] overflow-hidden">{children}</div>
-            {rightSidebarContent && (
+            {rightSidebarContent && currentStep !== 3 && (
               <div
                 className="flex-1 order-1 md:order-2 overflow-hidden"
                 style={{ backgroundColor: '#090526' }}
