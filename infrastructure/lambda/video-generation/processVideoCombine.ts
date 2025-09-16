@@ -52,6 +52,15 @@ export async function processVideoCombine(
     //
     await updateManifest(manifest, {
       videoGenerated: true,
+      sceneCount: manifest.scenes.filter(
+        (scene: ManifestScene) => !removedScenes.includes(scene.id),
+      ).length,
+      totalDuration: manifest.scenes
+        .filter((scene: ManifestScene) => !removedScenes.includes(scene.id))
+        .reduce(
+          (acc: number, scene: ManifestScene) => acc + scene.files.duration,
+          0,
+        ),
       finalVideoUrl: `${userId}/${timestamp}-final-video.mp4`,
       scenes: manifest.scenes.map((scene: ManifestScene) => ({
         ...scene,

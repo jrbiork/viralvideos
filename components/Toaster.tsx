@@ -60,7 +60,7 @@ export default function Toaster({
     );
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div className="fixed right-4 z-50" style={{ top: '10%' }}>
       <div
         className={`
           ${bgColor} ${textColor} px-6 py-3 rounded-lg shadow-lg 

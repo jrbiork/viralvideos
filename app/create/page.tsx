@@ -715,8 +715,8 @@ export default function GeneratePage() {
       footerContent={
         currentStep === 2 ? (
           <div
-            className="ml-auto pr-4 flex items-center justify-end gap-12"
-            style={{ width: '65%' }}
+            className="pl-0 pr-12 flex items-center justify-between"
+            style={{ width: '74%' }}
           >
             <button
               onClick={() => setCurrentStep(1)}
@@ -745,7 +745,7 @@ export default function GeneratePage() {
           </div>
         ) : currentStep === 3 ? (
           <div
-            className="ml-auto pr-4 flex items-center justify-end gap-12"
+            className="pl-2 pr-8 flex items-center justify-between"
             style={{ width: '65%' }}
           >
             <button
@@ -1050,7 +1050,7 @@ export default function GeneratePage() {
               {!isVideoGenerating && (
                 <div
                   className="flex-[1] order-1 md:order-2 overflow-hidden"
-                  style={{ margin: '0 100px' }}
+                  style={{ margin: '80px 100px' }}
                 >
                   <div className="h-full p-4">
                     {videoCompletionData?.finalVideoUrl ? (

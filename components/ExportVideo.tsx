@@ -74,7 +74,15 @@ export default function ExportVideo({
   return (
     <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
       {/* Header */}
-      <div className="mb-8 text-center">
+      <div
+        className="mb-8 text-left"
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'start',
+          width: '100%',
+        }}
+      >
         <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
           Let's export your video!
         </h1>
@@ -84,15 +92,20 @@ export default function ExportVideo({
       </div>
 
       {/* Main Card */}
-      <div className="bg-gray-900 border border-purple-500/20 rounded-2xl p-8">
+      <div
+        className="bg-gray-900 border border-purple-500/20 rounded-2xl p-8"
+        style={{
+          borderRadius: '16px',
+          border: '1px solid #7552F2',
+          background: '#1F1F31',
+          boxShadow: '0 0 0 3px rgba(17, 17, 119, 0.25)',
+        }}
+      >
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Final Preview Section */}
           <div>
-            <h2 className="text-xl font-semibold text-white mb-4">
-              Final Preview
-            </h2>
-            <div className="relative">
-              <div className="aspect-[9/16] bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl overflow-hidden w-full max-w-[150px]">
+            <div className="relative flex justify-center">
+              <div className="aspect-[9/16] bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl overflow-hidden w-full max-w-[180px]">
                 {thumbnailUrl ? (
                   <img
                     src={thumbnailUrl}
@@ -114,9 +127,6 @@ export default function ExportVideo({
                     </div>
                   </div>
                 )}
-              </div>
-              <div className="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
-                {thumbnailUrl ? `# Frame 1` : `# Frame 22`}
               </div>
             </div>
           </div>
@@ -181,9 +191,11 @@ export default function ExportVideo({
                         onChange={() => setWatermarkRemoved(true)}
                         className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
                       />
-                      <div className="flex-1 flex justify-between items-center">
-                        <div className="text-white">Without watermark</div>
-                        <div className="text-gray-400 text-sm ml-2 whitespace-nowrap">
+                      <div className="flex-1 flex justify-between items-center min-w-[300px]">
+                        <div className="text-white whitespace-nowrap flex-shrink-0">
+                          Without watermark
+                        </div>
+                        <div className="text-gray-400 text-sm ml-4 whitespace-nowrap flex-shrink-0">
                           (only for subscribers)
                         </div>
                       </div>

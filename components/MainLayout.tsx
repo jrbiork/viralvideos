@@ -132,7 +132,7 @@ export default function MainLayout({
             <div className="flex-[1.86] overflow-hidden">{children}</div>
             {rightSidebarContent && currentStep !== 3 && (
               <div
-                className="flex-1 order-1 md:order-2 overflow-hidden"
+                className="flex-1 order-1 md:order-2 overflow-hidden mt-4"
                 style={{ backgroundColor: '#090526' }}
               >
                 {rightSidebarContent}

@@ -32,10 +32,10 @@ export default function RootLayout({
         <AuthProvider>
           {children}
           {/* Global WebSocket Status - visible on all pages */}
-          <div className="fixed top-20 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
+          {/* <div className="fixed top-20 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
             <div className="text-xs text-gray-600 mb-1">WebSocket Status</div>
             <WebSocketStatus showControls={true} />
-          </div>
+          </div> */}
         </AuthProvider>
       </body>
     </html>
