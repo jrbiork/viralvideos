@@ -31,17 +31,14 @@ export async function GET(request: NextRequest) {
 
     // Get the prompt from query parameters
     const { searchParams } = new URL(request.url);
-    const prompt = searchParams.get('prompt');
+    let prompt = searchParams.get('prompt');
     const rawDuration = (searchParams.get('duration') || '30').toString();
     const language = searchParams.get('language') || DEFAULT_LANGUAGE;
     const durationLabel = `${rawDuration}s`;
-    const wordLimit = 100;
+    const wordLimit = 50;
 
-    if (!prompt) {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400 },
-      );
+    if (!prompt?.trim()) {
+      prompt = `You are a creative ideation assistant. Generate one engaging and original topic idea for a ${rawDuration}s vertical short video.`;
     }
 
     // Create language-specific instructions

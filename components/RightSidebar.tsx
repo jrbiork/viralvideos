@@ -54,7 +54,7 @@ export default function RightSidebar({
           <div className="flex justify-center">
             <video
               className="rounded-xl shadow-lg border-2 border-gray-600"
-              style={{ width: '85%', height: 'auto' }}
+              style={{ width: '65%', height: 'auto' }}
               controls
               autoPlay
               muted
@@ -133,7 +133,7 @@ export default function RightSidebar({
                           console.error('Video error:', event);
                         }}
                         className="rounded-xl shadow-lg border-2 border-gray-600"
-                        style={{ width: '85%', height: 'auto' }}
+                        style={{ width: '65%', height: 'auto' }}
                         controls
                         preload="auto"
                         src={videoUrl}

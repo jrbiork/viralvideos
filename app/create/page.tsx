@@ -21,12 +21,17 @@ import { useWebSocket } from '../../hooks/useWebSocket';
 import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
 
 import { Manifest } from '../types/manifest';
-import { WebSocketMessage } from '../types/websocket';
 
 export default function GeneratePage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE); // Track voice selection
+  const [script, setScript] = useState('');
+  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
+    '30s',
+  );
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
@@ -118,11 +123,6 @@ export default function GeneratePage() {
       console.log('📝 Updated additionalScenes:', updated);
       return updated;
     });
-
-    showToasterMessage(
-      `New scene added at position ${position + 1}`,
-      'success',
-    );
   };
 
   // Handle deleting original scenes (mark as removed)
@@ -489,9 +489,6 @@ export default function GeneratePage() {
     handleUrlParams();
   }, []); // Empty dependencies array to run only once
 
-  // Subscribe to WebSocket updates when connected
-  // WebSocket connection is now automatic - no subscription needed
-
   const handleGenerateVideo = async (
     script: string,
     duration: 30 | 60,
@@ -519,6 +516,39 @@ export default function GeneratePage() {
 
   const handleGenerateScript = async (prompt: string) => {
     // This function is now handled by the VideoCreator component
+  };
+
+  const handleMagicScript = async () => {
+    setIsGeneratingScript(true);
+    try {
+      const response = await fetch(
+        `/api/enhance-prompt?prompt=${encodeURIComponent(
+          script.trim(),
+        )}&duration=${selectedDuration}&language=${selectedLanguage}`,
+        {
+          method: 'GET',
+          credentials: 'include',
+        },
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.enhancedPrompt) {
+          setScript(data.enhancedPrompt);
+        }
+      } else {
+        console.error('Failed to generate enhanced script');
+      }
+    } catch (error) {
+      console.error('Error generating enhanced script:', error);
+    } finally {
+      setIsGeneratingScript(false);
+    }
+  };
+
+  const handleGenerateVideoFromFooter = () => {
+    const duration = parseInt(selectedDuration.replace('s', '')) as 30 | 60;
+    handleGenerateVideo(script, duration, selectedVoice);
   };
 
   const handleRegenerateAudio = async (sceneId: number) => {
@@ -638,27 +668,6 @@ export default function GeneratePage() {
 
       const result = await response.json();
       console.log('🎬 Combine video request queued:', result);
-
-      // mock response
-      // setTimeout(() => {
-      //   setIsVideoGenerating(false);
-      //   setVideoCompletionData({
-      //     schemaVersion: videoGenerationState.manifest?.schemaVersion || 1,
-      //     userId: videoGenerationState.manifest?.userId || '',
-      //     bucket: videoGenerationState.manifest?.bucket || '',
-      //     prefix: videoGenerationState.manifest?.prefix || '',
-      //     generatedAt: Date.now().toString(),
-      //     updatedAt: new Date().toISOString(),
-      //     sceneCount: videoGenerationState.manifest?.sceneCount || 0,
-      //     scenes:
-      //       videoGenerationState.manifest?.scenes.map((scene) => ({
-      //         ...scene,
-      //         removed: removedOriginalScenes.has(scene.id),
-      //       })) || [],
-      //     finalVideoUrl: 'https://example.com/mock-video.mp4', // Mock final video URL
-      //   });
-      //   showToasterMessage('Video generated successfully!', 'success');
-      // }, 3000);
     } catch (error) {
       console.error('Error combining video:', error);
       showToasterMessage('Failed to combine video. Please try again.', 'error');
@@ -687,6 +696,105 @@ export default function GeneratePage() {
       rightSidebarContent={rightSidebarContent}
       backgroundColor={currentStep === 1 ? '#090526' : '#0F0A1E'}
       progressSteps={<ProgressSteps currentStep={currentStep} />}
+      showFooter
+      footerContent={
+        currentStep === 2 ? (
+          <div
+            className="ml-auto pr-4 flex items-center justify-end gap-3"
+            style={{ width: '65%' }}
+          >
+            <button
+              onClick={() => setCurrentStep(1)}
+              className="h-12 px-5 min-w-[150px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white bg-transparent transition-all duration-200 hover:bg-white/10 hover:-translate-y-[1px]"
+              style={{
+                borderColor: '#5B5BFF',
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+              }}
+            >
+              <img src="/back.svg" alt="Back" className="w-4 h-4" />
+              <span>Back to Idea</span>
+            </button>
+            <button
+              onClick={handleCombineVideo}
+              className="h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
+              style={{
+                background:
+                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+              }}
+            >
+              <span>Generate Video</span>
+            </button>
+          </div>
+        ) : (
+          <div className="pl-6 flex items-center gap-12">
+            <button
+              onClick={handleMagicScript}
+              disabled={isGeneratingScript}
+              className={`h-12 px-4 text-xs sm:text-sm font-semibold flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
+              style={{
+                borderColor: '#5B5BFF',
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+              }}
+            >
+              {isGeneratingScript ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                  <span>Enhancing...</span>
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  <span>Write Magic Script</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={handleGenerateVideoFromFooter}
+              disabled={
+                generationState.isGenerating ||
+                !script.trim() ||
+                script.trim().split(/\s+/).length < 5
+              }
+              className={`h-12 px-4 text-xs sm:text-sm font-semibold flex items-center justify-center space-x-2 transition-all duration-300 hover:brightness-90 hover:-translate-y-[1px] ${
+                generationState.isGenerating ||
+                !script.trim() ||
+                script.trim().split(/\s+/).length < 5
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed rounded-xl'
+                  : 'text-white'
+              }`}
+              style={
+                !generationState.isGenerating &&
+                script.trim() &&
+                script.trim().split(/\s+/).length >= 5
+                  ? {
+                      borderRadius: '0.75rem',
+                      background:
+                        'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
+                      boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                    }
+                  : {}
+              }
+            >
+              {generationState.isGenerating ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <span>
+                  Preview Scenes for {selectedDuration === '30s' ? '10' : '20'}{' '}
+                  Credits
+                </span>
+              )}
+            </button>
+          </div>
+        )
+      }
     >
       {/* WebSocket Status for Testing */}
 
@@ -714,6 +822,14 @@ export default function GeneratePage() {
                   generationState.generationStatus === 'completed')
               }
               onNextStep={handleNextStep}
+              onMagicScript={handleMagicScript}
+              isGeneratingScript={isGeneratingScript}
+              script={script}
+              onScriptChange={setScript}
+              onGenerateVideoFromFooter={handleGenerateVideoFromFooter}
+              selectedDuration={selectedDuration}
+              selectedVoice={selectedVoice}
+              selectedLanguage={selectedLanguage}
             />
           </div>
 
@@ -759,29 +875,6 @@ export default function GeneratePage() {
               deletingSceneId={deletingSceneId}
               removedOriginalScenes={removedOriginalScenes}
             />
-          </div>
-
-          {/* Back Button */}
-          <div className="absolute bottom-4 left-4">
-            <button
-              onClick={() => {
-                setCurrentStep(1);
-                // Keep the hasStartedProcess flag when going back
-              }}
-              className="px-4 py-2 border border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white rounded-lg transition-colors"
-            >
-              ← Back
-            </button>
-          </div>
-
-          {/* Combine Video Button */}
-          <div className="absolute bottom-4 right-4">
-            <button
-              onClick={handleCombineVideo}
-              className="px-4 py-2 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors"
-            >
-              Generate Video
-            </button>
           </div>
 
           {/* Step 3: Export Video */}

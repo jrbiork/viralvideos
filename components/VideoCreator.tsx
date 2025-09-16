@@ -17,6 +17,20 @@ interface VideoCreatorProps {
   statusMessage: string;
   showNextButton?: boolean;
   onNextStep?: () => void;
+  // Props for footer buttons
+  onMagicScript?: () => void;
+  isGeneratingScript?: boolean;
+  script?: string;
+  onScriptChange?: (script: string) => void;
+  onGenerateVideoFromFooter?: (
+    script: string,
+    duration: 30 | 60,
+    voice?: string,
+    language?: string,
+  ) => void;
+  selectedDuration?: '30s' | '60s';
+  selectedVoice?: string;
+  selectedLanguage?: string;
 }
 
 export default function VideoCreator({
@@ -27,29 +41,71 @@ export default function VideoCreator({
   statusMessage,
   showNextButton = false,
   onNextStep,
+  onMagicScript,
+  isGeneratingScript = false,
+  script: externalScript,
+  onScriptChange,
+  onGenerateVideoFromFooter,
+  selectedDuration: externalSelectedDuration,
+  selectedVoice: externalSelectedVoice,
+  selectedLanguage: externalSelectedLanguage,
 }: VideoCreatorProps) {
-  const [script, setScript] = useState(
-    'AI generated stunning images of the city of Tokey at night with neon lights and a beautiful skyline.',
-  );
-  const [isGeneratingScript, setIsGeneratingScript] = useState(false);
+  const [script, setScript] = useState(externalScript);
+  const [internalIsGeneratingScript, setInternalIsGeneratingScript] =
+    useState(false);
   const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
-    '30s',
+    externalSelectedDuration || '30s',
   );
-  const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE);
-  const [selectedLanguage, setSelectedLanguage] = useState(DEFAULT_LANGUAGE);
+  const [selectedVoice, setSelectedVoice] = useState(
+    externalSelectedVoice || DEFAULT_VOICE,
+  );
+  const [selectedLanguage, setSelectedLanguage] = useState(
+    externalSelectedLanguage || DEFAULT_LANGUAGE,
+  );
 
   // Debug: Track language changes
   useEffect(() => {
     console.log('🌍 selectedLanguage state changed to:', selectedLanguage);
   }, [selectedLanguage]);
 
+  // Sync external state with internal state
+  useEffect(() => {
+    if (externalScript !== undefined) {
+      setScript(externalScript);
+    }
+  }, [externalScript]);
+
+  useEffect(() => {
+    if (externalSelectedDuration !== undefined) {
+      setSelectedDuration(externalSelectedDuration);
+    }
+  }, [externalSelectedDuration]);
+
+  useEffect(() => {
+    if (externalSelectedVoice !== undefined) {
+      setSelectedVoice(externalSelectedVoice);
+    }
+  }, [externalSelectedVoice]);
+
+  useEffect(() => {
+    if (externalSelectedLanguage !== undefined) {
+      setSelectedLanguage(externalSelectedLanguage);
+    }
+  }, [externalSelectedLanguage]);
+
   // Word count calculation
-  const wordCount = script.trim() ? script.trim().split(/\s+/).length : 0;
-  const maxWords = 100;
+  const wordCount = script?.trim() ? script.trim().split(/\s+/).length : 0;
+  const maxWords = 50;
   const isOverLimit = wordCount > maxWords;
 
   const handleMagicScript = async () => {
-    if (!script.trim()) return;
+    if (!script?.trim()) return;
+
+    // Use external handler if provided, otherwise use internal logic
+    if (onMagicScript) {
+      onMagicScript();
+      return;
+    }
 
     console.log('🌍 Selected Language:', selectedLanguage);
     console.log(
@@ -59,7 +115,7 @@ export default function VideoCreator({
       )}&duration=${selectedDuration}&language=${selectedLanguage}`,
     );
 
-    setIsGeneratingScript(true);
+    setInternalIsGeneratingScript(true);
     try {
       const response = await fetch(
         `/api/enhance-prompt?prompt=${encodeURIComponent(
@@ -82,7 +138,7 @@ export default function VideoCreator({
     } catch (error) {
       console.error('Error generating enhanced script:', error);
     } finally {
-      setIsGeneratingScript(false);
+      setInternalIsGeneratingScript(false);
     }
   };
 
@@ -121,13 +177,28 @@ export default function VideoCreator({
                   // Only allow input if under word limit
                   if (
                     newWordCount <= maxWords ||
-                    newValue.length < script.length
+                    newValue.length < script?.length
                   ) {
                     setScript(newValue);
+                    if (onScriptChange) {
+                      onScriptChange(newValue);
+                    }
                   }
                 }}
                 disabled={isGenerating}
               />
+              {(!script || !script.trim()) && (
+                <div className="absolute bottom-3 left-4 right-24 text-xs text-gray-400 pointer-events-none">
+                  <p className="mb-1">
+                    Tip: keep under 50 words for the best video pacing
+                  </p>
+                  <p className="italic">
+                    Example: "A breathtaking dive into the mysterious world
+                    beneath the ocean, narrated with cinematic flair and
+                    uplifting music."
+                  </p>
+                </div>
+              )}
               <div
                 className={`absolute bottom-2 right-2 text-xs font-medium ${
                   isOverLimit
@@ -137,60 +208,15 @@ export default function VideoCreator({
                     : 'text-gray-400'
                 }`}
               >
-                {wordCount}/{maxWords}
+                Words: {wordCount}/{maxWords}
               </div>
             </div>
           </div>
 
-          {/* Tips and Example */}
-          <div className="mb-6">
-            <p className="text-gray-400 text-sm mb-2">
-              Tip: keep under 100 words for the best video pacing
-            </p>
-            <p className="text-gray-500 text-sm italic">
-              Example: "A breathtaking dive into the mysterious world beneath
-              the ocean, narrated with cinematic flair and uplifting music."
-            </p>
-          </div>
-
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-              <button
-                onClick={handleMagicScript}
-                disabled={!script.trim() || isGeneratingScript}
-                className={`px-6 py-3 text-base font-semibold transition-all duration-300 flex items-center space-x-2 ${
-                  script.trim() && !isGeneratingScript
-                    ? 'text-white'
-                    : 'bg-gray-600 text-gray-400 cursor-not-allowed rounded-xl'
-                }`}
-                style={
-                  script.trim() && !isGeneratingScript
-                    ? {
-                        borderRadius: '0.75rem',
-                        background:
-                          'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
-                        boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-                      }
-                    : {}
-                }
-              >
-                {isGeneratingScript ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    <span>Enhancing...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>✨</span>
-                    <span>Write Magic Script</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Duration Selection - Centered */}
-            <div className="flex justify-center w-full sm:w-auto">
+            {/* Duration Selection - Right aligned */}
+            <div className="flex justify-end w-full sm:w-auto ml-auto">
               <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                 <button
                   onClick={() => setSelectedDuration('30s')}
@@ -224,48 +250,6 @@ export default function VideoCreator({
                 </button>
               </div>
             </div>
-
-            <button
-              onClick={() => {
-                const duration = parseInt(selectedDuration.replace('s', '')) as
-                  | 30
-                  | 60;
-                onGenerateVideo(
-                  script,
-                  duration,
-                  selectedVoice,
-                  selectedLanguage,
-                );
-              }}
-              disabled={isGenerating || !script.trim() || wordCount < 10}
-              className={`px-6 py-3 text-base font-semibold flex items-center justify-center space-x-2 transition-all duration-300 ${
-                isGenerating || !script.trim() || wordCount < 10
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed rounded-xl'
-                  : 'text-white'
-              }`}
-              style={
-                !isGenerating && script.trim() && wordCount >= 10
-                  ? {
-                      borderRadius: '0.75rem',
-                      background:
-                        'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
-                      boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-                    }
-                  : {}
-              }
-            >
-              {isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span>Generating...</span>
-                </>
-              ) : (
-                <span>
-                  Preview/Edit Scenes for{' '}
-                  {selectedDuration === '30s' ? '10' : '20'} Credits
-                </span>
-              )}
-            </button>
           </div>
         </div>
 
