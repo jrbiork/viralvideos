@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Manifest } from '../app/types/manifest';
 import { handleExportVideo, formatFileSize } from '../lib/export-utils';
-import VideoPreview from './VideoPreview';
 interface ExportVideoProps {
   onExportVideo: () => void;
   isExporting?: boolean;
@@ -73,7 +72,7 @@ export default function ExportVideo({
     firstNonRemovedScene?.files?.png || firstNonRemovedScene?.files?.jpg;
 
   return (
-    <div className="w-full max-w-4xl mx-auto">
+    <div className="w-full max-w-4xl mx-auto flex flex-col items-center">
       {/* Header */}
       <div className="mb-8 text-center">
         <h1 className="text-3xl lg:text-4xl font-bold text-white mb-3">
@@ -86,14 +85,14 @@ export default function ExportVideo({
 
       {/* Main Card */}
       <div className="bg-gray-900 border border-purple-500/20 rounded-2xl p-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Final Preview Section */}
           <div>
             <h2 className="text-xl font-semibold text-white mb-4">
               Final Preview
             </h2>
             <div className="relative">
-              <div className="aspect-square bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl overflow-hidden">
+              <div className="aspect-[9/16] bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl overflow-hidden w-full max-w-[150px]">
                 {thumbnailUrl ? (
                   <img
                     src={thumbnailUrl}
@@ -122,7 +121,7 @@ export default function ExportVideo({
             </div>
           </div>
 
-          {/* Export Details Section (Center) */}
+          {/* Export Details Section */}
           <div>
             <h2 className="text-xl font-semibold text-white mb-6">
               Export Details
@@ -182,9 +181,10 @@ export default function ExportVideo({
                         onChange={() => setWatermarkRemoved(true)}
                         className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
                       />
-                      <div className="flex-1">
-                        <div className="text-white">
-                          Without watermark (only for subscribers)
+                      <div className="flex-1 flex justify-between items-center">
+                        <div className="text-white">Without watermark</div>
+                        <div className="text-gray-400 text-sm ml-2 whitespace-nowrap">
+                          (only for subscribers)
                         </div>
                       </div>
                     </label>
@@ -214,26 +214,6 @@ export default function ExportVideo({
                   <div className="text-gray-300 text-sm">Included</div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Right Side: Final Video Player */}
-          <div>
-            <div className="flex-1 order-1 md:order-2 overflow-hidden">
-              <h2 className="text-xl font-semibold text-white mb-4">
-                Final Video
-              </h2>
-              {videoCompletionData?.finalVideoUrl ? (
-                <VideoPreview
-                  videoUrl={videoCompletionData.finalVideoUrl}
-                  autoPlay
-                  loop={false}
-                />
-              ) : (
-                <div className="bg-slate-900 border border-slate-700 rounded-2xl h-96 flex items-center justify-center text-gray-400">
-                  Video not ready yet
-                </div>
-              )}
             </div>
           </div>
         </div>

@@ -20,6 +20,7 @@ import { useVideoGeneration } from '../../hooks/useVideoGeneration';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
+import VideoPreview from '../../components/VideoPreview';
 
 import { Manifest } from '../types/manifest';
 
@@ -646,8 +647,6 @@ export default function GeneratePage() {
     }
 
     try {
-      showToasterMessage('Video combination started!', 'success');
-
       // Set generating state and navigate to step 3
       setIsVideoGenerating(true);
       setVideoCompletionData(null);
@@ -1031,18 +1030,44 @@ export default function GeneratePage() {
               currentStep === 3 ? 'translate-x-0' : 'translate-x-full'
             }`}
           >
-            <ExportVideo
-              onExportVideo={() => {}}
-              isExporting={sceneState.isExporting}
-              onBack={undefined}
-              isVideoGenerating={isVideoGenerating}
-              videoCompletionData={videoCompletionData}
-              onRemoveWatermark={() => {
-                // TODO: Implement watermark removal
-                console.log('Remove watermark clicked');
-              }}
-              showToasterMessage={showToasterMessage}
-            />
+            <div className="flex flex-col md:flex-row h-full">
+              <div className="flex-[2]">
+                <ExportVideo
+                  onExportVideo={() => {}}
+                  isExporting={sceneState.isExporting}
+                  onBack={undefined}
+                  isVideoGenerating={isVideoGenerating}
+                  videoCompletionData={videoCompletionData}
+                  onRemoveWatermark={() => {
+                    // TODO: Implement watermark removal
+                    console.log('Remove watermark clicked');
+                  }}
+                  showToasterMessage={showToasterMessage}
+                />
+              </div>
+
+              {/* Right Side: Final Video Player */}
+              {!isVideoGenerating && (
+                <div
+                  className="flex-[1] order-1 md:order-2 overflow-hidden"
+                  style={{ margin: '0 100px' }}
+                >
+                  <div className="h-full p-4">
+                    {videoCompletionData?.finalVideoUrl ? (
+                      <VideoPreview
+                        videoUrl={videoCompletionData.finalVideoUrl}
+                        autoPlay
+                        loop={false}
+                      />
+                    ) : (
+                      <div className="bg-slate-900 border border-slate-700 rounded-2xl h-96 flex items-center justify-center text-gray-400">
+                        Video not ready yet
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

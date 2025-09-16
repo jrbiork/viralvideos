@@ -14,17 +14,21 @@ export default function Toaster({
   onClose,
 }: ToasterProps) {
   const bgColor =
-    type === 'success'
-      ? 'bg-green-500'
-      : type === 'error'
-      ? 'bg-red-200'
-      : 'bg-blue-500';
+    type === 'success' ? '' : type === 'error' ? 'bg-red-200' : 'bg-blue-500';
   const textColor =
     type === 'success'
       ? 'text-white'
       : type === 'error'
       ? 'text-red-800'
       : 'text-white';
+
+  const successGradientStyle =
+    type === 'success'
+      ? {
+          background: 'linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%)',
+          boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+        }
+      : {};
   const icon =
     type === 'success' ? (
       // Success checkmark icon
@@ -68,6 +72,7 @@ export default function Toaster({
               : 'translate-x-full opacity-0'
           }
         `}
+        style={successGradientStyle}
       >
         {/* Icon */}
         <div className="flex-shrink-0">{icon}</div>
