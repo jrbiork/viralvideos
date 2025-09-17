@@ -34,6 +34,7 @@ export default function GeneratePage() {
     '30s',
   );
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [selectedTemplate, setSelectedTemplate] = useState('realistic');
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
@@ -977,6 +978,8 @@ export default function GeneratePage() {
               selectedDuration={selectedDuration}
               selectedVoice={selectedVoice}
               selectedLanguage={selectedLanguage}
+              selectedTemplate={selectedTemplate}
+              onTemplateSelect={setSelectedTemplate}
             />
           </div>
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import CreditsDisplay from './CreditsDisplay';
 import VoiceSelection from './VoiceSelection';
+import ImageTemplateSelection from './ImageTemplateSelection';
 import LanguageSelection from './LanguageSelection';
 import { DEFAULT_VOICE, DEFAULT_LANGUAGE } from '../lib/constants';
 
@@ -31,6 +32,8 @@ interface VideoCreatorProps {
   selectedDuration?: '30s' | '60s';
   selectedVoice?: string;
   selectedLanguage?: string;
+  selectedTemplate?: string;
+  onTemplateSelect?: (templateId: string) => void;
 }
 
 export default function VideoCreator({
@@ -49,6 +52,8 @@ export default function VideoCreator({
   selectedDuration: externalSelectedDuration,
   selectedVoice: externalSelectedVoice,
   selectedLanguage: externalSelectedLanguage,
+  selectedTemplate: externalSelectedTemplate,
+  onTemplateSelect,
 }: VideoCreatorProps) {
   const [script, setScript] = useState(externalScript);
   const [internalIsGeneratingScript, setInternalIsGeneratingScript] =
@@ -177,7 +182,7 @@ export default function VideoCreator({
                   // Only allow input if under word limit
                   if (
                     newWordCount <= maxWords ||
-                    newValue.length < script?.length
+                    newValue.length < (script?.length || 0)
                   ) {
                     setScript(newValue);
                     if (onScriptChange) {
@@ -261,6 +266,14 @@ export default function VideoCreator({
             onVoiceClone={() =>
               console.log('Voice clone functionality coming soon')
             }
+          />
+        </div>
+
+        {/* Image Template Selection Section */}
+        <div className="mb-8 px-2.5">
+          <ImageTemplateSelection
+            selectedTemplate={externalSelectedTemplate}
+            onTemplateSelect={onTemplateSelect || (() => {})}
           />
         </div>
       </div>
