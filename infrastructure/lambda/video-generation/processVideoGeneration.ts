@@ -39,6 +39,7 @@ export interface VideoGenerationRequest {
   step: number;
   voice?: string;
   language?: string;
+  imageTemplate: string;
 }
 
 export async function processVideoGeneration(
@@ -118,6 +119,7 @@ export async function processVideoGeneration(
     }
 
     console.log('🎥 Story breakdown generated:', scenes);
+    console.log('🖼️ Received imageTemplate:', request.imageTemplate);
 
     // Step 2: Generate images for each scene in parallel
     // Check if there are already images generated in the s3 bucket for the timestamp
@@ -137,8 +139,10 @@ export async function processVideoGeneration(
             scene.description,
           );
 
+          const imageDescription = `[${request.imageTemplate}]: ${scene.description}`;
+
           const result = await generateNanoBananaImage(
-            scene.description,
+            imageDescription,
             scene.id,
             request.userId,
             timestamp,

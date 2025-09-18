@@ -105,13 +105,6 @@ Strict rules:
 - **Two concise character bylines at the top level** (<= 10 words each): \`charactersBylines = [female, male]\`.
 - **Every scene must:**
   1) Start \`description\` with \`[FL: <female byline>] [ML: <male byline>]\` then the visual.
-  2) Include \`charactersBrief\` exactly equal to \`charactersBylines\` (verbatim strings, no paraphrasing).
-  3) Use **no dialogue**; keep descriptions visual, concrete, and concise.
-- Narration word cap per scene: <= ${maxWordsPerScene}. Total narration words < ${maxTotalWords}.
-- Use **active voice**; avoid filler and long pauses.
-- **Language**: exactly mirror the user’s input language.
-- Safe visual cues only; no watermarks, UI, or photographer/brand references.
-
 Output: **JSON only** following the provided schema.`,
         },
         {

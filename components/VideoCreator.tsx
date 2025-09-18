@@ -64,6 +64,23 @@ export default function VideoCreator({
   const [selectedVoice, setSelectedVoice] = useState(
     externalSelectedVoice || DEFAULT_VOICE,
   );
+
+  // Load voice from localStorage after hydration
+  useEffect(() => {
+    if (!externalSelectedVoice && typeof window !== 'undefined') {
+      const savedVoice = localStorage.getItem('selectedVoice');
+      if (savedVoice) {
+        setSelectedVoice(savedVoice);
+      }
+    }
+  }, [externalSelectedVoice]);
+
+  // Handle voice selection with localStorage save
+  const handleVoiceSelect = (voiceId: string) => {
+    localStorage.setItem('selectedVoice', voiceId);
+    setSelectedVoice(voiceId);
+  };
+
   const [selectedLanguage, setSelectedLanguage] = useState(
     externalSelectedLanguage || DEFAULT_LANGUAGE,
   );
@@ -258,23 +275,28 @@ export default function VideoCreator({
           </div>
         </div>
 
-        {/* Voice Selection Section */}
+        {/* Voice Selection and Image Template Selection - Side by Side */}
         <div className="mb-8 px-2.5">
-          <VoiceSelection
-            selectedVoice={selectedVoice}
-            onVoiceSelect={setSelectedVoice}
-            onVoiceClone={() =>
-              console.log('Voice clone functionality coming soon')
-            }
-          />
-        </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Voice Selection Section */}
+            <div>
+              <VoiceSelection
+                selectedVoice={selectedVoice}
+                onVoiceSelect={handleVoiceSelect}
+                onVoiceClone={() =>
+                  console.log('Voice clone functionality coming soon')
+                }
+              />
+            </div>
 
-        {/* Image Template Selection Section */}
-        <div className="mb-8 px-2.5">
-          <ImageTemplateSelection
-            selectedTemplate={externalSelectedTemplate}
-            onTemplateSelect={onTemplateSelect || (() => {})}
-          />
+            {/* Image Template Selection Section */}
+            <div>
+              <ImageTemplateSelection
+                selectedTemplate={externalSelectedTemplate}
+                onTemplateSelect={onTemplateSelect || (() => {})}
+              />
+            </div>
+          </div>
         </div>
       </div>
     </>

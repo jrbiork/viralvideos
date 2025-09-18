@@ -16,6 +16,7 @@ import ExportVideo from '../../components/ExportVideo';
 import Toaster from '../../components/Toaster';
 import { parseColoredText } from '../../lib/subtitle-utils';
 import { handleExportVideo as exportVideoUtil } from '../../lib/export-utils';
+import { AVAILABLE_TEMPLATES } from '../../lib/template-constants';
 import { useVideoGeneration } from '../../hooks/useVideoGeneration';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -27,14 +28,45 @@ import { Manifest } from '../types/manifest';
 export default function GeneratePage() {
   const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedVoice, setSelectedVoice] = useState(DEFAULT_VOICE); // Track voice selection
+  const [selectedVoice, setSelectedVoiceState] = useState(DEFAULT_VOICE); // Track voice selection
+  const [isVoiceLoaded, setIsVoiceLoaded] = useState(false);
+
+  const setSelectedVoice = (voiceId: string) => {
+    localStorage.setItem('selectedVoice', voiceId);
+    setSelectedVoiceState(voiceId);
+  };
+
+  // Load voice from localStorage after hydration
+  useEffect(() => {
+    const savedVoice = localStorage.getItem('selectedVoice');
+    if (savedVoice) {
+      setSelectedVoiceState(savedVoice);
+    }
+    setIsVoiceLoaded(true);
+  }, []);
   const [script, setScript] = useState('');
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
     '30s',
   );
   const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [selectedTemplate, setSelectedTemplate] = useState('realistic');
+  const [selectedTemplate, setSelectedTemplateState] = useState('realistic');
+  const [isTemplateLoaded, setIsTemplateLoaded] = useState(false);
+
+  const setSelectedTemplate = (templateId: string) => {
+    localStorage.setItem('selectedTemplate', templateId);
+    setSelectedTemplateState(templateId);
+  };
+
+  // Load template from localStorage after hydration
+  useEffect(() => {
+    const savedTemplate = localStorage.getItem('selectedTemplate');
+    if (savedTemplate) {
+      setSelectedTemplateState(savedTemplate);
+    }
+    setIsTemplateLoaded(true);
+  }, []);
+
   const [regeneratingSceneId, setRegeneratingSceneId] = useState<number | null>(
     null,
   );
@@ -503,8 +535,14 @@ export default function GeneratePage() {
       setSelectedVoice(voice);
     }
 
+    // Get the selected template description
+    const selectedTemplateData = AVAILABLE_TEMPLATES.find(
+      (template) => template.id === selectedTemplate,
+    );
+
     await generateVideo(
       script,
+      selectedTemplateData?.description || '',
       duration,
       (timestamp) => {
         setCurrentStep(2);

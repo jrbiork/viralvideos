@@ -72,6 +72,7 @@ export function useVideoGeneration() {
 
   const generateVideo = async (
     script: string,
+    imageTemplate: string,
     duration: 30 | 60,
     onSuccess?: (timestamp: string) => void,
     voice?: string,
@@ -95,6 +96,7 @@ export function useVideoGeneration() {
         method: 'POST',
         body: {
           prompt: script,
+          imageTemplate,
           timestamp,
           totalDuration: duration,
           sceneCount: SCENE_SIZES[duration],

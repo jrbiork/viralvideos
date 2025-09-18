@@ -15,6 +15,7 @@ interface VideoGenerationRequest {
   timestamp: string;
   totalDuration: number;
   sceneCount: number;
+  imageTemplate?: string;
 }
 
 export const handler = async (
@@ -68,12 +69,21 @@ export const handler = async (
       totalDuration: request.totalDuration || 30,
       sceneCount: request.sceneCount || 3,
       step: 1,
+      imageTemplate: request.imageTemplate,
     };
 
     console.log('🎤 Video Queue - Request voice:', request.voice);
     console.log('🌍 Video Queue - Request language:', request.language);
     console.log('🎤 Video Queue - MessageBody voice:', messageBody.voice);
     console.log('🌍 Video Queue - MessageBody language:', messageBody.language);
+    console.log(
+      '🖼️ Video Queue - Request imageTemplate:',
+      request.imageTemplate,
+    );
+    console.log(
+      '🖼️ Video Queue - MessageBody imageTemplate:',
+      messageBody.imageTemplate,
+    );
     console.log('🚀 Video Queue - Full messageBody:', messageBody);
 
     // Send message to SQS

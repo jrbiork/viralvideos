@@ -38,34 +38,14 @@ export async function GET(request: NextRequest) {
     const wordLimit = 50;
 
     if (!prompt?.trim()) {
-      prompt = `You are a creative ideation assistant. Generate one engaging and original topic idea for a ${rawDuration}s vertical short video.`;
+      prompt = `Specify 3 curious facts about our planet, animals or science.`;
     }
 
-    // Create language-specific instructions
-    const languageInstructions = {
-      en: 'Write in English',
-      es: 'Escribe en español',
-      fr: 'Écris en français',
-      de: 'Schreibe auf Deutsch',
-      it: 'Scrivi in italiano',
-      pt: 'Escreva em português',
-      'pt-BR': 'Escreva em português brasileiro',
-    };
-
-    const langInstruction =
-      languageInstructions[language as keyof typeof languageInstructions] ||
-      'Write in English';
-
     // Create the system prompt for OpenAI
-    const systemPrompt = `Elaborate on a objective idea, precise and concise description for a short video of ${rawDuration} seconds.
-                      ${langInstruction}. 
+    const systemPrompt = `
                       Rules (follow strictly):
                       - Do not exceed ≤ ${wordLimit} words.
-                      - Keep the language simple and concise; no flowery/poetic language.
-                      - Maintain the user's intent and theme.
-                      - No lists, no scene numbers, no hashtags or emojis.
-
-                      Return only the final paragraph.`;
+                      - no hashtags or emojis.`;
 
     // Create the user prompt
     const userPrompt = `Idea: ${prompt}\nTarget: 9:16 vertical, ${rawDuration}s.\nWrite the final paragraph now (≤${wordLimit} words).`;
@@ -74,7 +54,7 @@ export async function GET(request: NextRequest) {
     const completion = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: '' },
         { role: 'user', content: userPrompt },
       ],
       max_tokens: 200,

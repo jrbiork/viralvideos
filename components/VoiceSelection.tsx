@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { DEFAULT_VOICE } from '../lib/constants';
 
 interface Voice {
@@ -89,6 +89,7 @@ export default function VoiceSelection({
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [loadingVoice, setLoadingVoice] = useState<string | null>(null);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const visibleVoices = AVAILABLE_VOICES.slice(0, visibleCount);
@@ -154,6 +155,22 @@ export default function VoiceSelection({
     onVoiceSelect(voiceId);
   };
 
+  // Mark as loaded after hydration
+  useEffect(() => {
+    setIsLoaded(true);
+  }, []);
+
+  // Show loading state until component is loaded
+  if (!isLoaded) {
+    return (
+      <div className="w-full bg-slate-900 rounded-xl p-6 border border-slate-700">
+        <div className="flex items-center justify-center h-[60px]">
+          <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent"></div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full bg-slate-900 rounded-xl p-6 border border-slate-700">
       {/* Header */}
@@ -206,46 +223,46 @@ export default function VoiceSelection({
                 )}
               </button>
 
-              {/* Selected Voice Name with Audio Waves */}
+              {/* Selected Voice Name */}
               <div className="flex items-center space-x-2">
                 <span className="text-white font-medium">
                   {selectedVoiceData.name}
                 </span>
-
-                {/* Audio Waves in Header */}
-                {isSelectedVoicePlaying && (
-                  <div className="flex items-center space-x-1">
-                    <div
-                      className="w-1 h-3 bg-purple-400 rounded-full animate-pulse"
-                      style={{
-                        animationDelay: '0ms',
-                        animationDuration: '0.8s',
-                      }}
-                    ></div>
-                    <div
-                      className="w-1 h-4 bg-purple-500 rounded-full animate-pulse"
-                      style={{
-                        animationDelay: '0.15s',
-                        animationDuration: '0.8s',
-                      }}
-                    ></div>
-                    <div
-                      className="w-1 h-2 bg-purple-400 rounded-full animate-pulse"
-                      style={{
-                        animationDelay: '0.3s',
-                        animationDuration: '0.8s',
-                      }}
-                    ></div>
-                    <div
-                      className="w-1 h-3.5 bg-purple-500 rounded-full animate-pulse"
-                      style={{
-                        animationDelay: '0.45s',
-                        animationDuration: '0.8s',
-                      }}
-                    ></div>
-                  </div>
-                )}
               </div>
+            </div>
+          )}
+
+          {/* Audio Waves in Header - Show when any voice is playing */}
+          {playingVoice && (
+            <div className="flex items-center space-x-1 ml-6">
+              <div
+                className="w-1 h-3 bg-purple-400 rounded-full animate-pulse"
+                style={{
+                  animationDelay: '0ms',
+                  animationDuration: '0.8s',
+                }}
+              ></div>
+              <div
+                className="w-1 h-4 bg-purple-500 rounded-full animate-pulse"
+                style={{
+                  animationDelay: '0.15s',
+                  animationDuration: '0.8s',
+                }}
+              ></div>
+              <div
+                className="w-1 h-2 bg-purple-400 rounded-full animate-pulse"
+                style={{
+                  animationDelay: '0.3s',
+                  animationDuration: '0.8s',
+                }}
+              ></div>
+              <div
+                className="w-1 h-3.5 bg-purple-500 rounded-full animate-pulse"
+                style={{
+                  animationDelay: '0.45s',
+                  animationDuration: '0.8s',
+                }}
+              ></div>
             </div>
           )}
         </div>
@@ -284,94 +301,55 @@ export default function VoiceSelection({
             return (
               <div
                 key={voice.id}
-                className={`flex items-center justify-between p-4 rounded-lg border transition-all duration-200 hover:bg-slate-800/50 ${
+                className={`group relative flex flex-col items-center p-4 rounded-lg border transition-all duration-300 hover:bg-slate-800/50 cursor-pointer ${
                   isSelected
                     ? 'bg-slate-800 border-purple-500/50'
                     : 'bg-slate-800/30 border-slate-600'
                 }`}
+                onClick={() => handleVoiceSelect(voice.id)}
               >
-                <div className="flex items-center space-x-4">
-                  {/* Play/Pause Button */}
-                  <button
-                    onClick={() => handlePlayVoice(voice.id)}
-                    disabled={isLoading}
-                    className={`w-12 h-12 rounded-full ${voice.avatarColor} flex items-center justify-center hover:scale-105 transition-all duration-200 relative`}
-                  >
-                    {isLoading ? (
-                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                    ) : isPlaying ? (
-                      <svg
-                        className="w-5 h-5 text-white"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                      </svg>
-                    ) : (
-                      <svg
-                        className="w-5 h-5 text-white ml-0.5"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
-                    )}
-                  </button>
+                {/* Play/Pause Button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handlePlayVoice(voice.id);
+                  }}
+                  disabled={isLoading}
+                  className={`w-12 h-12 rounded-full ${voice.avatarColor} flex items-center justify-center hover:scale-105 transition-all duration-200 relative mb-3`}
+                >
+                  {isLoading ? (
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  ) : isPlaying ? (
+                    <svg
+                      className="w-5 h-5 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                    </svg>
+                  ) : (
+                    <svg
+                      className="w-5 h-5 text-white ml-0.5"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
+                  )}
+                </button>
 
-                  {/* Voice Info */}
-                  <div className="flex items-center space-x-3">
-                    <div>
-                      <h3 className="text-white font-semibold">{voice.name}</h3>
-                    </div>
-
-                    {/* Audio Wave Animation - Larger and next to name */}
-                    {isPlaying && (
-                      <div className="flex items-center space-x-1">
-                        <div
-                          className="w-1.5 h-4 bg-purple-400 rounded-full animate-pulse"
-                          style={{
-                            animationDelay: '0ms',
-                            animationDuration: '0.8s',
-                          }}
-                        ></div>
-                        <div
-                          className="w-1.5 h-6 bg-purple-500 rounded-full animate-pulse"
-                          style={{
-                            animationDelay: '0.15s',
-                            animationDuration: '0.8s',
-                          }}
-                        ></div>
-                        <div
-                          className="w-1.5 h-3 bg-purple-400 rounded-full animate-pulse"
-                          style={{
-                            animationDelay: '0.3s',
-                            animationDuration: '0.8s',
-                          }}
-                        ></div>
-                        <div
-                          className="w-1.5 h-5 bg-purple-500 rounded-full animate-pulse"
-                          style={{
-                            animationDelay: '0.45s',
-                            animationDuration: '0.8s',
-                          }}
-                        ></div>
-                        <div
-                          className="w-1.5 h-2 bg-purple-400 rounded-full animate-pulse"
-                          style={{
-                            animationDelay: '0.6s',
-                            animationDuration: '0.8s',
-                          }}
-                        ></div>
-                      </div>
-                    )}
-                  </div>
+                {/* Voice Info */}
+                <div className="text-center">
+                  <h3 className="text-white font-semibold text-sm transition-colors duration-300 group-hover:text-purple-300">
+                    {voice.name}
+                  </h3>
                 </div>
 
-                {/* Selection Button */}
-                {isSelected ? (
-                  <div className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg text-sm font-medium flex items-center space-x-2 shadow-lg">
+                {/* Selection Indicator - Only show checkmark */}
+                {isSelected && (
+                  <div className="absolute top-2 right-2 w-6 h-6 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
                     <svg
-                      className="w-5 h-5"
+                      className="w-4 h-4 text-white"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -383,15 +361,7 @@ export default function VoiceSelection({
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                    <span>Selected</span>
                   </div>
-                ) : (
-                  <button
-                    onClick={() => handleVoiceSelect(voice.id)}
-                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors"
-                  >
-                    Select
-                  </button>
                 )}
               </div>
             );

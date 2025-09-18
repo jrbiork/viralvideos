@@ -41,8 +41,6 @@ export async function generateNanoBananaImage(
     // Generate an image using Gemini Nano Banana
     console.log('🎨 genai - Generating image from text...');
 
-    const prompt = `anime-style: ${description}`;
-
     // Retry logic for image generation
     let response;
     let retryCount = 0;
@@ -60,7 +58,7 @@ export async function generateNanoBananaImage(
         response = (await Promise.race([
           genAI.models.generateImages({
             model: 'imagen-4.0-generate-001',
-            prompt,
+            prompt: description,
             config: {
               numberOfImages: 1,
               aspectRatio: '9:16',

@@ -46,8 +46,14 @@ export async function POST(request: NextRequest) {
       cognitoToken.length,
     );
 
-    const { prompt, totalDuration, sceneCount, timestamp, voice } =
-      await request.json();
+    const {
+      prompt,
+      totalDuration,
+      sceneCount,
+      timestamp,
+      voice,
+      imageTemplate,
+    } = await request.json();
 
     if (!prompt) {
       return NextResponse.json(
@@ -103,6 +109,7 @@ export async function POST(request: NextRequest) {
       // Required fields for VideoGenerationRequest
       type: 'generate-video',
       step: 1,
+      imageTemplate,
       voice: selectedVoice,
       // prefer the backend-friendly schema
       script,
