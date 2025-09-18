@@ -110,4 +110,10 @@ npx esbuild lambda/websocket-broadcast/index.ts \
   $ESBUILD_FLAGS \
   --outfile=dist/websocket-broadcast/index.js
 
+# Bundle share-resolve lambda
+echo "📦 Bundling share-resolve lambda..."
+npx esbuild lambda/share-resolve/index.ts \
+  $ESBUILD_FLAGS \
+  --outfile=dist/share-resolve/index.js
+
 echo "✅ Lambda bundling completed!"

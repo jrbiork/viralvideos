@@ -677,6 +677,25 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda for resolving share tokens
+    const shareResolveLambda = new lambda.Function(this, 'ShareResolveLambda', {
+      runtime: lambda.Runtime.NODEJS_20_X,
+      handler: 'index.handler',
+      code: lambda.Code.fromAsset(
+        path.join(__dirname, '../dist/share-resolve'),
+      ),
+      role: lambdaRole,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 128,
+      logGroup: new logs.LogGroup(this, 'ShareResolveLambdaLogGroup', {
+        retention: logs.RetentionDays.ONE_WEEK,
+      }),
+      environment: {
+        VIDEO_BUCKET_NAME: videoBucket.bucketName,
+        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+      },
+    });
+
     // WebSocket API Gateway v2
     const websocketApi = new apigatewayv2.WebSocketApi(this, 'WebSocketApi', {
       apiName: 'Viral Videos WebSocket API',
@@ -862,5 +881,24 @@ export class ViralVideosStack extends cdk.Stack {
         authorizer: jwtAuthorizer,
       },
     );
+
+    // Public share resolve endpoint (no auth)
+    const shareResource = api.root.addResource('s');
+    const shareTokenResource = shareResource.addResource('{token}');
+    const shareResolveIntegration = new apigateway.LambdaIntegration(
+      shareResolveLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            pathParameters: {
+              token: "$input.params('token')",
+            },
+          }),
+        },
+      },
+    );
+    shareTokenResource.addMethod('GET', shareResolveIntegration, {
+      // intentionally unauthenticated
+    });
   }
 }

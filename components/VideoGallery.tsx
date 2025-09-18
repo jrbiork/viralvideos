@@ -186,11 +186,19 @@ export default function VideoGallery({}: VideoGalleryProps) {
     }
 
     try {
-      await navigator.clipboard.writeText(video.finalVideoUrl);
-      showToasterMessage('Video link copied to clipboard!', 'success');
+      const res = await authenticatedFetch('/api/share/create', {
+        method: 'POST',
+        body: { timestamp: String(video.timestamp) },
+      });
+      const shortUrl = res?.url;
+      if (!shortUrl) {
+        throw new Error('Failed to create share link');
+      }
+      await navigator.clipboard.writeText(shortUrl);
+      showToasterMessage('Short link copied to clipboard!', 'success');
     } catch (error) {
-      console.error('Error copying to clipboard:', error);
-      showToasterMessage('Failed to copy link to clipboard', 'error');
+      console.error('Error creating/copying share link:', error);
+      showToasterMessage('Failed to create share link', 'error');
     }
   };
 
