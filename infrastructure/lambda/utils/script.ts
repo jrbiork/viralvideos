@@ -13,6 +13,7 @@ export interface Scene {
   scenePosition: number;
   /** Two short bylines repeated every scene, e.g., ["blonde Swiss woman, green-blue eyes", "muscular Brazilian man with mustache"] */
   charactersBrief?: string[];
+  animated: boolean;
 }
 
 // Utility function to add IDs to scenes

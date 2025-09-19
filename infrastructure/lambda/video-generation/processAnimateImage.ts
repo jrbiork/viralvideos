@@ -51,6 +51,7 @@ export async function processAnimateImage(
 
     const creditsToCharge =
       duration === 5 ? CREDITS_COST.ai_video_5s : CREDITS_COST.ai_video_10s;
+
     const { hasSufficientCredits, currentCredits } =
       await hasSufficientCreditsByUserId(userId, creditsToCharge);
 
@@ -92,7 +93,9 @@ export async function processAnimateImage(
     // update manifest for the particular scene with the video key
     await updateManifest(manifest, {
       scenes: manifest.scenes.map((scene) =>
-        scene.scenePosition === sceneId ? { ...scene, duration } : scene,
+        scene.scenePosition === sceneId
+          ? { ...scene, duration, animated: true }
+          : scene,
       ),
     });
 

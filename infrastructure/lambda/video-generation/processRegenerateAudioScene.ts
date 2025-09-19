@@ -104,7 +104,9 @@ export async function processRegenerateAudioScene(
   const manifestHydrated = await hydrateManifest(manifest);
 
   // generate video effect
-  await generateVideoEffects([scene], request.userId, timestamp);
+  if (!scene.animated) {
+    await generateVideoEffects([scene], request.userId, timestamp);
+  }
 
   await broadcastProgress('preview_completed', request.userId, timestamp, {
     manifest: manifestHydrated,

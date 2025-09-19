@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 
 import MainLayout from '../../components/MainLayout';
 import ProgressSteps from '../../components/ProgressSteps';
@@ -26,7 +25,6 @@ import VideoPreview from '../../components/VideoPreview';
 import { Manifest } from '../types/manifest';
 
 export default function GeneratePage() {
-  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedVoice, setSelectedVoiceState] = useState(DEFAULT_VOICE); // Track voice selection
   const [isVoiceLoaded, setIsVoiceLoaded] = useState(false);
@@ -148,6 +146,7 @@ export default function GeneratePage() {
       narration: '',
       duration: 5, // Default duration
       isUserAdded: true, // Flag to identify user-added scenes
+      animated: false, // Default to false for new scenes
     };
 
     console.log('🔄 New scene:', newScene, additionalScenes.length + 1);
@@ -337,6 +336,7 @@ export default function GeneratePage() {
         duration: actualDuration,
         scenePosition: manifestScene.scenePosition,
         removed: removedOriginalScenes.has(actualSceneId), // Use local state for removed scenes
+        animated: manifestScene.animated || false, // Default to false for original scenes
       };
     });
   }, [videoGenerationState.manifest, removedOriginalScenes]);
@@ -606,7 +606,8 @@ export default function GeneratePage() {
 
     try {
       // Find the scene to regenerate
-      const scene = scenes.find((s: any) => s.id === sceneId);
+      const scene = scenes.find((s: Scene) => s.id === sceneId);
+      console.log('log1 scene:', scene);
       if (!scene) {
         console.error('Scene not found:', sceneId);
         return;
@@ -617,6 +618,7 @@ export default function GeneratePage() {
         ...scene,
         narration: sceneState.editedNarration || scene.narration,
       };
+      console.log('log1 updatedScene:', updatedScene);
 
       // Call the generate-audio-subtitle API
       const response = await fetch('/api/generate-audio-subtitle', {

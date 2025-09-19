@@ -13,6 +13,7 @@ export interface ManifestScene {
   scenePosition: number;
   id: number;
   removed?: boolean;
+  animated?: boolean;
   files: ManifestFile;
 }
 

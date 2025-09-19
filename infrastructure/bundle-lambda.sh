@@ -14,15 +14,7 @@ npx esbuild lambda/video-generation/index.ts \
 echo "📦 Copying node_modules for video-generation lambda..."
 cp -r lambda/node_modules dist/video-generation/
 
-# Bundle generate-audio-subtitle lambda
-echo "📦 Bundling generate-audio-subtitle lambda..."
-npx esbuild lambda/generate-audio-subtitle/index.ts \
-  $ESBUILD_FLAGS \
-  --outfile=dist/generate-audio-subtitle/index.js
-
-# Copy node_modules for generate-audio-subtitle lambda (needed for fluent-ffmpeg)
-echo "📦 Copying node_modules for generate-audio-subtitle lambda..."
-cp -r lambda/node_modules dist/generate-audio-subtitle/
+# Note: generate-audio-subtitle functionality is part of video-generation lambda
 
 # Bundle generate-image lambda
 echo "📦 Bundling generate-image lambda..."

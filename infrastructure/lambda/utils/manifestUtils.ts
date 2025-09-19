@@ -37,6 +37,7 @@ export async function createManifest(
         id: scene.id,
         scenePosition: scene.id,
         removed: false,
+        animated: false,
         files: {
           mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
           mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
@@ -148,6 +149,7 @@ export function createManifestScene(
     scenePosition: scenePosition,
     removed: false,
     id: scene.id,
+    animated: scene.animated || false,
     files: {
       mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
       mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
@@ -252,7 +254,8 @@ export async function hydrateManifest(
     const sceneObject: ManifestScene = {
       scenePosition: scene.scenePosition,
       id: scene.id,
-      removed: scene.removed,
+      removed: scene.removed || false,
+      animated: scene.animated || false,
       files: {
         mp3: audioUrl,
         mp4: videoUrl,

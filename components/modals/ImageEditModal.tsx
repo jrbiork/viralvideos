@@ -28,6 +28,7 @@ export default function ImageEditModal({
   onClearValidationError,
 }: ImageEditModalProps) {
   const [newImagePrompt, setNewImagePrompt] = useState('');
+  const [activeTab, setActiveTab] = useState<'edit' | 'animate'>('edit');
 
   const handleGenerateImage = async () => {
     if (!newImagePrompt.trim()) {
@@ -48,153 +49,158 @@ export default function ImageEditModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-slate-800 rounded-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Modal Header */}
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-white">Edit Image</h2>
+      <div className="bg-slate-900 rounded-2xl w-full max-w-6xl mx-4 max-h-[92vh] overflow-hidden shadow-2xl border border-slate-700/60">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5 border-b border-slate-700/60">
+          <h2 className="text-lg font-semibold text-white">Edit Scene Image</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
           >
             <svg
-              className="w-6 h-6"
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
-              viewBox="0 0 24 24"
             >
               <path
+                d="M6 18L18 6M6 6l12 12"
+                strokeWidth="2"
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
               />
             </svg>
           </button>
         </div>
 
-        {/* Modal Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Side - Current Image */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">Current Image</h3>
-            <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
-              <img
-                src={imageUrl}
-                alt={`Scene ${displayIndex + 1}`}
-                className="w-full h-full object-cover"
-              />
+        {/* Body */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 p-6">
+          {/* Left: Current Image */}
+          <div>
+            <h3 className="text-white font-semibold mb-3">Current Image</h3>
+            <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700">
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt={`Scene ${displayIndex + 1}`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                  No image
+                </div>
+              )}
+              {/* 9:16 badge */}
+              <div className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-black/50 text-slate-200 text-xs font-medium flex items-center gap-2">
+                <svg
+                  className="w-3.5 h-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                >
+                  <rect
+                    x="7"
+                    y="3"
+                    width="10"
+                    height="18"
+                    rx="2"
+                    ry="2"
+                    strokeWidth="2"
+                  />
+                </svg>
+                9:16 Vertical
+              </div>
             </div>
           </div>
 
-          {/* Middle - Prompt Input */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">
-              New Image Prompt
-            </h3>
-            <div className="space-y-3">
-              <textarea
-                value={newImagePrompt}
-                onChange={(e) => setNewImagePrompt(e.target.value)}
-                placeholder="Describe the new image you want to generate..."
-                className="w-full h-32 bg-slate-700 border border-slate-600 rounded-lg p-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-              />
+          {/* Right: Edit / Animate */}
+          <div className="flex flex-col">
+            {/* Tabs */}
+            <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-full max-w-md">
+              <button
+                className={`${
+                  activeTab === 'edit'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-300'
+                } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+                onClick={() => setActiveTab('edit')}
+              >
+                Edit
+              </button>
+              <button
+                className={`${
+                  activeTab === 'animate'
+                    ? 'bg-indigo-600 text-white'
+                    : 'text-slate-300'
+                } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+                onClick={() => setActiveTab('animate')}
+              >
+                Animate
+              </button>
+            </div>
+
+            {/* Prompt */}
+            <div className="mt-5">
+              <h4 className="text-white font-semibold mb-2">Prompt</h4>
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-0">
+                <textarea
+                  value={newImagePrompt}
+                  onChange={(e) => setNewImagePrompt(e.target.value)}
+                  placeholder={
+                    'Describe your new image... (e.g. A donut with rainbow\nsprinkles on a pink background)'
+                  }
+                  className="w-full h-36 bg-transparent p-4 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
+                />
+                <div className="px-4 pb-4 text-xs text-slate-400">
+                  Tip: keep under 100 words for the best video pacing
+                </div>
+              </div>
+
+              <div className="mt-4 flex items-center gap-3">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-600/40 transition-colors"
+                  onClick={() => {
+                    // reserved: could open AI assist modal
+                  }}
+                >
+                  <svg
+                    className="w-4 h-4"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      d="M12 3v18m9-9H3"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  Write Magic Script
+                </button>
+              </div>
+            </div>
+
+            {/* Footer actions */}
+            <div className="mt-auto pt-6 flex items-center justify-end">
               <button
                 onClick={handleGenerateImage}
                 disabled={!newImagePrompt.trim() || isGeneratingImage}
-                className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
+                className={`${
                   newImagePrompt.trim() && !isGeneratingImage
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                    : 'bg-gray-500 text-gray-300 cursor-not-allowed'
-                }`}
+                    ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                    : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                } inline-flex items-center px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors`}
               >
                 {isGeneratingImage ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    <span>Generating...</span>
-                  </div>
+                  <span className="flex items-center gap-2">
+                    <span className="inline-block h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                    Generating...
+                  </span>
                 ) : (
-                  'Generate New Image (10 credits)'
+                  'Generate image: 5 Credits'
                 )}
               </button>
-
-              {/* Replace Original Image Button */}
-              <button
-                onClick={onSaveImage}
-                disabled={isSavingImage}
-                className={`w-full py-3 px-6 rounded-lg font-medium transition-colors mt-3 ${
-                  isSavingImage
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
-                } text-white`}
-              >
-                {isSavingImage ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                    <span>Saving Image...</span>
-                  </div>
-                ) : (
-                  'Replace Original Image'
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Right Side - New Generated Image Placeholder */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-white">
-              New Generated Image
-            </h3>
-            <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center">
-              {generatedImageUrl ? (
-                <img
-                  src={generatedImageUrl}
-                  alt="Generated Image"
-                  className="w-full h-full object-cover"
-                />
-              ) : isGeneratingImage ? (
-                <div className="text-center text-gray-400">
-                  <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-500 border-t-transparent mx-auto mb-2"></div>
-                  <p className="text-sm">Generating your image...</p>
-                </div>
-              ) : newImagePrompt ? (
-                <div className="text-center text-gray-400">
-                  <svg
-                    className="w-16 h-16 mx-auto mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <p className="text-sm">
-                    Image will appear here after generation
-                  </p>
-                </div>
-              ) : (
-                <div className="text-center text-gray-400">
-                  <svg
-                    className="w-16 h-16 mx-auto mb-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <p className="text-sm">
-                    Enter a prompt to generate a new image
-                  </p>
-                </div>
-              )}
             </div>
           </div>
         </div>

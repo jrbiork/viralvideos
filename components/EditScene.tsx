@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import AIAnimationModal from './modals/AIAnimationModal';
-import ImageEditModal from './modals/ImageEditModal';
 
 export interface Scene {
   id: number;
@@ -11,6 +9,7 @@ export interface Scene {
   scenePosition?: number;
   placeholderImageUrl?: string;
   removed?: boolean;
+  animated?: boolean;
 }
 
 interface EditSceneProps {

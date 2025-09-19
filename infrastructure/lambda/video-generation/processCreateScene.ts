@@ -35,6 +35,7 @@ export async function processCreateScene(
       description: '',
       duration: 10,
       narration: captionText,
+      animated: false,
     },
   ];
 
