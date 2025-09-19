@@ -3,6 +3,7 @@ import { useAuth } from './AuthContext';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 import { WebSocketMessage } from '@/app/types/websocket';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { useUserDataCache } from '../hooks/useUserDataCache';
 
 interface UserCredits {
   credits: number;
@@ -12,9 +13,9 @@ interface UserCredits {
 export function useUserCredits() {
   const { user } = useAuth();
   const { authenticatedFetch } = useAuthenticatedFetch();
+  const { userData, loading, error, updateCredits, refresh } =
+    useUserDataCache();
   const [credits, setCredits] = useState<UserCredits | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const refreshPromiseRef = useRef<Promise<UserCredits | null> | null>(null);
 
   // listen to credit_updated  from websocket and update credits
@@ -25,6 +26,8 @@ export function useUserCredits() {
         case 'credit_updated':
           console.log('WebSocket credit_updated msg:', message);
           if (message.data.currentCredits !== undefined) {
+            // Update the cache directly
+            updateCredits(message.data.currentCredits);
             setCredits({
               credits: message.data.currentCredits,
               lastUpdated: new Date().toISOString(),
@@ -52,6 +55,15 @@ export function useUserCredits() {
       throw new Error('User not authenticated');
     }
 
+    // Use cached data if available, otherwise fetch from API
+    if (userData) {
+      return {
+        credits: userData.user.creditsAvailable || 0,
+        lastUpdated: new Date().toISOString(),
+      };
+    }
+
+    // Fallback to API call if no cached data
     const data = await authenticatedFetch('/api/user');
     return {
       credits: data.user.creditsAvailable || 0,
@@ -60,42 +72,39 @@ export function useUserCredits() {
   };
 
   const refreshCredits = async (): Promise<void> => {
-    // Prevent multiple simultaneous refresh attempts
-    if (refreshPromiseRef.current) {
-      await refreshPromiseRef.current;
-      return;
-    }
+    // Use the cache's refresh method
+    await refresh();
 
-    setLoading(true);
-    setError(null);
-
-    const refreshPromise = fetchCredits()
-      .then((userCredits) => {
-        setCredits(userCredits);
-        return userCredits;
-      })
-      .catch((err) => {
-        setError(err.message);
-        throw err;
-      })
-      .finally(() => {
-        setLoading(false);
-        refreshPromiseRef.current = null;
+    // Update local credits state if we have cached data
+    if (userData) {
+      setCredits({
+        credits: userData.user.creditsAvailable || 0,
+        lastUpdated: new Date().toISOString(),
       });
-
-    refreshPromiseRef.current = refreshPromise;
-    await refreshPromise;
+    }
   };
 
-  // Fetch credits when user changes
+  // Sync cached user data with local credits state
   useEffect(() => {
-    if (user) {
+    if (userData) {
+      setCredits({
+        credits: userData.user.creditsAvailable || 0,
+        lastUpdated: new Date().toISOString(),
+      });
+    } else if (!user) {
+      setCredits(null);
+    }
+  }, [userData, user]);
+
+  // Fetch credits when user changes (only if no cached data)
+  useEffect(() => {
+    if (user && !userData) {
       refreshCredits();
-    } else {
+    } else if (!user) {
       setCredits(null);
       setError(null);
     }
-  }, [user]);
+  }, [user, userData]);
 
   return {
     credits: credits?.credits || 0,

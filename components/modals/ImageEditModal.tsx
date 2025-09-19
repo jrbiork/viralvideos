@@ -83,12 +83,37 @@ export default function ImageEditModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-slate-900 rounded-2xl w-full max-w-4xl mx-4 max-h-[65vh] overflow-hidden shadow-2xl border border-slate-700/60">
+      <div
+        className={`bg-slate-900 rounded-2xl w-full mx-4 max-h-[65vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out ${
+          activeTab === 'animate' ? 'max-w-6xl' : 'max-w-4xl'
+        }`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/60">
-          <h2 className="text-base font-semibold text-white">
-            {activeTab === 'edit' ? 'Edit Scene Image' : 'Animate Scene Image'}
-          </h2>
+          <h2 className="text-base font-semibold text-white">Scene Image</h2>
+          {/* Tabs */}
+          <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-48">
+            <button
+              className={`${
+                activeTab === 'edit'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-300'
+              } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+              onClick={() => setActiveTab('edit')}
+            >
+              Edit
+            </button>
+            <button
+              className={`${
+                activeTab === 'animate'
+                  ? 'bg-indigo-600 text-white'
+                  : 'text-slate-300'
+              } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+              onClick={() => setActiveTab('animate')}
+            >
+              Animate
+            </button>
+          </div>
           <button
             onClick={onClose}
             className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
@@ -110,7 +135,7 @@ export default function ImageEditModal({
         </div>
 
         {/* Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 items-start">
           {/* Left: Current Image */}
           <div className="lg:col-span-1">
             <h3 className="text-white font-semibold mb-2">Current Image</h3>
@@ -268,33 +293,9 @@ export default function ImageEditModal({
           ) : (
             /* Right: Edit / Animate */
             <div className="flex flex-col lg:col-span-2">
-              {/* Tabs */}
-              <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-full max-w-sm">
-                <button
-                  className={`${
-                    activeTab === 'edit'
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-slate-300'
-                  } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-                  onClick={() => setActiveTab('edit')}
-                >
-                  Edit
-                </button>
-                <button
-                  className={`${
-                    activeTab === 'animate'
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-slate-300'
-                  } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-                  onClick={() => setActiveTab('animate')}
-                >
-                  Animate
-                </button>
-              </div>
-
               {/* Tab Content */}
               {activeTab === 'edit' ? (
-                <div className="mt-4">
+                <div>
                   <h4 className="text-white font-semibold mb-2">Prompt</h4>
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-0">
                     <textarea
@@ -309,61 +310,72 @@ export default function ImageEditModal({
                   </div>
                 </div>
               ) : (
-                <div className="mt-4 space-y-4">
-                  <h4 className="text-white font-semibold mb-2">Prompt</h4>
-                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-0">
-                    <textarea
-                      value={newImagePrompt}
-                      onChange={(e) => setNewImagePrompt(e.target.value)}
-                      placeholder="Animate the donut spinning slowly with sprinkles falling around it."
-                      className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
-                    />
-                    <div className="px-3 pb-3 text-xs text-slate-400">
-                      Tip: keep under 100 words for the best video pacing
-                    </div>
+                <div className="space-y-4">
+                  {/* Labels Row */}
+                  <div className="grid grid-cols-3 gap-4 items-center">
+                    <h4 className="text-white font-semibold mb-2">Prompt</h4>
+                    <div></div>
+                    <h3 className="text-white font-semibold mb-2 text-center">
+                      Animation Example
+                    </h3>
                   </div>
 
-                  {/* Example Animation */}
-                  <div className="space-y-2">
-                    <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 max-h-32">
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
-                        <div className="w-16 h-16 rounded-full bg-amber-600 flex items-center justify-center">
-                          <span className="text-white text-xs font-bold">
-                            🍩
-                          </span>
+                  <div className="grid grid-cols-3 gap-4 items-start">
+                    {/* Input and Duration - 2/3 */}
+                    <div className="col-span-2 space-y-3">
+                      <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 h-28">
+                        <textarea
+                          value={newImagePrompt}
+                          onChange={(e) => setNewImagePrompt(e.target.value)}
+                          placeholder="Animate the donut spinning slowly with sprinkles falling around it."
+                          className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
+                        />
+                        <div className="px-3 pb-3 text-xs text-slate-400">
+                          Tip: keep under 100 words for the best video pacing
+                        </div>
+                      </div>
+
+                      {/* Duration Selection */}
+                      <div className="space-y-2 m-4">
+                        <h5 className="text-white font-medium text-sm">
+                          Duration
+                        </h5>
+                        <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-full max-w-xs">
+                          <button
+                            onClick={() => setAnimationDuration(5)}
+                            className={`${
+                              animationDuration === 5
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-300'
+                            } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+                          >
+                            5 seconds
+                          </button>
+                          <button
+                            onClick={() => setAnimationDuration(10)}
+                            className={`${
+                              animationDuration === 10
+                                ? 'bg-indigo-600 text-white'
+                                : 'text-slate-300'
+                            } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+                          >
+                            10 seconds
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    <button className="text-indigo-400 text-sm hover:text-indigo-300 transition-colors">
-                      Example animation - see how it works
-                    </button>
-                  </div>
-
-                  {/* Duration Selection */}
-                  <div className="space-y-2">
-                    <h5 className="text-white font-medium text-sm">Duration</h5>
-                    <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-full max-w-xs">
-                      <button
-                        onClick={() => setAnimationDuration(5)}
-                        className={`${
-                          animationDuration === 5
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-300'
-                        } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-                      >
-                        5 seconds
-                      </button>
-                      <button
-                        onClick={() => setAnimationDuration(10)}
-                        className={`${
-                          animationDuration === 10
-                            ? 'bg-indigo-600 text-white'
-                            : 'text-slate-300'
-                        } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-                      >
-                        10 seconds
-                      </button>
+                    {/* Example Animation - 1/3 */}
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 h-[40vh]">
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
+                          <div className="w-16 h-16 rounded-full bg-amber-600 flex items-center justify-center">
+                            <span className="text-white text-xs font-bold">
+                              🍩
+                            </span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

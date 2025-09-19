@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '../../components/MainLayout';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
+import { useUserDataCache } from '../../hooks/useUserDataCache';
 
 interface UserSettings {
   id: string;
@@ -27,29 +28,40 @@ export default function SettingsPage() {
     'personal',
   );
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
+  const {
+    userData,
+    loading: userDataLoading,
+    refresh: refreshUserData,
+  } = useUserDataCache();
 
   useEffect(() => {
     if (isAuthenticated) {
       fetchUserSettings();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, userData]);
 
   const fetchUserSettings = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // Fetch user data from the session
-      const sessionResponse = await fetch('/api/auth/session');
-      const sessionData = await sessionResponse.json();
+      // Use cached user data if available, otherwise fetch from session
+      let userInfo;
+      if (userData) {
+        userInfo = userData.user;
+      } else {
+        const sessionResponse = await fetch('/api/auth/session');
+        const sessionData = await sessionResponse.json();
+        userInfo = sessionData.user;
+      }
 
-      if (sessionData.user) {
+      if (userInfo) {
         // Mock subscription data for now - in a real app this would come from your backend
         const mockSettings: UserSettings = {
-          id: sessionData.user.id,
-          email: sessionData.user.email,
-          name: sessionData.user.name,
-          picture: sessionData.user.picture,
+          id: userInfo.id,
+          email: userInfo.email,
+          name: userInfo.name,
+          picture: userInfo.picture,
           subscription: {
             mode: 'free', // This would be fetched from your subscription service
             renewalDate: undefined, // Free users don't have renewal dates
@@ -131,7 +143,7 @@ export default function SettingsPage() {
     }
   };
 
-  if (loading) {
+  if (loading || userDataLoading) {
     return (
       <div
         className="fixed inset-0 flex items-center justify-center"
