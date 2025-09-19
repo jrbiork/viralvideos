@@ -138,7 +138,7 @@ export default function ImageEditModal({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 items-start">
           {/* Left: Current Image */}
           <div className="lg:col-span-1">
-            <h3 className="text-white font-semibold mb-2">Current Image</h3>
+            <h3 className="text-white font-semibold mb-4">Current Image</h3>
             <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 max-h-[40vh]">
               {imageUrl ? (
                 <img
@@ -337,7 +337,7 @@ export default function ImageEditModal({
 
                       {/* Duration Selection */}
                       <div className="space-y-2 m-4">
-                        <h5 className="text-white font-medium text-sm">
+                        <h5 className="text-white font-medium text-sm mt-4 pt-4">
                           Duration
                         </h5>
                         <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-full max-w-xs">
