@@ -175,7 +175,7 @@ export async function hydrateManifest(
   const scenes: ManifestScene[] = [];
 
   const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
-  const expiresIn = 3600; // 1 hour
+  const expiresIn = 36000;
   const bucketVideoName = process.env.VIDEO_BUCKET_NAME || '';
   const bucketName = VIDEO_PARTS_BUCKET_NAME;
 
