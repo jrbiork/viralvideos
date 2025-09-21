@@ -73,6 +73,7 @@ export default function EditScene({
 
   const [isImageEditModalOpen, setIsImageEditModalOpen] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isAnimatingImage, setIsAnimatingImage] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>();
   const [isSavingImage, setIsSavingImage] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(
@@ -880,8 +881,54 @@ export default function EditScene({
               setIsGeneratingImage(false);
             }
           }}
+          onAnimateImage={async (prompt: string, duration: number) => {
+            setIsAnimatingImage(true);
+            try {
+              // Call the animate-image API endpoint
+              const response = await fetch('/api/animate-image', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                  animationPrompt: prompt,
+                  animationDuration: duration,
+                  timestamp: queryParams.get('timestamp'),
+                  sceneId: scene.id,
+                  imageUrl: imageUrl,
+                }),
+              });
+
+              if (response.ok) {
+                const result = await response.json();
+                console.log('Image animation successful:', result);
+                // Animation is queued, so we don't get an immediate result
+                alert(
+                  "Animation started! You will be notified when it's ready.",
+                );
+                // Close modal after 2 seconds
+                setTimeout(() => {
+                  setIsImageEditModalOpen(false);
+                }, 2000);
+              } else {
+                const errorData = await response.json();
+                console.error('Image animation failed:', errorData);
+                alert(
+                  `Failed to animate image: ${
+                    errorData.error || 'Unknown error'
+                  }`,
+                );
+              }
+            } catch (error) {
+              console.error('Error calling animate-image API:', error);
+              alert('Failed to animate image. Please try again.');
+            } finally {
+              setIsAnimatingImage(false);
+            }
+          }}
           onSaveImage={handleSaveImage}
           isGeneratingImage={isGeneratingImage}
+          isAnimatingImage={isAnimatingImage}
           isSavingImage={isSavingImage}
           generatedImageUrl={generatedImageUrl}
           validationErrors={{ image: false }}

@@ -6,8 +6,10 @@ interface ImageEditModalProps {
   imageUrl?: string;
   displayIndex: number;
   onGenerateImage: (prompt: string) => Promise<void>;
+  onAnimateImage: (prompt: string, duration: number) => Promise<void>;
   onSaveImage: () => Promise<void>;
   isGeneratingImage: boolean;
+  isAnimatingImage: boolean;
   isSavingImage: boolean;
   generatedImageUrl?: string | null;
   validationErrors: { image: boolean };
@@ -20,8 +22,10 @@ export default function ImageEditModal({
   imageUrl,
   displayIndex,
   onGenerateImage,
+  onAnimateImage,
   onSaveImage,
   isGeneratingImage,
+  isAnimatingImage,
   isSavingImage,
   generatedImageUrl,
   validationErrors,
@@ -45,6 +49,21 @@ export default function ImageEditModal({
     } catch (error) {
       console.error('Error generating image:', error);
       alert('Failed to generate image. Please try again.');
+    }
+  };
+
+  const handleAnimateImage = async () => {
+    if (!newImagePrompt.trim()) {
+      alert('Please enter a prompt for the animation');
+      return;
+    }
+
+    try {
+      await onAnimateImage(newImagePrompt, animationDuration);
+      onClearValidationError();
+    } catch (error) {
+      console.error('Error animating image:', error);
+      alert('Failed to animate image. Please try again.');
     }
   };
 
@@ -90,7 +109,9 @@ export default function ImageEditModal({
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/60">
-          <h2 className="text-base font-semibold text-white">Scene Image</h2>
+          <h2 className="text-base font-semibold text-white">
+            Scene {displayIndex + 1}
+          </h2>
           {/* Tabs */}
           <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-48">
             <button
@@ -322,7 +343,10 @@ export default function ImageEditModal({
 
                   <div className="grid grid-cols-3 gap-4 items-start">
                     {/* Input and Duration - 2/3 */}
-                    <div className="col-span-2 space-y-3">
+                    <div
+                      className="col-span-2 space-y-3 flex flex-col"
+                      style={{ height: '40vh' }}
+                    >
                       <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 h-28">
                         <textarea
                           value={newImagePrompt}
@@ -331,101 +355,152 @@ export default function ImageEditModal({
                           className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
                         />
                         <div className="px-3 pb-3 text-xs text-slate-400">
-                          Tip: keep under 100 words for the best video pacing
+                          Tip: a whale jumping out of the sea behind them
                         </div>
                       </div>
 
                       {/* Duration Selection */}
-                      <div className="space-y-2 m-4">
-                        <h5 className="text-white font-medium text-sm mt-4 pt-4">
-                          Duration
-                        </h5>
-                        <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-full max-w-xs">
-                          <button
-                            onClick={() => setAnimationDuration(5)}
-                            className={`${
-                              animationDuration === 5
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-300'
-                            } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-                          >
-                            5 seconds
-                          </button>
-                          <button
-                            onClick={() => setAnimationDuration(10)}
-                            className={`${
-                              animationDuration === 10
-                                ? 'bg-indigo-600 text-white'
-                                : 'text-slate-300'
-                            } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-                          >
-                            10 seconds
-                          </button>
+                      <div
+                        className="space-y-2 mt-8"
+                        style={{ paddingTop: '40px' }}
+                      >
+                        <div className="flex items-center gap-4">
+                          <h5 className="text-white font-bold text-sm">
+                            Duration
+                          </h5>
+                          <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1">
+                            <button
+                              onClick={() => setAnimationDuration(5)}
+                              className={`${
+                                animationDuration === 5
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'text-slate-300'
+                              } py-2 px-3 rounded-lg text-sm font-medium transition-colors`}
+                            >
+                              5 seconds
+                            </button>
+                            <button
+                              onClick={() => setAnimationDuration(10)}
+                              className={`${
+                                animationDuration === 10
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'text-slate-300'
+                              } py-2 px-3 rounded-lg text-sm font-medium transition-colors`}
+                            >
+                              10 seconds
+                            </button>
+                          </div>
                         </div>
+                      </div>
+
+                      {/* Animate Button */}
+                      <div className="flex items-center justify-end mt-auto">
+                        <button
+                          onClick={handleAnimateImage}
+                          disabled={!newImagePrompt.trim() || isAnimatingImage}
+                          className={`${
+                            newImagePrompt.trim() && !isAnimatingImage
+                              ? 'text-white hover:brightness-95'
+                              : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                          } inline-flex items-center text-xs font-semibold transition-colors`}
+                          style={
+                            newImagePrompt.trim() && !isAnimatingImage
+                              ? {
+                                  borderRadius: '12px',
+                                  background:
+                                    'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                                  boxShadow:
+                                    '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                                  height: '40px',
+                                  padding: '8px 16px',
+                                  justifyContent: 'center',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                }
+                              : {
+                                  borderRadius: '12px',
+                                  height: '40px',
+                                  padding: '8px 16px',
+                                  justifyContent: 'center',
+                                  alignItems: 'center',
+                                  gap: '10px',
+                                }
+                          }
+                        >
+                          {isAnimatingImage ? (
+                            <span className="flex items-center gap-2">
+                              <span className="inline-block h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                              Animating...
+                            </span>
+                          ) : (
+                            'Animate image: 10 Credits'
+                          )}
+                        </button>
                       </div>
                     </div>
 
                     {/* Example Animation - 1/3 */}
                     <div className="flex flex-col items-center justify-center">
-                      <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 h-[40vh]">
-                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-100 to-amber-200">
-                          <div className="w-16 h-16 rounded-full bg-amber-600 flex items-center justify-center">
-                            <span className="text-white text-xs font-bold">
-                              🍩
-                            </span>
-                          </div>
-                        </div>
+                      <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 max-h-[40vh]">
+                        <video
+                          src="/assets/animation-example.mp4"
+                          className="w-full h-full object-cover"
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Footer actions */}
-              <div className="mt-auto pt-4 flex items-center justify-end">
-                <button
-                  onClick={handleGenerateImage}
-                  disabled={!newImagePrompt.trim() || isGeneratingImage}
-                  className={`${
-                    newImagePrompt.trim() && !isGeneratingImage
-                      ? 'text-white hover:brightness-95'
-                      : 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                  } inline-flex items-center text-xs font-semibold transition-colors`}
-                  style={
-                    newImagePrompt.trim() && !isGeneratingImage
-                      ? {
-                          borderRadius: '12px',
-                          background:
-                            'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
-                          boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-                          height: '40px',
-                          padding: '8px 16px',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          gap: '10px',
-                        }
-                      : {
-                          borderRadius: '12px',
-                          height: '40px',
-                          padding: '8px 16px',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          gap: '10px',
-                        }
-                  }
-                >
-                  {isGeneratingImage ? (
-                    <span className="flex items-center gap-2">
-                      <span className="inline-block h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
-                      Generating...
-                    </span>
-                  ) : activeTab === 'edit' ? (
-                    'Generate image: 5 Credits'
-                  ) : (
-                    'Animate image: 10 Credits'
-                  )}
-                </button>
-              </div>
+              {/* Footer actions - only for edit tab */}
+              {activeTab === 'edit' && (
+                <div className="mt-auto pt-4 flex items-center justify-end">
+                  <button
+                    onClick={handleGenerateImage}
+                    disabled={!newImagePrompt.trim() || isGeneratingImage}
+                    className={`${
+                      newImagePrompt.trim() && !isGeneratingImage
+                        ? 'text-white hover:brightness-95'
+                        : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                    } inline-flex items-center text-xs font-semibold transition-colors`}
+                    style={
+                      newImagePrompt.trim() && !isGeneratingImage
+                        ? {
+                            borderRadius: '12px',
+                            background:
+                              'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                            boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                            height: '40px',
+                            padding: '8px 16px',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '10px',
+                          }
+                        : {
+                            borderRadius: '12px',
+                            height: '40px',
+                            padding: '8px 16px',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            gap: '10px',
+                          }
+                    }
+                  >
+                    {isGeneratingImage ? (
+                      <span className="flex items-center gap-2">
+                        <span className="inline-block h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                        Generating...
+                      </span>
+                    ) : (
+                      'Generate image: 5 Credits'
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

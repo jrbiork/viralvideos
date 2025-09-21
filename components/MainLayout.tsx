@@ -133,7 +133,7 @@ export default function MainLayout({
             {rightSidebarContent && currentStep !== 3 && (
               <div
                 className="flex-1 order-1 md:order-2 overflow-hidden mt-4"
-                style={{ backgroundColor: '#090526' }}
+                style={{ marginRight: '45px', backgroundColor: '#090526' }}
               >
                 {rightSidebarContent}
               </div>
