@@ -164,7 +164,6 @@ async function handleCreateOrUpdateUser(
         createdAt: now,
         lastLoginAt: now,
         creditsAvailable: 10,
-        plan: 'free',
         lastPaymentAt: null,
         subscription: {
           mode: 'free',

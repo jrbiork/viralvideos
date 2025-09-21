@@ -4,7 +4,7 @@ import { handleExportVideo, formatFileSize } from '../lib/export-utils';
 
 interface UserSubscription {
   mode: 'free' | 'starter' | 'creator' | 'influencer';
-  renewalDate?: string;
+  renewalDate?: string | null;
   status: 'active' | 'cancelled' | 'expired';
 }
 

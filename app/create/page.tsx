@@ -33,15 +33,12 @@ export default function GeneratePage() {
   // User data and subscription information
   const { userData } = useUserDataCache();
 
-  // Create user subscription data (mock for now - in real app this would come from backend)
+  // Get user subscription data from backend
   const userSubscription = useMemo(() => {
-    if (!userData?.user) return undefined;
+    console.log('userSubscription:', userData);
+    if (!userData?.user?.subscription) return undefined;
 
-    return {
-      mode: 'free' as const, // This would be fetched from your subscription service
-      renewalDate: undefined, // Free users don't have renewal dates
-      status: 'active' as const,
-    };
+    return userData.user.subscription;
   }, [userData]);
 
   const setSelectedVoice = (voiceId: string) => {

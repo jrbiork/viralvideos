@@ -12,6 +12,11 @@ interface UserData {
     username: string;
     createdAt: string;
     lastLoginAt: string;
+    subscription?: {
+      mode: 'free' | 'starter' | 'creator' | 'influencer';
+      renewalDate?: string | null;
+      status: 'active' | 'cancelled' | 'expired';
+    };
   };
 }
 
