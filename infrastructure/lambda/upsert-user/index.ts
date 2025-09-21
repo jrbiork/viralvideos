@@ -166,6 +166,11 @@ async function handleCreateOrUpdateUser(
         creditsAvailable: 10,
         plan: 'free',
         lastPaymentAt: null,
+        subscription: {
+          mode: 'free',
+          renewalDate: null,
+          status: 'active',
+        },
       },
     });
 
@@ -196,6 +201,11 @@ async function handleCreateOrUpdateUser(
           createdAt: now,
           lastLoginAt: now,
           creditsAvailable: 10,
+          subscription: {
+            mode: 'free',
+            renewalDate: null,
+            status: 'active',
+          },
         },
         action: 'created',
       }),

@@ -160,7 +160,7 @@ export default function ImageEditModal({
           {/* Left: Current Image */}
           <div className="lg:col-span-1 flex flex-col items-center">
             <h3 className="text-white font-semibold mb-4">Current Image</h3>
-            <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 max-h-[40vh]">
+            <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 max-h-[40vh] mt-2">
               {imageUrl ? (
                 <img
                   src={imageUrl}
@@ -318,7 +318,7 @@ export default function ImageEditModal({
               {activeTab === 'edit' ? (
                 <div>
                   <h4 className="text-white font-semibold mb-2">Prompt</h4>
-                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-0">
+                  <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 mt-6">
                     <textarea
                       value={newImagePrompt}
                       onChange={(e) => setNewImagePrompt(e.target.value)}
@@ -341,60 +341,62 @@ export default function ImageEditModal({
                     </h3>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-4 items-start">
+                  <div className="grid grid-cols-3 gap-4 items-start mt-0 pt-0">
                     {/* Input and Duration - 2/3 */}
                     <div
-                      className="col-span-2 space-y-3 flex flex-col"
+                      className="col-span-2 flex flex-col justify-between"
                       style={{ height: '40vh' }}
                     >
-                      <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 h-28">
-                        <textarea
-                          value={newImagePrompt}
-                          onChange={(e) => setNewImagePrompt(e.target.value)}
-                          placeholder="Animate the donut spinning slowly with sprinkles falling around it."
-                          className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
-                        />
-                        <div className="px-3 pb-3 text-xs text-slate-400">
-                          Tip: a whale jumping out of the sea behind them
+                      <div className="space-y-3">
+                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 h-28">
+                          <textarea
+                            value={newImagePrompt}
+                            onChange={(e) => setNewImagePrompt(e.target.value)}
+                            placeholder="Animate the donut spinning slowly with sprinkles falling around it."
+                            className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
+                          />
+                          <div className="px-3 pb-3 text-xs text-slate-400">
+                            Tip: a whale jumping out of the sea behind them
+                          </div>
                         </div>
-                      </div>
 
-                      {/* Duration Selection */}
-                      <div
-                        className="space-y-2 mt-8"
-                        style={{ paddingTop: '40px' }}
-                      >
-                        <div className="flex items-center gap-4">
-                          <h5 className="text-white font-bold text-sm">
-                            Duration
-                          </h5>
-                          <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1">
-                            <button
-                              onClick={() => setAnimationDuration(5)}
-                              className={`${
-                                animationDuration === 5
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'text-slate-300'
-                              } py-2 px-3 rounded-lg text-sm font-medium transition-colors`}
-                            >
-                              5 seconds
-                            </button>
-                            <button
-                              onClick={() => setAnimationDuration(10)}
-                              className={`${
-                                animationDuration === 10
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'text-slate-300'
-                              } py-2 px-3 rounded-lg text-sm font-medium transition-colors`}
-                            >
-                              10 seconds
-                            </button>
+                        {/* Duration Selection */}
+                        <div
+                          className="space-y-2 mt-8"
+                          style={{ paddingTop: '40px' }}
+                        >
+                          <div className="flex items-center gap-4">
+                            <h5 className="text-white font-bold text-sm">
+                              Duration
+                            </h5>
+                            <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1">
+                              <button
+                                onClick={() => setAnimationDuration(5)}
+                                className={`${
+                                  animationDuration === 5
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-slate-300'
+                                } py-2 px-3 rounded-lg text-sm font-medium transition-colors`}
+                              >
+                                5 seconds
+                              </button>
+                              <button
+                                onClick={() => setAnimationDuration(10)}
+                                className={`${
+                                  animationDuration === 10
+                                    ? 'bg-indigo-600 text-white'
+                                    : 'text-slate-300'
+                                } py-2 px-3 rounded-lg text-sm font-medium transition-colors`}
+                              >
+                                10 seconds
+                              </button>
+                            </div>
                           </div>
                         </div>
                       </div>
 
                       {/* Animate Button */}
-                      <div className="flex items-center justify-end mt-auto">
+                      <div className="flex items-center justify-end">
                         <button
                           onClick={handleAnimateImage}
                           disabled={!newImagePrompt.trim() || isAnimatingImage}
