@@ -85,7 +85,7 @@ export default function ImageEditModal({
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
       <div
         className={`bg-slate-900 rounded-2xl w-full mx-4 max-h-[65vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out ${
-          activeTab === 'animate' ? 'max-w-6xl' : 'max-w-4xl'
+          activeTab === 'animate' ? 'max-w-[60rem]' : 'max-w-[51.2rem]'
         }`}
       >
         {/* Header */}
@@ -135,9 +135,9 @@ export default function ImageEditModal({
         </div>
 
         {/* Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 items-start">
           {/* Left: Current Image */}
-          <div className="lg:col-span-1">
+          <div className="lg:col-span-1 flex flex-col items-center">
             <h3 className="text-white font-semibold mb-4">Current Image</h3>
             <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 max-h-[40vh]">
               {imageUrl ? (
@@ -176,7 +176,7 @@ export default function ImageEditModal({
 
           {/* Right: New Image (when generated) or Edit/Animate Controls */}
           {hasGeneratedImage && generatedImageUrl ? (
-            <div className="flex flex-col items-center lg:col-span-2">
+            <div className="flex flex-col items-center lg:col-span-3">
               <h3
                 className="text-white font-semibold mb-2 text-center"
                 style={{
@@ -292,7 +292,7 @@ export default function ImageEditModal({
             </div>
           ) : (
             /* Right: Edit / Animate */
-            <div className="flex flex-col lg:col-span-2">
+            <div className="flex flex-col lg:col-span-3">
               {/* Tab Content */}
               {activeTab === 'edit' ? (
                 <div>
