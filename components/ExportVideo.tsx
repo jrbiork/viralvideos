@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { Manifest } from '../app/types/manifest';
 import { handleExportVideo, formatFileSize } from '../lib/export-utils';
+
+interface UserSubscription {
+  mode: 'free' | 'starter' | 'creator' | 'influencer';
+  renewalDate?: string;
+  status: 'active' | 'cancelled' | 'expired';
+}
+
 interface ExportVideoProps {
   onExportVideo: () => void;
   isExporting?: boolean;
@@ -12,6 +19,7 @@ interface ExportVideoProps {
     message: string,
     type: 'success' | 'error' | 'info',
   ) => void;
+  userSubscription?: UserSubscription;
 }
 
 export default function ExportVideo({
@@ -22,6 +30,7 @@ export default function ExportVideo({
   videoCompletionData = null,
   onRemoveWatermark,
   showToasterMessage,
+  userSubscription,
 }: ExportVideoProps) {
   const [watermarkRemoved, setWatermarkRemoved] = useState(false);
 
@@ -183,13 +192,23 @@ export default function ExportVideo({
                       </div>
                     </label>
 
-                    <label className="flex items-center space-x-3 cursor-pointer">
+                    <label
+                      className={`flex items-center space-x-3 ${
+                        userSubscription?.mode === 'free'
+                          ? 'cursor-not-allowed opacity-50'
+                          : 'cursor-pointer'
+                      }`}
+                    >
                       <input
                         type="radio"
                         name="watermark"
                         checked={watermarkRemoved}
-                        onChange={() => setWatermarkRemoved(true)}
-                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
+                        onChange={() =>
+                          userSubscription?.mode !== 'free' &&
+                          setWatermarkRemoved(true)
+                        }
+                        disabled={userSubscription?.mode === 'free'}
+                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500 disabled:cursor-not-allowed"
                       />
                       <div className="flex-1 flex justify-between items-center min-w-[300px]">
                         <div className="text-white whitespace-nowrap flex-shrink-0">

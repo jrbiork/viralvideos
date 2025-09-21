@@ -21,6 +21,7 @@ import { useSceneManagement } from '../../hooks/useSceneManagement';
 import { useWebSocket } from '../../hooks/useWebSocket';
 import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
 import VideoPreview from '../../components/VideoPreview';
+import { useUserDataCache } from '../../hooks/useUserDataCache';
 
 import { Manifest } from '../types/manifest';
 
@@ -28,6 +29,20 @@ export default function GeneratePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedVoice, setSelectedVoiceState] = useState(DEFAULT_VOICE); // Track voice selection
   const [isVoiceLoaded, setIsVoiceLoaded] = useState(false);
+
+  // User data and subscription information
+  const { userData } = useUserDataCache();
+
+  // Create user subscription data (mock for now - in real app this would come from backend)
+  const userSubscription = useMemo(() => {
+    if (!userData?.user) return undefined;
+
+    return {
+      mode: 'free' as const, // This would be fetched from your subscription service
+      renewalDate: undefined, // Free users don't have renewal dates
+      status: 'active' as const,
+    };
+  }, [userData]);
 
   const setSelectedVoice = (voiceId: string) => {
     localStorage.setItem('selectedVoice', voiceId);
@@ -907,7 +922,7 @@ export default function GeneratePage() {
                   <span>Exporting...</span>
                 </>
               ) : !videoCompletionData?.finalVideoUrl ? (
-                <span>Video Not Ready</span>
+                <span>Creating your video...</span>
               ) : (
                 <span>Export Video</span>
               )}
@@ -1086,6 +1101,7 @@ export default function GeneratePage() {
                     console.log('Remove watermark clicked');
                   }}
                   showToasterMessage={showToasterMessage}
+                  userSubscription={userSubscription}
                 />
               </div>
 
@@ -1104,7 +1120,7 @@ export default function GeneratePage() {
                       />
                     ) : (
                       <div className="bg-slate-900 border border-slate-700 rounded-2xl h-96 flex items-center justify-center text-gray-400">
-                        Video not ready yet
+                        Creating your video...
                       </div>
                     )}
                   </div>

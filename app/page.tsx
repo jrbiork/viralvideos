@@ -152,7 +152,7 @@ export default function Home() {
           </h1>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
             Text to viral shorts in minutes - no watermark. <br /> text → video
-            → auto-caption → post.
+            → post.
           </p>
 
           {/* CTA Buttons */}

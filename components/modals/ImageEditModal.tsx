@@ -91,7 +91,6 @@ export default function ImageEditModal({
       await onSaveImage();
       setHasGeneratedImage(false);
       setNewImagePrompt('');
-      onClose();
     } catch (error) {
       console.error('Error saving image:', error);
       alert('Failed to save image. Please try again.');
@@ -326,7 +325,7 @@ export default function ImageEditModal({
                       className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
                     />
                     <div className="px-3 pb-3 text-xs text-slate-400">
-                      Tip: You can include details about style, colors and mood.
+                      E.g.: An elephant in the jungle
                     </div>
                   </div>
                 </div>
@@ -352,11 +351,11 @@ export default function ImageEditModal({
                           <textarea
                             value={newImagePrompt}
                             onChange={(e) => setNewImagePrompt(e.target.value)}
-                            placeholder="Animate the donut spinning slowly with sprinkles falling around it."
+                            placeholder="Describe how animate the image..."
                             className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
                           />
                           <div className="px-3 pb-3 text-xs text-slate-400">
-                            Tip: a whale jumping out of the sea behind them
+                            E.g.: A whale jumping out of the sea
                           </div>
                         </div>
 
