@@ -1112,7 +1112,6 @@ export default function GeneratePage() {
                     {videoCompletionData?.finalVideoUrl ? (
                       <VideoPreview
                         videoUrl={videoCompletionData.finalVideoUrl}
-                        autoPlay
                         loop={false}
                       />
                     ) : (

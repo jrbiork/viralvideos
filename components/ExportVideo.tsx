@@ -114,7 +114,7 @@ export default function ExportVideo({
           {/* Final Preview Section */}
           <div>
             <div className="relative flex justify-center">
-              <div className="aspect-[9/16] bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl overflow-hidden w-full max-w-[180px]">
+              <div className="aspect-[9/16] bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl overflow-hidden w-full max-w-[280px]">
                 {thumbnailUrl ? (
                   <img
                     src={thumbnailUrl}
@@ -168,59 +168,12 @@ export default function ExportVideo({
                 {/* Generated */}
                 {generatedAt && (
                   <div>
-                    <div className="text-white font-medium">Generated:</div>
+                    <div className="text-white font-medium">Generated at:</div>
                     <div className="text-gray-300 text-sm">
-                      {new Date(parseInt(generatedAt)).toLocaleDateString()}
+                      {new Date(parseInt(generatedAt)).toLocaleString()}
                     </div>
                   </div>
                 )}
-
-                {/* Watermark */}
-                <div>
-                  <div className="text-white font-medium mb-3">Watermark:</div>
-                  <div className="space-y-2">
-                    <label className="flex items-center space-x-3 cursor-pointer">
-                      <input
-                        type="radio"
-                        name="watermark"
-                        checked={!watermarkRemoved}
-                        onChange={() => setWatermarkRemoved(false)}
-                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500"
-                      />
-                      <div className="flex-1">
-                        <div className="text-white">With watermark</div>
-                      </div>
-                    </label>
-
-                    <label
-                      className={`flex items-center space-x-3 ${
-                        userSubscription?.mode === 'free'
-                          ? 'cursor-not-allowed opacity-50'
-                          : 'cursor-pointer'
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="watermark"
-                        checked={watermarkRemoved}
-                        onChange={() =>
-                          userSubscription?.mode !== 'free' &&
-                          setWatermarkRemoved(true)
-                        }
-                        disabled={userSubscription?.mode === 'free'}
-                        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 focus:ring-purple-500 disabled:cursor-not-allowed"
-                      />
-                      <div className="flex-1 flex justify-between items-center min-w-[300px]">
-                        <div className="text-white whitespace-nowrap flex-shrink-0">
-                          Without watermark
-                        </div>
-                        <div className="text-gray-400 text-sm ml-4 whitespace-nowrap flex-shrink-0">
-                          (only for subscribers)
-                        </div>
-                      </div>
-                    </label>
-                  </div>
-                </div>
               </div>
 
               {/* Right Column */}
@@ -245,6 +198,20 @@ export default function ExportVideo({
                   <div className="text-gray-300 text-sm">Included</div>
                 </div>
               </div>
+              {/* Subscription Prompt for Free Users - Spanning All Columns */}
+              {userSubscription?.mode === 'free' && (
+                <div className="col-span-full mt-6">
+                  <a href="/pricing" className="transition-colors ">
+                    <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-500/30 rounded-xl p-6 w-full">
+                      <div className="text-center">
+                        <div className="text-white font-normal text-base">
+                          Subscribe to remove the watermark
+                        </div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
