@@ -28,6 +28,7 @@ interface EditSceneProps {
   regeneratingSceneId?: number | null;
   creatingSceneId?: number | null;
   setCreatingSceneId?: React.Dispatch<React.SetStateAction<number | null>>;
+  isLoadingVideoScenes?: boolean;
   setIsLoadingVideoScenes: (value: boolean) => void;
   timestamp?: string;
   onDeleteScene?: (sceneId: number) => void;
@@ -36,6 +37,12 @@ interface EditSceneProps {
   displayIndex?: number; // The sequential display index for this scene
   totalScenesCount?: number; // Total number of scenes (original + additional)
   isDisabled?: boolean; // Whether the scene is disabled (e.g., during deletion)
+  showToasterMessage?: (
+    message: string,
+    type: 'success' | 'error' | 'info',
+  ) => void;
+  animationRequested?: boolean;
+  onAnimationRequested?: () => void;
 }
 
 export default function EditScene({
@@ -53,6 +60,7 @@ export default function EditScene({
   regeneratingSceneId,
   creatingSceneId,
   setCreatingSceneId,
+  isLoadingVideoScenes,
   setIsLoadingVideoScenes,
   timestamp,
   onDeleteScene,
@@ -61,6 +69,9 @@ export default function EditScene({
   displayIndex = 0,
   totalScenesCount = 0,
   isDisabled = false,
+  showToasterMessage,
+  animationRequested,
+  onAnimationRequested,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -83,6 +94,98 @@ export default function EditScene({
   const [animationPrompt, setAnimationPrompt] = useState('');
   const [animationDuration, setAnimationDuration] = useState('5s');
   const [validationErrors, setValidationErrors] = useState({ image: false });
+  // animationRequested is controlled by parent (SceneCardsContainer)
+  const [isRequestingAnimation, setIsRequestingAnimation] = useState(false);
+
+  // animationRequested is managed by parent via WS preview_completed toggle
+
+  // Handlers extracted from inline props for ImageEditModal
+  const handleGenerateImageFromModal = async (prompt: string) => {
+    setIsGeneratingImage(true);
+    try {
+      const response = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          imagePrompt: prompt,
+          timestamp: queryParams.get('timestamp'),
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Image generation successful:', result);
+        if (result.data?.imageUrl) {
+          setGeneratedImageUrl(result.data.imageUrl);
+        }
+      } else {
+        const errorData = await response.json();
+        console.error('Image generation failed:', errorData);
+        showToasterMessage?.(
+          `Failed to generate image: ${errorData.error || 'Unknown error'}`,
+          'error',
+        );
+      }
+    } catch (error) {
+      console.error('Error calling generate-image API:', error);
+      showToasterMessage?.(
+        'Failed to generate image. Please try again.',
+        'error',
+      );
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleAnimateImageFromModal = async (
+    prompt: string,
+    duration: number,
+  ) => {
+    setIsAnimatingImage(true);
+    onAnimationRequested && onAnimationRequested();
+    setIsLoadingVideoScenes(true);
+    try {
+      const response = await fetch('/api/animate-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          animationPrompt: prompt,
+          animationDuration: duration,
+          timestamp: queryParams.get('timestamp'),
+          sceneId: scene.id,
+          imageUrl: imageUrl,
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('Image animation successful:', result);
+        // Close modal after 1 seconds
+        setTimeout(() => {
+          setIsImageEditModalOpen(false);
+        }, 1000);
+      } else {
+        const errorData = await response.json();
+        console.error('Image animation failed:', errorData);
+        showToasterMessage?.(
+          `Failed to animate image: ${errorData.error || 'Unknown error'}`,
+          'error',
+        );
+      }
+    } catch (error) {
+      console.error('Error calling animate-image API:', error);
+      showToasterMessage?.(
+        'Failed to animate image. Please try again.',
+        'error',
+      );
+    } finally {
+      setIsAnimatingImage(false);
+    }
+  };
 
   React.useEffect(() => {
     setCurrentImageUrl(imageUrl || null);
@@ -140,10 +243,11 @@ export default function EditScene({
       // Note: Don't clear creatingSceneId here - it will be cleared by WebSocket 'preview_completed' message
     } catch (e) {
       console.error('❌ Error creating scene:', e);
-      alert(
+      showToasterMessage?.(
         `Failed to create scene: ${
           e instanceof Error ? e.message : 'Unknown error'
         }`,
+        'error',
       );
       // Clear creating scene ID on error
       if (setCreatingSceneId) {
@@ -181,13 +285,15 @@ export default function EditScene({
       const data = await res.json();
       console.log('✅ Animation requested:', data);
       setIsAiAnimationModalOpen(false);
+      setAnimationRequested(true);
       setIsLoadingVideoScenes(true);
     } catch (e) {
       console.error('❌ Error requesting animation:', e);
-      alert(
+      showToasterMessage?.(
         `Failed to request animation: ${
           e instanceof Error ? e.message : 'Unknown error'
         }`,
+        'error',
       );
     }
   };
@@ -257,10 +363,11 @@ export default function EditScene({
       // );
     } catch (error) {
       console.error('❌ Error saving image:', error);
-      alert(
+      showToasterMessage?.(
         `Failed to save image: ${
           error instanceof Error ? error.message : 'Unknown error'
         }`,
+        'error',
       );
     } finally {
       setIsSavingImage(false);
@@ -306,12 +413,14 @@ export default function EditScene({
           }
         >
           {/* Loading Overlay */}
-          {isRegenerating && (
+          {(isRegenerating || (animationRequested && isLoadingVideoScenes)) && (
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center z-50">
               <div className="flex flex-col items-center space-y-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
                 <span className="text-white text-sm font-medium">
-                  Regenerating Scene, Audio and Captions...
+                  {isRegenerating
+                    ? 'Regenerating Scene, Audio and Captions...'
+                    : 'Generating Animation...'}
                 </span>
               </div>
             </div>
@@ -844,88 +953,8 @@ export default function EditScene({
           onClose={() => setIsImageEditModalOpen(false)}
           imageUrl={imageUrl}
           displayIndex={displayIndex}
-          onGenerateImage={async (prompt: string) => {
-            setIsGeneratingImage(true);
-            try {
-              // Call the generate-image API endpoint
-              const response = await fetch('/api/generate-image', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  imagePrompt: prompt,
-                  timestamp: queryParams.get('timestamp'),
-                }),
-              });
-
-              if (response.ok) {
-                const result = await response.json();
-                console.log('Image generation successful:', result);
-                if (result.data?.imageUrl) {
-                  setGeneratedImageUrl(result.data.imageUrl);
-                }
-              } else {
-                const errorData = await response.json();
-                console.error('Image generation failed:', errorData);
-                alert(
-                  `Failed to generate image: ${
-                    errorData.error || 'Unknown error'
-                  }`,
-                );
-              }
-            } catch (error) {
-              console.error('Error calling generate-image API:', error);
-              alert('Failed to generate image. Please try again.');
-            } finally {
-              setIsGeneratingImage(false);
-            }
-          }}
-          onAnimateImage={async (prompt: string, duration: number) => {
-            setIsAnimatingImage(true);
-            try {
-              // Call the animate-image API endpoint
-              const response = await fetch('/api/animate-image', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  animationPrompt: prompt,
-                  animationDuration: duration,
-                  timestamp: queryParams.get('timestamp'),
-                  sceneId: scene.id,
-                  imageUrl: imageUrl,
-                }),
-              });
-
-              if (response.ok) {
-                const result = await response.json();
-                console.log('Image animation successful:', result);
-                // Animation is queued, so we don't get an immediate result
-                alert(
-                  "Animation started! You will be notified when it's ready.",
-                );
-                // Close modal after 2 seconds
-                setTimeout(() => {
-                  setIsImageEditModalOpen(false);
-                }, 2000);
-              } else {
-                const errorData = await response.json();
-                console.error('Image animation failed:', errorData);
-                alert(
-                  `Failed to animate image: ${
-                    errorData.error || 'Unknown error'
-                  }`,
-                );
-              }
-            } catch (error) {
-              console.error('Error calling animate-image API:', error);
-              alert('Failed to animate image. Please try again.');
-            } finally {
-              setIsAnimatingImage(false);
-            }
-          }}
+          onGenerateImage={handleGenerateImageFromModal}
+          onAnimateImage={handleAnimateImageFromModal}
           onSaveImage={handleSaveImage}
           isGeneratingImage={isGeneratingImage}
           isAnimatingImage={isAnimatingImage}
@@ -1036,10 +1065,24 @@ export default function EditScene({
 
                     <button
                       onClick={handleAnimation}
-                      className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${'bg-purple-600 hover:bg-purple-700 text-white'}`}
+                      disabled={isRequestingAnimation}
+                      className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
+                        isRequestingAnimation
+                          ? 'bg-purple-500/60 text-white cursor-not-allowed'
+                          : 'bg-purple-600 hover:bg-purple-700 text-white'
+                      }`}
                     >
-                      Generate Animation (
-                      {animationDuration === '5s' ? '25' : '50'} credits)
+                      {isRequestingAnimation ? (
+                        <span className="inline-flex items-center gap-2">
+                          <span className="inline-block h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                          Animating...
+                        </span>
+                      ) : (
+                        <>
+                          Generate Animation (
+                          {animationDuration === '5s' ? '25' : '50'} credits)
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>

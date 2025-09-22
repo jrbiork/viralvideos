@@ -42,6 +42,10 @@ interface SceneCardsContainerProps {
   deletingSceneId: number | null;
   removedOriginalScenes: Set<number>;
   onRestoreOriginalScene?: (sceneId: number) => void;
+  showToasterMessage?: (
+    message: string,
+    type: 'success' | 'error' | 'info',
+  ) => void;
 }
 
 export default function SceneCardsContainer({
@@ -67,22 +71,21 @@ export default function SceneCardsContainer({
   deletingSceneId,
   removedOriginalScenes,
   onRestoreOriginalScene,
+  showToasterMessage,
 }: SceneCardsContainerProps) {
+  const [animatingSceneId, setAnimatingSceneId] = React.useState<number | null>(
+    null,
+  );
+
+  // Clear animating flag when preview completes
+  React.useEffect(() => {
+    if (!videoGenerationState.isLoadingVideoScenes) {
+      setAnimatingSceneId(null);
+    }
+  }, [videoGenerationState.isLoadingVideoScenes]);
+
   return (
     <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4 custom-scrollbar">
-      {videoGenerationState.isLoadingVideoScenes && (
-        <div className="flex items-center justify-center">
-          <div className="text-center">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-              <span className="text-lg font-medium text-gray-700">
-                Loading your videos...
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Scene Cards */}
       {videoGenerationState.isLoadingAudioSubtitles
         ? // Show skeleton placeholders while loading audio/subtitles
@@ -141,6 +144,9 @@ export default function SceneCardsContainer({
                       editingScene={sceneState.editingScene}
                       editedNarration={sceneState.editedNarration}
                       onEditScene={handleEditSceneWithSubtitle}
+                      isLoadingVideoScenes={
+                        videoGenerationState.isLoadingVideoScenes
+                      }
                       setIsLoadingVideoScenes={(value: boolean) =>
                         setVideoGenerationState((prev: any) => ({
                           ...prev,
@@ -193,6 +199,8 @@ export default function SceneCardsContainer({
                       imageUrl={imageUrl}
                       isSelected={sceneState.selectedSceneId === scene.id}
                       onSelect={handleSceneSelection}
+                      animationRequested={animatingSceneId === scene.id}
+                      onAnimationRequested={() => setAnimatingSceneId(scene.id)}
                       regeneratingSceneId={regeneratingSceneId}
                       creatingSceneId={creatingSceneId}
                       setCreatingSceneId={setCreatingSceneId}
@@ -205,6 +213,7 @@ export default function SceneCardsContainer({
                       isDisabled={
                         deletingSceneId === scene.id && !scene.isUserAdded
                       }
+                      showToasterMessage={showToasterMessage}
                     />
 
                     {/* Add scene button after each scene (except the last one) */}

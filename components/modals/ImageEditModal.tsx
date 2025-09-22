@@ -100,7 +100,7 @@ export default function ImageEditModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
       <div
         className={`bg-slate-900 rounded-2xl w-full mx-4 max-h-[65vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out ${
           activeTab === 'animate' ? 'max-w-[60rem]' : 'max-w-[51.2rem]'
