@@ -10,6 +10,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { promisify } from 'util';
 import { exec, execFile } from 'child_process';
+import { UserItem } from './user';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -55,6 +56,7 @@ export async function getVideoEffectUrls(
   userId: string,
   timestamp: string,
   scenes: Omit<Scene, 'description' | 'narration'>[],
+  user: UserItem | null,
 ): Promise<Array<{ [key: string]: string }>> {
   // Check if video effects already exist by listing S3 objects with prefix timestamp.scene- and suffix .mp4
   const s3Client = new S3Client({
@@ -101,12 +103,12 @@ export async function getVideoEffectUrls(
         (urlObj: any): urlObj is { [key: string]: string } => urlObj !== null,
       );
     } else {
-      return await generateVideoEffects(scenes, userId, timestamp);
+      return await generateVideoEffects(scenes, userId, timestamp, user);
     }
   } catch (error) {
     console.error('Error checking existing video effects:', error);
     // Fallback to generating new video effects
-    return await generateVideoEffects(scenes, userId, timestamp);
+    return await generateVideoEffects(scenes, userId, timestamp, user);
   }
 }
 
@@ -114,6 +116,7 @@ export async function generateVideoEffects(
   scenes: Omit<Scene, 'description' | 'narration'>[],
   userId: string,
   timestamp: string,
+  user: UserItem | null,
 ): Promise<Array<{ [key: string]: string }>> {
   // Format: [{ "timestamp.scene-id.mp4": "signed-url" }]
   try {
@@ -139,6 +142,7 @@ export async function generateVideoEffects(
           scene,
           userId,
           timestamp,
+          user,
         );
 
         // Extract filename without user prefix (e.g., "1004.scene-1.mp4")
@@ -190,6 +194,7 @@ async function generateSceneVideo(
   scene: Omit<Scene, 'description' | 'narration'>,
   userId: string,
   timestamp: string,
+  user: UserItem | null,
 ): Promise<string> {
   try {
     // Download the image
@@ -199,32 +204,39 @@ async function generateSceneVideo(
     });
     const imageBuffer = Buffer.from(imageResponse.data);
 
-    // download the watermark.png from viral short parts bucket
-    const watermarkKey = 'watermark.png';
-    const watermarkUrl = await getSignedUrl(
-      s3,
-      new GetObjectCommand({
-        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-        Key: watermarkKey,
-      }),
-    );
-
-    const watermarkResponse = await axios.get(watermarkUrl, {
-      responseType: 'arraybuffer',
-    });
-    const watermarkBuffer = Buffer.from(watermarkResponse.data);
-
     // Create temporary files
     const tempDir = '/tmp';
     const inputImagePath = path.join(tempDir, `input-${scene.id}.png`);
     const outputVideoPath = path.join(tempDir, `output-${scene.id}.mp4`);
 
+    let watermarkPath = '';
+    // download the watermark.png from viral short parts bucket
+    if (
+      user?.subscription?.mode === 'free' ||
+      user?.subscription?.status === 'cancelled' ||
+      user?.subscription?.status === 'expired'
+    ) {
+      const watermarkKey = 'watermark.png';
+      const watermarkUrl = await getSignedUrl(
+        s3,
+        new GetObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: watermarkKey,
+        }),
+      );
+
+      const watermarkResponse = await axios.get(watermarkUrl, {
+        responseType: 'arraybuffer',
+      });
+      const watermarkBuffer = Buffer.from(watermarkResponse.data);
+
+      // Write watermark to temp file
+      watermarkPath = path.join(tempDir, `watermark-${scene.id}.png`);
+      fs.writeFileSync(watermarkPath, watermarkBuffer);
+    }
+
     // Write image to temp file
     fs.writeFileSync(inputImagePath, imageBuffer);
-
-    // Write watermark to temp file
-    const watermarkPath = path.join(tempDir, `watermark-${scene.id}.png`);
-    fs.writeFileSync(watermarkPath, watermarkBuffer);
 
     const frames = Math.floor(scene.duration * 25);
     const blurInDuration = 0.2;
@@ -271,50 +283,90 @@ async function generateSceneVideo(
 
     const config = motionVariants[variant as keyof typeof motionVariants];
 
-    const filterComplex =
-      `[0:v]zoompan=z='${config.zoom}':d=${frames}:` +
-      `x='${config.x}':` +
-      `y='${config.y}':` +
-      `s=${config.supersample},` +
-      `tmix=${config.tmix},` +
-      `fps=25,` +
-      `${config.scale},` +
-      `split[b0][b1];` +
-      `[b1]boxblur=8:1[bb];` +
-      `[b0][bb]blend=all_expr='A*(1-max(0\\,1 - T/${blurInDuration})) + B*max(0\\,1 - T/${blurInDuration})'[main];` +
-      `[1:v]scale=200:-1[watermark];` +
-      `[main][watermark]overlay=(W-w)/2:12[v]`;
+    // Build filter graph conditionally depending on watermark availability
+    const hasWatermark = Boolean(
+      watermarkPath && watermarkPath.trim().length > 0,
+    );
+
+    const filterComplex = hasWatermark
+      ? `[0:v]zoompan=z='${config.zoom}':d=${frames}:` +
+        `x='${config.x}':` +
+        `y='${config.y}':` +
+        `s=${config.supersample},` +
+        `tmix=${config.tmix},` +
+        `fps=25,` +
+        `${config.scale},` +
+        `split[b0][b1];` +
+        `[b1]boxblur=8:1[bb];` +
+        `[b0][bb]blend=all_expr='A*(1-max(0\,1 - T/${blurInDuration})) + B*max(0\,1 - T/${blurInDuration})'[main];` +
+        `[1:v]scale=200:-1[watermark];` +
+        `[main][watermark]overlay=(W-w)/2:12[v]`
+      : `[0:v]zoompan=z='${config.zoom}':d=${frames}:` +
+        `x='${config.x}':` +
+        `y='${config.y}':` +
+        `s=${config.supersample},` +
+        `tmix=${config.tmix},` +
+        `fps=25,` +
+        `${config.scale},` +
+        `split[b0][b1];` +
+        `[b1]boxblur=8:1[bb];` +
+        `[b0][bb]blend=all_expr='A*(1-max(0\,1 - T/${blurInDuration})) + B*max(0\,1 - T/${blurInDuration})'[v]`;
 
     const ffmpegPath = resolveFfmpegPath();
 
-    const ffmpegArgs = [
-      '-loop',
-      '1',
-      '-i',
-      inputImagePath,
-      '-loop',
-      '1',
-      '-i',
-      watermarkPath,
-      '-filter_complex',
-      filterComplex,
-      '-map',
-      '[v]',
-      '-c:v',
-      'libx264',
-      '-preset',
-      'veryfast',
-      '-crf',
-      '23',
-      '-pix_fmt',
-      'yuv420p',
-      '-threads',
-      '0',
-      '-t',
-      scene.duration.toString(),
-      '-y',
-      outputVideoPath,
-    ];
+    const ffmpegArgs = hasWatermark
+      ? [
+          '-loop',
+          '1',
+          '-i',
+          inputImagePath,
+          '-loop',
+          '1',
+          '-i',
+          watermarkPath,
+          '-filter_complex',
+          filterComplex,
+          '-map',
+          '[v]',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'veryfast',
+          '-crf',
+          '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-threads',
+          '0',
+          '-t',
+          scene.duration.toString(),
+          '-y',
+          outputVideoPath,
+        ]
+      : [
+          '-loop',
+          '1',
+          '-i',
+          inputImagePath,
+          '-filter_complex',
+          filterComplex,
+          '-map',
+          '[v]',
+          '-c:v',
+          'libx264',
+          '-preset',
+          'veryfast',
+          '-crf',
+          '23',
+          '-pix_fmt',
+          'yuv420p',
+          '-threads',
+          '0',
+          '-t',
+          scene.duration.toString(),
+          '-y',
+          outputVideoPath,
+        ];
 
     console.log(`🎬 Running FFmpeg command for scene ${scene.id + 1}:`);
     console.log(`🎬 Scene duration: ${scene.duration}s`);
@@ -357,7 +409,9 @@ async function generateSceneVideo(
     // Clean up temporary files
     try {
       fs.unlinkSync(inputImagePath);
-      fs.unlinkSync(watermarkPath);
+      if (hasWatermark && fs.existsSync(watermarkPath)) {
+        fs.unlinkSync(watermarkPath);
+      }
       fs.unlinkSync(outputVideoPath);
     } catch (cleanupError) {
       console.warn(

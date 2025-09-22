@@ -14,6 +14,7 @@ import { Scene } from '../utils/script';
 
 import { updateManifest } from '../utils/manifestUtils';
 import { Manifest } from '../types/s3Types';
+import { getUser } from '../utils/user';
 
 export interface processRegenerateAudioSceneRequest {
   scene: Scene;
@@ -103,9 +104,11 @@ export async function processRegenerateAudioScene(
 
   const manifestHydrated = await hydrateManifest(manifest);
 
+  const user = await getUser(request.userId);
+
   // generate video effect
   if (!scene.animated) {
-    await generateVideoEffects([scene], request.userId, timestamp);
+    await generateVideoEffects([scene], request.userId, timestamp, user);
   }
 
   await broadcastProgress('preview_completed', request.userId, timestamp, {

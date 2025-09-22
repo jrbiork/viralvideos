@@ -4,6 +4,7 @@ import { getManifest, hydrateManifest } from '../utils/manifestUtils';
 import { uploadImageToS3 } from '../utils/s3Uploader';
 import { generateVideoEffects } from '../utils/videoEffects';
 import { broadcastProgress } from '../utils/broadcastProgress';
+import { getUser } from '../utils/user';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -58,13 +59,20 @@ export async function processSaveImage(
       };
     }
 
+    const user = await getUser(userId);
+
     let hydratedManifest = await hydrateManifest(manifest);
 
     broadcastProgress('image_created', userId, timestamp, {
       manifest: hydratedManifest,
     });
 
-    await generateVideoEffects([{ id: sceneId, duration }], userId, timestamp);
+    await generateVideoEffects(
+      [{ id: sceneId, duration }],
+      userId,
+      timestamp,
+      user,
+    );
 
     hydratedManifest = await hydrateManifest(manifest);
 

@@ -9,6 +9,7 @@ import { Manifest, ManifestScene } from '../../types/s3Types';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { UserItem } from '../../utils/user';
 
 const ffmpeg = require('fluent-ffmpeg');
 
@@ -31,6 +32,7 @@ export async function combineVideoAndAudio(
   timestamp: string,
   manifest: Manifest,
   removedScenes: number[] = [],
+  user: UserItem | null,
 ): Promise<{ finalVideoSignedUrl: string; size: string }> {
   console.log(
     '🎬 Combining video, audio, and subtitles scene by scene for user:',

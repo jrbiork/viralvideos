@@ -171,26 +171,6 @@ export default function ImageEditModal({
                   No image
                 </div>
               )}
-              {/* 9:16 badge */}
-              <div className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-black/50 text-slate-200 text-xs font-medium flex items-center gap-2">
-                <svg
-                  className="w-3.5 h-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <rect
-                    x="7"
-                    y="3"
-                    width="10"
-                    height="18"
-                    rx="2"
-                    ry="2"
-                    strokeWidth="2"
-                  />
-                </svg>
-                9:16 Vertical
-              </div>
             </div>
           </div>
 
@@ -216,26 +196,6 @@ export default function ImageEditModal({
                     alt="Generated image"
                     className="w-full h-full object-cover"
                   />
-                  {/* 9:16 badge */}
-                  <div className="absolute top-3 left-3 px-3 py-1 rounded-lg bg-black/50 text-slate-200 text-xs font-medium flex items-center gap-2">
-                    <svg
-                      className="w-3.5 h-3.5"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                    >
-                      <rect
-                        x="7"
-                        y="3"
-                        width="10"
-                        height="18"
-                        rx="2"
-                        ry="2"
-                        strokeWidth="2"
-                      />
-                    </svg>
-                    9:16 Vertical
-                  </div>
                 </div>
               </div>
 

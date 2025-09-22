@@ -10,6 +10,7 @@ import {
 import { generateSubtitles } from '../utils/subtitles';
 import { generateVideoEffects } from '../utils/videoEffects';
 import { broadcastProgress } from '../utils/broadcastProgress';
+import { getUser } from '../utils/user';
 
 export interface CreateSceneRequest {
   imageUrl: string;
@@ -66,8 +67,10 @@ export async function processCreateScene(
   // Step 4: Generate subtitle file
   await generateSubtitles(scenes, request.userId, timestamp, subtitles);
 
+  const user = await getUser(request.userId);
+
   // generate video effect
-  await generateVideoEffects(scenes, request.userId, timestamp);
+  await generateVideoEffects(scenes, request.userId, timestamp, user);
 
   const manifestScene = createManifestScene(
     scenes[0],

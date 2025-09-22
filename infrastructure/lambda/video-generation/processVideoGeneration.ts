@@ -20,6 +20,7 @@ import {
   hydrateManifest,
 } from '../utils/manifestUtils';
 import { broadcastProgress } from '../utils/broadcastProgress';
+import { getUser } from '../utils/user';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -268,9 +269,13 @@ export async function processVideoGeneration(
       'Audio and Subtitles completed',
     );
 
+    // get the user's subscription
+    const user = await getUser(request.userId);
+    console.log('User fetched:', JSON.stringify(user, null, 2));
+
     // Step 4: Generate camera movements from image
     // check if there are already all the video effects generated in the s3 bucket for the timestamp
-    await getVideoEffectUrls(request.userId, timestamp, scenes);
+    await getVideoEffectUrls(request.userId, timestamp, scenes, user);
 
     console.log('🎬 Video effects URLs generated:');
     console.log(
