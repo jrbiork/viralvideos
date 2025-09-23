@@ -14,7 +14,7 @@ export default function AddSceneButton({
   disabled = false,
 }: AddSceneButtonProps) {
   return (
-    <div className="flex items-center justify-center my-4">
+    <div className="flex items-center justify-center my-6">
       {/* Left separator */}
       <div className="flex-1 h-px bg-gradient-to-r from-transparent via-slate-600 to-slate-600"></div>
 

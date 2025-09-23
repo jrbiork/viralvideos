@@ -96,6 +96,9 @@ export default function EditScene({
   const [validationErrors, setValidationErrors] = useState({ image: false });
   // animationRequested is controlled by parent (SceneCardsContainer)
   const [isRequestingAnimation, setIsRequestingAnimation] = useState(false);
+  const [initialImageEditTab, setInitialImageEditTab] = useState<
+    'edit' | 'animate'
+  >('edit');
 
   // animationRequested is managed by parent via WS preview_completed toggle
 
@@ -285,7 +288,7 @@ export default function EditScene({
       const data = await res.json();
       console.log('✅ Animation requested:', data);
       setIsAiAnimationModalOpen(false);
-      setAnimationRequested(true);
+      onAnimationRequested && onAnimationRequested();
       setIsLoadingVideoScenes(true);
     } catch (e) {
       console.error('❌ Error requesting animation:', e);
@@ -576,30 +579,32 @@ export default function EditScene({
                 }}
               />
 
-              {/* Hover Overlay with Edit Icon */}
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsImageEditModalOpen(true);
-                  }}
-                  className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-full transition-colors duration-200"
-                  title="Edit Image"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              {/* Hover Overlay with Top-Right Icons */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="absolute top-1 right-1 flex gap-1 pointer-events-none">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInitialImageEditTab('edit');
+                      setIsImageEditModalOpen(true);
+                    }}
+                    className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
+                    title="Edit"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
+                    <img src="/edit.svg" alt="Edit" className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInitialImageEditTab('animate');
+                      setIsImageEditModalOpen(true);
+                    }}
+                    className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
+                    title="Animate"
+                  >
+                    <img src="/animate.svg" alt="Animate" className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ) : scene.isUserAdded ? (
@@ -629,30 +634,32 @@ export default function EditScene({
                 <span className="text-xs text-center">No Image</span>
               </div>
 
-              {/* Hover Overlay with Edit Icon */}
-              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex items-center justify-center">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsImageEditModalOpen(true);
-                  }}
-                  className="bg-purple-600 hover:bg-purple-700 text-white p-2 rounded-full transition-colors duration-200"
-                  title="Edit Image"
-                >
-                  <svg
-                    className="w-5 h-5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+              {/* Hover Overlay with Top-Right Icons */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                <div className="absolute top-1 right-1 flex gap-1 pointer-events-none">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInitialImageEditTab('edit');
+                      setIsImageEditModalOpen(true);
+                    }}
+                    className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
+                    title="Edit"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                    />
-                  </svg>
-                </button>
+                    <img src="/edit.svg" alt="Edit" className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setInitialImageEditTab('animate');
+                      setIsImageEditModalOpen(true);
+                    }}
+                    className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
+                    title="Animate"
+                  >
+                    <img src="/animate.svg" alt="Animate" className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
           ) : (
@@ -677,15 +684,11 @@ export default function EditScene({
           <div className="flex-1 flex flex-col">
             {isEditing ? (
               <div className="space-y-1">
-                <div className="relative mb-2">
-                  <div className="absolute top-3 left-3 w-6 h-6 bg-purple-600 rounded flex items-center justify-center m-2">
-                    <span className="text-white text-sm font-bold">T</span>
-                  </div>
+                <div className="relative">
                   <textarea
                     className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     style={{
-                      margin: '8px 0 16px',
-                      padding: '20px 24px 24px 64px',
+                      padding: '20px 24px 24px 24px',
                     }}
                     value={editedNarration}
                     onChange={(e) => onEditedNarrationChange(e.target.value)}
@@ -718,7 +721,8 @@ export default function EditScene({
                     /* OK button for user-added scenes */
                     <button
                       onClick={() => onSaveEdit(scene.id)}
-                      className="flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
+                      style={{ backgroundColor: 'rgb(99, 102, 241)' }}
                       title="Save changes"
                     >
                       <svg
@@ -734,7 +738,7 @@ export default function EditScene({
                           d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      <span>Save Caption</span>
+                      <span>Save</span>
                     </button>
                   ) : (
                     /* Generate Audio/Caption button for original scenes */
@@ -742,7 +746,8 @@ export default function EditScene({
                       onClick={() =>
                         onRegenerateAudio && onRegenerateAudio(scene.id)
                       }
-                      className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
+                      className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
+                      style={{ backgroundColor: '#6366F1' }}
                       title="Generate audio and captions"
                     >
                       <svg
@@ -758,12 +763,12 @@ export default function EditScene({
                           d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
                         />
                       </svg>
-                      <span>Regenerate Scene</span>
+                      <span>Regenerate</span>
                     </button>
                   )}
                   <button
                     onClick={onCancelEdit}
-                    className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-[#5B5BFF] hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
+                    className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
                     style={{
                       boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
                     }}
@@ -788,11 +793,8 @@ export default function EditScene({
             ) : (
               <div className="space-y-1">
                 <div className="relative">
-                  <div className="absolute top-3 left-3 w-6 h-6 bg-purple-600 rounded flex items-center justify-center m-2">
-                    <span className="text-white text-sm font-bold">T</span>
-                  </div>
                   <div
-                    className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl pt-5 pr-6 pb-6 pl-16 text-white mt-2 mb-4 cursor-pointer"
+                    className="w-full h-32 bg-slate-700/50 rounded-xl pt-5 pr-6 pb-6 pl-6 text-white mb-2 cursor-pointer"
                     style={{
                       fontFamily: 'inherit',
                       fontFeatureSettings: 'inherit',
@@ -883,44 +885,14 @@ export default function EditScene({
                           </>
                         )}
                       </button>
-                    ) : (
-                      /* AI Animation Button for original scenes */
-                      <button
-                        onClick={() => {
-                          setIsAiAnimationModalOpen(true);
-                        }}
-                        className="relative flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl text-white text-sm font-medium transition-all duration-300 overflow-hidden"
-                        style={{
-                          background:
-                            'linear-gradient(45deg, #5B5BFF, #8B5CF6, #EC4899, #F59E0B, #5B5BFF)',
-                          backgroundSize: '300% 300%',
-                          animation: 'gradientShift 3s ease infinite',
-                          boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-                        }}
-                      >
-                        <svg
-                          className="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                          />
-                        </svg>
-                        <span>AI Animation</span>
-                      </button>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Edit Button - Right Aligned */}
                   <div className="flex justify-end">
                     <button
                       onClick={() => onEditScene(scene.id, scene.narration)}
-                      className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-[#5B5BFF] hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
+                      className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
                       style={{
                         boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
                       }}
@@ -953,6 +925,7 @@ export default function EditScene({
           onClose={() => setIsImageEditModalOpen(false)}
           imageUrl={imageUrl}
           displayIndex={displayIndex}
+          initialTab={initialImageEditTab}
           onGenerateImage={handleGenerateImageFromModal}
           onAnimateImage={handleAnimateImageFromModal}
           onSaveImage={handleSaveImage}
@@ -963,167 +936,6 @@ export default function EditScene({
           validationErrors={{ image: false }}
           onClearValidationError={() => {}}
         />
-
-        {/* AI Animation Modal */}
-        {isAiAnimationModalOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-slate-800 rounded-2xl p-8 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-              {/* Modal Header */}
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-white">AI Animation</h2>
-                <button
-                  onClick={() => setIsAiAnimationModalOpen(false)}
-                  className="text-gray-400 hover:text-white transition-colors"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                </button>
-              </div>
-
-              {/* Modal Content */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Left Side - Current Image */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">
-                    Current Image
-                  </h3>
-                  <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700">
-                    <img
-                      src={currentImageUrl || imageUrl}
-                      alt={`Scene ${displayIndex + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                </div>
-
-                {/* Middle - Prompt and Duration */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">
-                    Animation Settings
-                  </h3>
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-300 mb-2">
-                        Animation Prompt (optional)
-                      </label>
-                      <textarea
-                        value={animationPrompt}
-                        onChange={(e) => setAnimationPrompt(e.target.value)}
-                        placeholder="Describe how you want the image to be animated..."
-                        className="w-full h-32 bg-slate-700 border border-slate-600 rounded-lg p-3 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <label className="text-sm font-medium text-gray-300">
-                        Duration
-                      </label>
-                      <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                        <button
-                          onClick={() => setAnimationDuration('5s')}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                            animationDuration === '5s'
-                              ? 'text-white'
-                              : 'text-gray-400 hover:text-white'
-                          }`}
-                          style={
-                            animationDuration === '5s'
-                              ? { backgroundColor: '#7552F2' }
-                              : {}
-                          }
-                        >
-                          5s
-                        </button>
-                        <button
-                          onClick={() => setAnimationDuration('10s')}
-                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                            animationDuration === '10s'
-                              ? 'text-white'
-                              : 'text-gray-400 hover:text-white'
-                          }`}
-                          style={
-                            animationDuration === '10s'
-                              ? { backgroundColor: '#7552F2' }
-                              : {}
-                          }
-                        >
-                          10s
-                        </button>
-                      </div>
-                    </div>
-
-                    <button
-                      onClick={handleAnimation}
-                      disabled={isRequestingAnimation}
-                      className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
-                        isRequestingAnimation
-                          ? 'bg-purple-500/60 text-white cursor-not-allowed'
-                          : 'bg-purple-600 hover:bg-purple-700 text-white'
-                      }`}
-                    >
-                      {isRequestingAnimation ? (
-                        <span className="inline-flex items-center gap-2">
-                          <span className="inline-block h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
-                          Animating...
-                        </span>
-                      ) : (
-                        <>
-                          Generate Animation (
-                          {animationDuration === '5s' ? '25' : '50'} credits)
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Right Side - Example Video */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold text-white">
-                    Output Example
-                  </h3>
-                  <div className="aspect-[9/16] rounded-lg overflow-hidden bg-slate-700 flex items-center justify-center">
-                    <video
-                      className="w-full h-full object-cover rounded-lg"
-                      controls
-                      muted
-                      loop
-                      poster="/assets/sample1.mp4"
-                    >
-                      <source src="/assets/example.mp4" type="video/mp4" />
-                      <div className="text-center text-gray-400">
-                        <svg
-                          className="w-16 h-16 mx-auto mb-2"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1a3 3 0 000-6h-1m4 6V4a3 3 0 003-3M9 10v8a3 3 0 01-3 3M12 14l4-4 4 4"
-                          />
-                        </svg>
-                        <p className="text-sm">Output example preview</p>
-                      </div>
-                    </video>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </div>
     </>
   );

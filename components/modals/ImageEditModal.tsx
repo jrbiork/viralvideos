@@ -14,6 +14,7 @@ interface ImageEditModalProps {
   generatedImageUrl?: string | null;
   validationErrors: { image: boolean };
   onClearValidationError: () => void;
+  initialTab?: 'edit' | 'animate';
 }
 
 export default function ImageEditModal({
@@ -30,11 +31,18 @@ export default function ImageEditModal({
   generatedImageUrl,
   validationErrors,
   onClearValidationError,
+  initialTab,
 }: ImageEditModalProps) {
   const [newImagePrompt, setNewImagePrompt] = useState('');
   const [activeTab, setActiveTab] = useState<'edit' | 'animate'>('edit');
   const [animationDuration, setAnimationDuration] = useState<5 | 10>(5);
   const [hasGeneratedImage, setHasGeneratedImage] = useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab || 'edit');
+    }
+  }, [isOpen, initialTab]);
 
   const handleGenerateImage = async () => {
     if (!newImagePrompt.trim()) {
@@ -159,7 +167,7 @@ export default function ImageEditModal({
           {/* Left: Current Image */}
           <div className="lg:col-span-1 flex flex-col items-center">
             <h3 className="text-white font-semibold mb-4">Current Image</h3>
-            <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 max-h-[40vh] mt-2">
+            <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-2 ring-slate-700 max-h-[40vh] mt-2">
               {imageUrl ? (
                 <img
                   src={imageUrl}
@@ -167,7 +175,7 @@ export default function ImageEditModal({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-400">
+                <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
                   No image
                 </div>
               )}
