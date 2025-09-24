@@ -11,7 +11,7 @@ export interface Scene {
   id: number;
 }
 
-export async function generateVideoClip(
+export async function animateImageToVideo(
   description: string,
   duration: 5 | 10,
   scenePosition: number,
@@ -141,7 +141,7 @@ export async function generateVideoClip(
     return videoKey;
   } catch (error) {
     console.error(
-      `❌ Error in generateVideoClip for scene ${scenePosition}:`,
+      `❌ Error in animateImageToVideo for scene ${scenePosition}:`,
       error,
     );
     if (error && typeof error === 'object' && 'message' in error) {

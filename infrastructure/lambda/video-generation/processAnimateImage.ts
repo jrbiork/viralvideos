@@ -5,7 +5,7 @@ import {
   hydrateManifest,
   updateManifest,
 } from '../utils/manifestUtils';
-import { generateVideoClip } from '../utils/video';
+import { animateImageToVideo } from '../utils/video';
 import { broadcastProgress } from '../utils/broadcastProgress';
 import {
   CREDITS_COST,
@@ -79,7 +79,7 @@ export async function processAnimateImage(
     const seed = Math.floor(Math.random() * 10000);
 
     // Generate video from the provided image
-    const videoKey = await generateVideoClip(
+    const videoKey = await animateImageToVideo(
       animationPrompt,
       duration,
       sceneId,
@@ -90,13 +90,16 @@ export async function processAnimateImage(
     );
     console.log(`✅ Animated video created for scene ${sceneId}: ${videoKey}`);
 
-    // update manifest for the particular scene with the video key
+    // Build the updated array once
+    const updatedScenes = manifest.scenes.map((scene) =>
+      scene.id === sceneId ? { ...scene, duration, animated: true } : scene,
+    );
+
+    // Reuse it for both in-memory state and persistence
+    manifest.scenes = updatedScenes;
+
     await updateManifest(manifest, {
-      scenes: manifest.scenes.map((scene) =>
-        scene.scenePosition === sceneId
-          ? { ...scene, duration, animated: true }
-          : scene,
-      ),
+      scenes: updatedScenes,
     });
 
     // Deduct credits

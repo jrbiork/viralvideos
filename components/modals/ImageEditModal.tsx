@@ -33,7 +33,8 @@ export default function ImageEditModal({
   onClearValidationError,
   initialTab,
 }: ImageEditModalProps) {
-  const [newImagePrompt, setNewImagePrompt] = useState('');
+  const [editPrompt, setEditPrompt] = useState('');
+  const [animatePrompt, setAnimatePrompt] = useState('');
   const [activeTab, setActiveTab] = useState<'edit' | 'animate'>('edit');
   const [animationDuration, setAnimationDuration] = useState<5 | 10>(5);
   const [hasGeneratedImage, setHasGeneratedImage] = useState(false);
@@ -45,13 +46,13 @@ export default function ImageEditModal({
   }, [isOpen, initialTab]);
 
   const handleGenerateImage = async () => {
-    if (!newImagePrompt.trim()) {
+    if (!editPrompt.trim()) {
       alert('Please enter a prompt for the new image');
       return;
     }
 
     try {
-      await onGenerateImage(newImagePrompt);
+      await onGenerateImage(editPrompt);
       setHasGeneratedImage(true);
       onClearValidationError();
     } catch (error) {
@@ -61,13 +62,13 @@ export default function ImageEditModal({
   };
 
   const handleAnimateImage = async () => {
-    if (!newImagePrompt.trim()) {
+    if (!animatePrompt.trim()) {
       alert('Please enter a prompt for the animation');
       return;
     }
 
     try {
-      await onAnimateImage(newImagePrompt, animationDuration);
+      await onAnimateImage(animatePrompt, animationDuration);
       onClearValidationError();
     } catch (error) {
       console.error('Error animating image:', error);
@@ -76,13 +77,13 @@ export default function ImageEditModal({
   };
 
   const handleTryAnother = async () => {
-    if (!newImagePrompt.trim()) {
+    if (!editPrompt.trim()) {
       alert('Please enter a prompt for the new image');
       return;
     }
 
     try {
-      await onGenerateImage(newImagePrompt);
+      await onGenerateImage(editPrompt);
     } catch (error) {
       console.error('Error generating image:', error);
       alert('Failed to generate image. Please try again.');
@@ -91,14 +92,12 @@ export default function ImageEditModal({
 
   const handleDiscard = () => {
     setHasGeneratedImage(false);
-    setNewImagePrompt('');
   };
 
   const handleUseImage = async () => {
     try {
       await onSaveImage();
       setHasGeneratedImage(false);
-      setNewImagePrompt('');
     } catch (error) {
       console.error('Error saving image:', error);
       alert('Failed to save image. Please try again.');
@@ -175,7 +174,7 @@ export default function ImageEditModal({
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm">
+                <div className="w-full h-full flex items-center justify-center text-slate-400 text-sm p-16 whitespace-nowrap">
                   No image
                 </div>
               )}
@@ -287,8 +286,8 @@ export default function ImageEditModal({
                   <h4 className="text-white font-semibold mb-2">Prompt</h4>
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 mt-6">
                     <textarea
-                      value={newImagePrompt}
-                      onChange={(e) => setNewImagePrompt(e.target.value)}
+                      value={editPrompt}
+                      onChange={(e) => setEditPrompt(e.target.value)}
                       placeholder="Describe the new image you want to generate..."
                       className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
                     />
@@ -317,8 +316,8 @@ export default function ImageEditModal({
                       <div className="space-y-3">
                         <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 h-28">
                           <textarea
-                            value={newImagePrompt}
-                            onChange={(e) => setNewImagePrompt(e.target.value)}
+                            value={animatePrompt}
+                            onChange={(e) => setAnimatePrompt(e.target.value)}
                             placeholder="Describe how animate the image..."
                             className="w-full h-28 bg-transparent p-3 text-slate-200 placeholder-slate-400 resize-none focus:outline-none"
                           />
@@ -366,14 +365,14 @@ export default function ImageEditModal({
                       <div className="flex items-center justify-end">
                         <button
                           onClick={handleAnimateImage}
-                          disabled={!newImagePrompt.trim() || isAnimatingImage}
+                          disabled={!animatePrompt.trim() || isAnimatingImage}
                           className={`${
-                            newImagePrompt.trim() && !isAnimatingImage
+                            animatePrompt.trim() && !isAnimatingImage
                               ? 'text-white hover:brightness-95'
                               : 'bg-slate-700 text-slate-400 cursor-not-allowed'
                           } inline-flex items-center text-xs font-semibold transition-colors`}
                           style={
-                            newImagePrompt.trim() && !isAnimatingImage
+                            animatePrompt.trim() && !isAnimatingImage
                               ? {
                                   borderRadius: '12px',
                                   background:
@@ -402,7 +401,9 @@ export default function ImageEditModal({
                               Animating...
                             </span>
                           ) : (
-                            'Animate image: 10 Credits'
+                            `Animate image: ${
+                              animationDuration === 5 ? '25' : '50'
+                            } credits`
                           )}
                         </button>
                       </div>
@@ -430,14 +431,14 @@ export default function ImageEditModal({
                 <div className="mt-auto pt-4 flex items-center justify-end">
                   <button
                     onClick={handleGenerateImage}
-                    disabled={!newImagePrompt.trim() || isGeneratingImage}
+                    disabled={!editPrompt.trim() || isGeneratingImage}
                     className={`${
-                      newImagePrompt.trim() && !isGeneratingImage
+                      editPrompt.trim() && !isGeneratingImage
                         ? 'text-white hover:brightness-95'
                         : 'bg-slate-700 text-slate-400 cursor-not-allowed'
                     } inline-flex items-center text-xs font-semibold transition-colors`}
                     style={
-                      newImagePrompt.trim() && !isGeneratingImage
+                      editPrompt.trim() && !isGeneratingImage
                         ? {
                             borderRadius: '12px',
                             background:

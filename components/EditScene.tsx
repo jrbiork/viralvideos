@@ -150,6 +150,11 @@ export default function EditScene({
     onAnimationRequested && onAnimationRequested();
     setIsLoadingVideoScenes(true);
     try {
+      // Close modal after 2 seconds
+      setTimeout(() => {
+        setIsImageEditModalOpen(false);
+      }, 2000);
+
       const response = await fetch('/api/animate-image', {
         method: 'POST',
         headers: {
@@ -167,10 +172,6 @@ export default function EditScene({
       if (response.ok) {
         const result = await response.json();
         console.log('Image animation successful:', result);
-        // Close modal after 1 seconds
-        setTimeout(() => {
-          setIsImageEditModalOpen(false);
-        }, 1000);
       } else {
         const errorData = await response.json();
         console.error('Image animation failed:', errorData);
@@ -355,15 +356,10 @@ export default function EditScene({
       if (generatedImageUrl) {
         setCurrentImageUrl(generatedImageUrl);
 
-        // set isLoadingVideoScenes to true
         setIsLoadingVideoScenes(true);
 
-        // close the image edit modal
-        setIsImageEditModalOpen(false);
+        showToasterMessage?.('Image saved', 'success');
       }
-      // alert(
-      //   'Image saved successfully! The new image will be used for this scene.',
-      // );
     } catch (error) {
       console.error('❌ Error saving image:', error);
       showToasterMessage?.(
@@ -404,7 +400,7 @@ export default function EditScene({
         <div
           className={`bg-slate-800/50 border rounded-xl p-2 flex space-x-3 transition-all duration-200 mr-4 relative ${
             isSelected
-              ? 'border-purple-500 shadow-lg shadow-purple-500/25'
+              ? 'border-[#7552F2] shadow-lg'
               : 'border-slate-700/50 hover:border-slate-600'
           } ${isDisabled ? 'opacity-50 pointer-events-none' : ''}`}
           style={{ padding: '2rem' }}
@@ -494,7 +490,13 @@ export default function EditScene({
           {isCreatingScene && (
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center z-50">
               <div className="flex flex-col items-center space-y-3">
-                <div className="animate-spin rounded-full h-8 w-8 border-2 border-green-500 border-t-transparent"></div>
+                <div
+                  className="animate-spin rounded-full h-8 w-8 border-2 border-t-transparent"
+                  style={{
+                    borderColor: 'rgb(99, 102, 241)',
+                    borderTopColor: 'transparent',
+                  }}
+                ></div>
                 <span className="text-white text-sm font-medium">
                   Creating Scene...
                 </span>
@@ -847,8 +849,13 @@ export default function EditScene({
                         className={`relative flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl text-white text-sm font-medium transition-all duration-300 overflow-hidden ${
                           isCreatingScene || !canCreateScene
                             ? 'bg-gray-500 cursor-not-allowed'
-                            : 'bg-green-600 hover:bg-green-700'
+                            : 'hover:brightness-95'
                         }`}
+                        style={
+                          isCreatingScene || !canCreateScene
+                            ? undefined
+                            : { backgroundColor: 'rgb(99, 102, 241)' }
+                        }
                         title={
                           isCreatingScene
                             ? 'Creating scene...'
@@ -863,7 +870,13 @@ export default function EditScene({
                       >
                         {isCreatingScene ? (
                           <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                            <div
+                              className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent"
+                              style={{
+                                borderColor: 'rgb(99, 102, 241)',
+                                borderTopColor: 'transparent',
+                              }}
+                            ></div>
                             <span>Creating...</span>
                           </>
                         ) : (
@@ -881,7 +894,7 @@ export default function EditScene({
                                 d="M12 4v16m8-8H4"
                               />
                             </svg>
-                            <span>Create Scene</span>
+                            <span>Create New Scene</span>
                           </>
                         )}
                       </button>
