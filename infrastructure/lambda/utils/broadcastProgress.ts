@@ -10,7 +10,8 @@ export async function broadcastProgress(
     | 'preview_completed'
     | 'video_completed'
     | 'credit_updated'
-    | 'insufficient_credits',
+    | 'insufficient_credits'
+    | 'error',
   userId: string,
   timestamp: string,
   data?: any,

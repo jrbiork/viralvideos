@@ -134,7 +134,7 @@ export default function EditScene({
     } catch (error) {
       console.error('Error calling generate-image API:', error);
       showToasterMessage?.(
-        'Failed to generate image. Please try again.',
+        'Failed to generate image. Please try again with different prompt.',
         'error',
       );
     } finally {
@@ -150,11 +150,6 @@ export default function EditScene({
     onAnimationRequested && onAnimationRequested();
     setIsLoadingVideoScenes(true);
     try {
-      // Close modal after 2 seconds
-      setTimeout(() => {
-        setIsImageEditModalOpen(false);
-      }, 2000);
-
       const response = await fetch('/api/animate-image', {
         method: 'POST',
         headers: {
@@ -172,18 +167,23 @@ export default function EditScene({
       if (response.ok) {
         const result = await response.json();
         console.log('Image animation successful:', result);
+
+        // Close modal after 2 seconds
+        setTimeout(() => {
+          setIsImageEditModalOpen(false);
+        }, 2000);
       } else {
         const errorData = await response.json();
         console.error('Image animation failed:', errorData);
         showToasterMessage?.(
-          `Failed to animate image: ${errorData.error || 'Unknown error'}`,
+          `Failed to animate image. Please try again with different prompt.`,
           'error',
         );
       }
     } catch (error) {
       console.error('Error calling animate-image API:', error);
       showToasterMessage?.(
-        'Failed to animate image. Please try again.',
+        'Failed to animate image. Please try again with different prompt.',
         'error',
       );
     } finally {
@@ -257,48 +257,6 @@ export default function EditScene({
       if (setCreatingSceneId) {
         setCreatingSceneId(null);
       }
-    }
-  };
-
-  const handleAnimation = async () => {
-    try {
-      const timestamp = queryParams.get('timestamp');
-      if (!timestamp) throw new Error('No timestamp found in URL');
-      if (!currentImageUrl && !imageUrl)
-        throw new Error('No image available to animate');
-
-      const payload = {
-        animationPrompt,
-        animationDuration,
-        timestamp,
-        sceneId: Number(scene.id),
-        imageUrl: currentImageUrl || imageUrl!,
-      };
-
-      const res = await fetch('/api/animate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to request animation');
-      }
-
-      const data = await res.json();
-      console.log('✅ Animation requested:', data);
-      setIsAiAnimationModalOpen(false);
-      onAnimationRequested && onAnimationRequested();
-      setIsLoadingVideoScenes(true);
-    } catch (e) {
-      console.error('❌ Error requesting animation:', e);
-      showToasterMessage?.(
-        `Failed to request animation: ${
-          e instanceof Error ? e.message : 'Unknown error'
-        }`,
-        'error',
-      );
     }
   };
 

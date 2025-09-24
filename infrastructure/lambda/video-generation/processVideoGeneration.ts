@@ -307,6 +307,6 @@ export async function processVideoGeneration(
     };
   } catch (error) {
     console.error('Error in video generation:', error);
-    throw error;
+    throw Error('Video generation failed');
   }
 }

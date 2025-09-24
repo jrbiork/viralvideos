@@ -50,16 +50,15 @@ export async function animateImageToVideo(
           `🎬 Attempt ${retryCount + 1}/${maxRetries} with seed: ${seed}`,
         );
 
-        videoResult = await runway.imageToVideo
-          .create({
-            model: 'gen4_turbo',
-            promptImage: imageUrl,
-            ratio: '720:1280', // Vertical format (9:16)
-            duration: duration <= 5 ? 5 : 10, // Runway only supports 5 or 10 seconds
-            promptText: `${description}`,
-            seed,
-          })
-          .waitForTaskOutput();
+        const task = await runway.imageToVideo.create({
+          model: 'gen4_turbo',
+          promptImage: imageUrl,
+          ratio: '720:1280', // Vertical format (9:16)
+          duration: duration <= 5 ? 5 : 10, // Runway only supports 5 or 10 seconds
+          promptText: `${description}`,
+          seed,
+        });
+        videoResult = await (task as any).waitForTaskOutput();
 
         console.log('📡 Image-to-video generation completed');
         console.log('🆔 Video Generation ID:', videoResult.id);
@@ -80,21 +79,25 @@ export async function animateImageToVideo(
           const taskDetails = (error as any).taskDetails;
           console.error('Task details:', taskDetails);
 
-          if (taskDetails?.failureCode === 'INTERNAL.BAD_OUTPUT.CODE01') {
-            console.log(
-              `🔄 Retrying due to INTERNAL.BAD_OUTPUT.CODE01 error (attempt ${retryCount}/${maxRetries})`,
-            );
-            if (retryCount < maxRetries) {
-              // Wait before retrying (exponential backoff)
-              const waitTime = Math.min(
-                1000 * Math.pow(2, retryCount - 1),
-                5000,
-              );
-              console.log(`⏳ Waiting ${waitTime}ms before retry...`);
-              await new Promise((resolve) => setTimeout(resolve, waitTime));
-              continue;
-            }
+          console.log(
+            `🔄 Retrying due to ${taskDetails?.failureCode} error (attempt ${retryCount}/${maxRetries})`,
+          );
+          if (retryCount < maxRetries) {
+            // Wait before retrying (exponential backoff)
+            const waitTime = Math.min(1000 * Math.pow(2, retryCount - 1), 5000);
+            console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+            await new Promise((resolve) => setTimeout(resolve, waitTime));
+            continue;
           }
+        }
+
+        // If the error clearly indicates insufficient credits on provider side, do not retry further
+        const message = (error as any)?.message || '';
+        if (
+          typeof message === 'string' &&
+          message.includes('You do not have enough credits')
+        ) {
+          throw new Error('Provider credits insufficient');
         }
 
         // If we've exhausted retries or it's not the specific error, throw
@@ -102,7 +105,7 @@ export async function animateImageToVideo(
           console.error(
             `❌ All ${maxRetries} attempts failed for scene ${scenePosition}`,
           );
-          throw error;
+          throw new Error('Video generation failed');
         }
       }
     }
@@ -145,11 +148,12 @@ export async function animateImageToVideo(
       error,
     );
     if (error && typeof error === 'object' && 'message' in error) {
-      console.error('Error message:', error.message);
+      console.error('Error message:', (error as any).message);
       console.error('Error name:', (error as any).name);
       console.error('Error stack:', (error as any).stack);
     }
-    throw error;
+    const message = (error as any)?.message || 'Video generation failed';
+    throw new Error(message);
   }
 }
 

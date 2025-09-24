@@ -93,6 +93,6 @@ export async function processSaveImage(
     return { message: 'Image saved successfully' };
   } catch (error) {
     console.error('Error in save image (SQS):', error);
-    throw error;
+    throw Error('Image save failed');
   }
 }

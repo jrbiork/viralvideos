@@ -1,6 +1,6 @@
 import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
 
-import { SQSClient } from '@aws-sdk/client-sqs';
+import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
 import { processSaveImage } from './processSaveImage';
 import { processAnimateImage } from './processAnimateImage';
@@ -11,6 +11,7 @@ import {
 import { processVideoCombine } from './processVideoCombine';
 import { processCreateScene } from './processCreateScene';
 import { processRegenerateAudioScene } from './processRegenerateAudioScene';
+import { broadcastProgress } from '../utils/broadcastProgress';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
@@ -22,10 +23,8 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
   const batchItemFailures: { itemIdentifier: string }[] = [];
 
   for (const record of event.Records) {
+    const request: VideoGenerationRequest = JSON.parse(record.body);
     try {
-      // Parse the message body
-      const request: VideoGenerationRequest = JSON.parse(record.body);
-
       console.log('🔍 Raw SQS record body:', record.body);
       console.log('🔍 Parsed request object:', request);
       console.log('🔍 Request voice field:', request.voice);
@@ -46,6 +45,24 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
       }
     } catch (error) {
       console.error('❌ Error processing record:', record.messageId, error);
+      // broadcast error
+      await broadcastProgress(
+        'error',
+        request.userId,
+        request.timestamp,
+        { error: error instanceof Error ? error.message : 'Unknown error' },
+        error instanceof Error ? error.message : 'Unknown error',
+      );
+
+      // remove message from queue
+      if (record && process.env.VIDEO_QUEUE_URL) {
+        const deleteCommand = new DeleteMessageCommand({
+          QueueUrl: process.env.VIDEO_QUEUE_URL,
+          ReceiptHandle: record.receiptHandle,
+        });
+        await sqs.send(deleteCommand);
+      }
+
       batchItemFailures.push({ itemIdentifier: record.messageId });
     }
   }

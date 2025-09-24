@@ -235,6 +235,36 @@ export function useWebSocketHandlers({
     [showToasterMessage],
   );
 
+  // Handle generic errors broadcasted by backend
+  const handleError = useCallback(
+    (data: { error?: string; message?: string }) => {
+      const msg = data?.error || data?.message || 'An error occurred';
+      // Stop any loading indicators
+      setVideoGenerationState((prev) => ({
+        ...prev,
+        isLoadingVideoScenes: false,
+        isLoadingAudioSubtitles: false,
+      }));
+      if (setIsVideoGenerating) {
+        setIsVideoGenerating(false);
+      }
+      if (setCreatingSceneId) {
+        setCreatingSceneId(null);
+      }
+      if (setRegeneratingSceneId) {
+        setRegeneratingSceneId(null);
+      }
+      showToasterMessage(msg, 'error');
+    },
+    [
+      setVideoGenerationState,
+      setIsVideoGenerating,
+      setCreatingSceneId,
+      setRegeneratingSceneId,
+      showToasterMessage,
+    ],
+  );
+
   // Main WebSocket message handler
   const handleWebSocketMessage = useCallback(
     (message: WebSocketMessage) => {
@@ -254,6 +284,9 @@ export function useWebSocketHandlers({
         case 'video_completed':
           handleVideoCompleted(message.data);
           break;
+        case 'error':
+          handleError(message.data);
+          break;
         case 'insufficient_credits':
           handleInsufficientCredits(message.data);
           break;
@@ -267,6 +300,7 @@ export function useWebSocketHandlers({
       handleAudioSubtitleCreated,
       handlePreviewCompleted,
       handleVideoCompleted,
+      handleError,
       handleInsufficientCredits,
     ],
   );
@@ -277,6 +311,7 @@ export function useWebSocketHandlers({
     handleImageCreated,
     handleAudioSubtitleCreated,
     handlePreviewCompleted,
+    handleError,
     handleInsufficientCredits,
   };
 }

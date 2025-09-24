@@ -92,6 +92,6 @@ export async function processVideoCombine(
     console.log('🎬 Video combined completed', finalVideoSignedUrl);
   } catch (error) {
     console.error('Error in processVideoCombine:', error);
-    throw error;
+    throw Error('Video combine failed');
   }
 }

@@ -29,10 +29,10 @@ export async function processAnimateImage(
   request: AnimateImageRequest,
   record?: SQSRecord,
 ): Promise<any> {
-  try {
-    const { userId, timestamp, sceneId, animationPrompt, imageUrl, duration } =
-      request;
+  const { userId, timestamp, sceneId, animationPrompt, imageUrl, duration } =
+    request;
 
+  try {
     if (!userId || !timestamp) {
       throw new Error('Missing userId or timestamp');
     }
@@ -62,6 +62,10 @@ export async function processAnimateImage(
     );
 
     if (!hasSufficientCredits) {
+      // Notify frontend about insufficient credits
+      await broadcastProgress('insufficient_credits', userId, timestamp, {
+        currentCredits,
+      });
       return {
         statusCode: 400,
         body: JSON.stringify({ error: 'Insufficient credits' }),
@@ -133,6 +137,22 @@ export async function processAnimateImage(
     return { message: 'Scene animated successfully', videoKey };
   } catch (error) {
     console.error('Error in animate image (SQS):', error);
-    throw error;
+
+    // todo: check if this is needed
+    // const message = error instanceof Error ? error.message : 'Unknown error';
+    // // Proactively broadcast error to frontend
+    // try {
+    //   await broadcastProgress(
+    //     'error',
+    //     userId,
+    //     timestamp,
+    //     { error: message },
+    //     message,
+    //   );
+    // } catch (e) {
+    //   console.error('Failed to broadcast error progress:', e);
+    // }
+
+    throw Error('Scene animation failed: Try again with different prompt.');
   }
 }
