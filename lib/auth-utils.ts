@@ -93,6 +93,7 @@ export async function verifyCognitoToken(
     // Try cache first to avoid repeated signature checks within token lifetime
     const cached = getCachedPayload(token);
     if (cached) {
+      console.log('cached:', cached);
       if (returnType === 'boolean') return true;
       const jwtPayload = cached as unknown as CognitoUserPayload;
       // Also ensure audience and token_use still match
@@ -103,6 +104,7 @@ export async function verifyCognitoToken(
         (jwtPayload as any).token_use !== 'access'
       ) {
         // fall through to full verification
+        console.log('falling through to full verification');
       } else {
         return jwtPayload;
       }
