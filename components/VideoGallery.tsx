@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Play,
@@ -66,10 +66,13 @@ export default function VideoGallery({}: VideoGalleryProps) {
     }, 3000);
   };
 
+  const hasFetchedRef = useRef(false);
+
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchVideos();
-    }
+    if (!isAuthenticated) return;
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    fetchVideos();
   }, [isAuthenticated]);
 
   useEffect(() => {

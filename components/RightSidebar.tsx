@@ -52,15 +52,16 @@ export default function RightSidebar({
         !generationState.generatedVideoUrl &&
         !generationState.selectedGalleryVideo && (
           <div className="flex justify-center">
-            <video
-              className="rounded-xl shadow-lg border-2 border-gray-600"
-              style={{ width: '65%', height: 'auto' }}
-              controls
-              autoPlay
-              muted
-              loop
-              src={exampleVideoUrl}
-            />
+            <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden">
+              <video
+                className="w-full h-full object-contain"
+                controls
+                autoPlay
+                muted
+                loop
+                src={exampleVideoUrl}
+              />
+            </div>
           </div>
         )}
 
@@ -116,28 +117,29 @@ export default function RightSidebar({
                 <div key={scene.id} className={isSelected ? 'block' : 'hidden'}>
                   {videoUrl && (
                     <div className="relative flex justify-center">
-                      <video
-                        ref={(videoRef) => {
-                          if (videoRef && isSelected) {
-                            setupVideoEventListeners(
-                              videoRef,
-                              { ...scene, sceneNumber }, // Pass sceneNumber to the function
-                              scenes,
-                              getAssFiles(),
-                              manifestTimestamp,
-                              index,
-                            );
-                          }
-                        }}
-                        onError={(event) => {
-                          console.error('Video error:', event);
-                        }}
-                        className="rounded-xl shadow-lg border-2 border-gray-600"
-                        style={{ width: '65%', height: 'auto' }}
-                        controls
-                        preload="auto"
-                        src={videoUrl}
-                      />
+                      <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden">
+                        <video
+                          ref={(videoRef) => {
+                            if (videoRef && isSelected) {
+                              setupVideoEventListeners(
+                                videoRef,
+                                { ...scene, sceneNumber }, // Pass sceneNumber to the function
+                                scenes,
+                                getAssFiles(),
+                                manifestTimestamp,
+                                index,
+                              );
+                            }
+                          }}
+                          className="w-full h-full object-contain"
+                          controls
+                          preload="auto"
+                          src={videoUrl}
+                          onError={(event) => {
+                            console.error('Video error:', event);
+                          }}
+                        />
+                      </div>
 
                       {/* Subtitles Overlay */}
                       {isSelected && sceneState.currentSubtitle && (

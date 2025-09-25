@@ -127,23 +127,24 @@ export default function VideoPreview({
 
   return (
     <div className="flex justify-center">
-      <video
-        ref={videoRef}
-        src={videoUrl}
-        className="rounded-xl shadow-lg border-2 border-gray-600"
-        style={{ width: '65%', height: 'auto' }}
-        controls
-        autoPlay={autoPlay}
-        muted={isMuted}
-        loop={loop}
-        preload="metadata"
-        onEnded={handleVideoEnded}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onError={handleError}
-      />
+      <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden">
+        <video
+          ref={videoRef}
+          src={videoUrl}
+          className="w-full h-full object-contain"
+          controls
+          autoPlay={autoPlay}
+          muted={isMuted}
+          loop={loop}
+          preload="metadata"
+          onEnded={handleVideoEnded}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onError={handleError}
+        />
+      </div>
     </div>
   );
 }
