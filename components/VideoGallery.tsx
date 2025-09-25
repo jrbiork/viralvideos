@@ -374,6 +374,13 @@ export default function VideoGallery({}: VideoGalleryProps) {
                       </div>
                     )}
 
+                    {/* Exported Tag - Bottom Right */}
+                    {video.videoGenerated && video.finalVideoUrl && (
+                      <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
+                        Exported
+                      </div>
+                    )}
+
                     {/* Play Button - Only show for generated videos */}
                     {video.videoGenerated && video.finalVideoUrl && (
                       <button
@@ -447,18 +454,6 @@ export default function VideoGallery({}: VideoGalleryProps) {
                         <Calendar className="w-4 h-4 mr-2" />
                         {formatDate(video.lastModified)}
                       </div>
-                      {video.videoGenerated && (
-                        <div className="relative group">
-                          <div className="w-5 h-5 bg-transparent border border-slate-400 rounded-full flex items-center justify-center">
-                            <span className="text-slate-400 text-xs font-bold">
-                              E
-                            </span>
-                          </div>
-                          <div className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-gray-800 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-10">
-                            Video generated.
-                          </div>
-                        </div>
-                      )}
                     </div>
                     <div className="flex items-center justify-between text-xs text-slate-500">
                       <div className="flex items-center">

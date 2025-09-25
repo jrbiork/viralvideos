@@ -530,8 +530,7 @@ export default function EditScene({
             >
               {scene.animated && (
                 <div
-                  className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md"
-                  style={{ backgroundColor: 'rgba(117, 82, 242, 0.6)' }}
+                  className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md bg-black/60"
                 >
                   Animated
                 </div>
@@ -591,8 +590,7 @@ export default function EditScene({
             >
               {scene.animated && (
                 <div
-                  className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md"
-                  style={{ backgroundColor: 'rgba(117, 82, 242, 0.6)' }}
+                  className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md bg-black/60"
                 >
                   Animated
                 </div>

@@ -276,8 +276,11 @@ export function useSceneManagement() {
           const subtitles = assContent ? parseAssFile(assContent) : [];
 
           const currentTime = videoRef.currentTime;
+          // Allow a small epsilon so the last word/event isn't skipped due to float precision
+          const epsilon = 0.08; // ~80ms tolerance
           const currentSub = subtitles.find(
-            (sub) => currentTime >= sub.start && currentTime <= sub.end,
+            (sub) =>
+              currentTime >= sub.start && currentTime <= sub.end + epsilon,
           );
 
           dispatch({
