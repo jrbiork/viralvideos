@@ -35,4 +35,5 @@ export interface Manifest {
   voiceToneInstruction: string;
   voice: string;
   language: string;
+  template: string;
 }

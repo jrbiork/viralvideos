@@ -14,6 +14,7 @@ export async function createManifest(
   voiceToneInstruction: string,
   voice: string,
   language: string,
+  template: string,
 ): Promise<string> {
   try {
     const prefix = `${userId}/${timestamp}.scene-`;
@@ -33,6 +34,7 @@ export async function createManifest(
       voiceToneInstruction,
       voice,
       language,
+      template,
       scenes: scenes.map((scene, index) => ({
         id: scene.id,
         scenePosition: scene.id,

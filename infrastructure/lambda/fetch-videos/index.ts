@@ -14,9 +14,26 @@ interface FetchVideosRequest {
   userId: string;
 }
 
+// Helper function to get video size with error handling
+async function getVideoSize(bucket: string, key: string): Promise<number> {
+  try {
+    const videoHeadCommand = new HeadObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    });
+    const videoMetadata = await s3.send(videoHeadCommand);
+    return videoMetadata.ContentLength || 0;
+  } catch (error) {
+    console.warn('⚠️ Could not fetch video metadata for:', key, error);
+    return 0;
+  }
+}
+
 export const handler = async (
   event: APIGatewayProxyEvent,
 ): Promise<APIGatewayProxyResult> => {
+  const startTime = Date.now();
+
   try {
     let request: FetchVideosRequest;
 
@@ -79,6 +96,9 @@ export const handler = async (
       ) || [];
 
     if (manifestFiles.length > 0) {
+      console.log(
+        `🚀 Processing ${manifestFiles.length} manifests in parallel...`,
+      );
       const videoData = await Promise.all(
         manifestFiles.map(async (manifestObject) => {
           if (!manifestObject.Key) return null;
@@ -91,6 +111,7 @@ export const handler = async (
                 ?.replace('.manifest.json', '') || '';
 
             console.log('📋 Processing manifest for timestamp:', timestamp);
+            const manifestStartTime = Date.now();
 
             // Fetch the manifest content
             const manifestCommand = new GetObjectCommand({
@@ -113,46 +134,56 @@ export const handler = async (
               return null;
             }
 
-            // Generate presigned URL for the first scene's image
-            const thumbnailCommand = new GetObjectCommand({
-              Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-              Key: firstScene.files.png,
-            });
+            // 🚀 PARALLEL PROCESSING: Run all S3 operations concurrently
+            const thumbnailUrlPromise = getSignedUrl(
+              s3,
+              new GetObjectCommand({
+                Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+                Key: firstScene.files.png,
+              }),
+              { expiresIn: 36000 },
+            );
 
-            const thumbnailUrl = await getSignedUrl(s3, thumbnailCommand, {
-              expiresIn: 36000,
-            });
+            let finalVideoUrlPromise = Promise.resolve('');
+            let videoSizePromise = Promise.resolve(0);
 
-            let finalVideoUrl = '';
-            let videoSize = 0;
+            // Add video operations only if video is generated
             if (manifest.videoGenerated) {
-              const videoCommand = new GetObjectCommand({
-                Bucket: process.env.VIDEO_BUCKET_NAME,
-                Key: manifest.finalVideoUrl,
-              });
-              finalVideoUrl = await getSignedUrl(s3, videoCommand, {
-                expiresIn: 36000,
-              });
-
-              // Get video metadata to fetch its size
-              try {
-                const videoHeadCommand = new HeadObjectCommand({
+              finalVideoUrlPromise = getSignedUrl(
+                s3,
+                new GetObjectCommand({
                   Bucket: process.env.VIDEO_BUCKET_NAME,
                   Key: manifest.finalVideoUrl,
-                });
-                const videoMetadata = await s3.send(videoHeadCommand);
-                videoSize = videoMetadata.ContentLength || 0;
-                console.log(
-                  '📊 Video size:',
-                  videoSize,
-                  'bytes for video:',
-                  manifest.finalVideoUrl,
-                );
-              } catch (error) {
-                console.warn('⚠️ Could not fetch video metadata:', error);
-                videoSize = 0;
-              }
+                }),
+                { expiresIn: 36000 },
+              );
+
+              videoSizePromise = getVideoSize(
+                process.env.VIDEO_BUCKET_NAME!,
+                manifest.finalVideoUrl,
+              );
             }
+
+            // Execute all operations in parallel
+            const [thumbnailUrl, finalVideoUrl, videoSize] = await Promise.all([
+              thumbnailUrlPromise,
+              finalVideoUrlPromise,
+              videoSizePromise,
+            ]);
+
+            if (videoSize > 0) {
+              console.log(
+                '📊 Video size:',
+                videoSize,
+                'bytes for video:',
+                manifest.finalVideoUrl,
+              );
+            }
+
+            const manifestDuration = Date.now() - manifestStartTime;
+            console.log(
+              `⚡ Processed manifest ${timestamp} in ${manifestDuration}ms`,
+            );
 
             return {
               key: firstScene.files.png,
@@ -185,11 +216,17 @@ export const handler = async (
         .filter((item): item is NonNullable<typeof item> => item !== null)
         .sort((a, b) => parseInt(b.timestamp) - parseInt(a.timestamp));
 
+      const duration = Date.now() - startTime;
+      console.log(
+        `✅ Processed ${validVideos.length} videos in ${duration}ms (${manifestFiles.length} manifests)`,
+      );
+
       return {
         statusCode: 200,
         body: JSON.stringify({
           videos: validVideos,
           message: `Found ${validVideos.length} videos`,
+          processingTimeMs: duration,
         }),
       };
     }

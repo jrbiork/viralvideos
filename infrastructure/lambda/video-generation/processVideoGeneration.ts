@@ -253,6 +253,7 @@ export async function processVideoGeneration(
       voiceToneInstruction,
       request.voice || DEFAULT_VOICE,
       request.language || DEFAULT_LANGUAGE,
+      request.imageTemplate,
     );
 
     manifest = await getManifest(request.userId, request.timestamp);
