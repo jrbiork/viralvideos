@@ -14,14 +14,23 @@ import { DEFAULT_VOICE } from '../../lib/constants';
 import ExportVideo from '../../components/ExportVideo';
 import Toaster from '../../components/Toaster';
 import { parseColoredText } from '../../lib/subtitle-utils';
+import {
+  buildMediaFiles,
+  buildSubtitles,
+  buildAssFiles,
+} from '@/lib/manifest-helpers';
 import { handleExportVideo as exportVideoUtil } from '../../lib/export-utils';
 import { AVAILABLE_TEMPLATES } from '../../lib/template-constants';
 import { useVideoGeneration } from '../../hooks/useVideoGeneration';
 import { useSceneManagement } from '../../hooks/useSceneManagement';
 import { useWebSocket } from '../../hooks/useWebSocket';
+import { useCreateUrlParams } from '@/hooks/useCreateUrlParams';
 import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
 import VideoPreview from '../../components/VideoPreview';
 import { useUserDataCache } from '../../hooks/useUserDataCache';
+import Step1Footer from '@/components/create/footers/Step1Footer';
+import Step2Footer from '@/components/create/footers/Step2Footer';
+import Step3Footer from '@/components/create/footers/Step3Footer';
 
 import { Manifest } from '../types/manifest';
 
@@ -242,66 +251,20 @@ export default function GeneratePage() {
   });
 
   // Helper functions to extract data from manifest
-  const getMediaFiles = useCallback(() => {
-    if (!videoGenerationState.manifest) return {};
-    const mediaFiles: { [key: string]: string } = {};
+  const getMediaFiles = useCallback(
+    () => buildMediaFiles(videoGenerationState.manifest),
+    [videoGenerationState.manifest],
+  );
 
-    videoGenerationState.manifest.scenes.forEach((scene) => {
-      const { files } = scene;
-      const timestamp = videoGenerationState.manifest!.generatedAt;
+  const getSubtitles = useCallback(
+    () => buildSubtitles(videoGenerationState.manifest),
+    [videoGenerationState.manifest],
+  );
 
-      // Extract actual scene number from file names
-      const sceneNumber =
-        files.mp3?.match(/scene-(\d+)\./)?.[1] ||
-        scene.scenePosition.toString();
-
-      // Add all file types to mediaFiles using the actual scene number
-      if (files.png) {
-        mediaFiles[`${timestamp}.scene-${sceneNumber}.png`] = files.png;
-      }
-      if (files.jpg) {
-        mediaFiles[`${timestamp}.scene-${sceneNumber}.jpg`] = files.jpg;
-      }
-      mediaFiles[`${timestamp}.scene-${sceneNumber}.mp3`] = files.mp3;
-      mediaFiles[`${timestamp}.scene-${sceneNumber}.mp4`] = files.mp4;
-    });
-
-    return mediaFiles;
-  }, [videoGenerationState.manifest]);
-
-  const getSubtitles = useCallback(() => {
-    if (!videoGenerationState.manifest) return {};
-    const subtitles: { [key: string]: string } = {};
-
-    videoGenerationState.manifest.scenes.forEach((scene) => {
-      const timestamp = videoGenerationState.manifest!.generatedAt;
-      // Extract actual scene number from file names
-      const sceneNumber =
-        scene.files.mp3?.match(/scene-(\d+)\./)?.[1] ||
-        scene.scenePosition.toString();
-      const subtitleKey = `${timestamp}.scene-${sceneNumber}.subtitle`;
-      subtitles[subtitleKey] = scene.files.subtitle;
-    });
-
-    return subtitles;
-  }, [videoGenerationState.manifest]);
-
-  const getAssFiles = useCallback(() => {
-    if (!videoGenerationState.manifest) return {};
-    const assFiles: { [key: string]: string } = {};
-
-    videoGenerationState.manifest.scenes.forEach((scene) => {
-      const timestamp = videoGenerationState.manifest!.generatedAt;
-      // Extract actual scene number from file names
-      const sceneNumber =
-        scene.files.mp3?.match(/scene-(\d+)\./)?.[1] ||
-        scene.scenePosition.toString();
-      const assKey = `${timestamp}.scene-${sceneNumber}.ass`;
-      assFiles[assKey] = scene.files.ass;
-    });
-
-    return assFiles;
-  }, [videoGenerationState.manifest]);
+  const getAssFiles = useCallback(
+    () => buildAssFiles(videoGenerationState.manifest),
+    [videoGenerationState.manifest],
+  );
 
   // Custom handleEditScene that uses subtitle text from manifest
   const handleEditSceneWithSubtitle = (sceneId: number, narration: string) => {
@@ -456,86 +419,13 @@ export default function GeneratePage() {
     }
   }, [showToaster]);
 
-  // Handle URL query parameters for step 2 - edit mode
-  const urlParamsProcessedRef = useRef(false);
-
-  useEffect(() => {
-    if (urlParamsProcessedRef.current) {
-      return;
-    }
-
-    // Set the ref immediately to prevent multiple executions
-    urlParamsProcessedRef.current = true;
-
-    const handleUrlParams = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const timestampFromUrl = urlParams.get('timestamp');
-      const stepFromUrl = urlParams.get('step');
-
-      // Set step from URL if provided
-      if (stepFromUrl) {
-        const stepNumber = parseInt(stepFromUrl);
-        if (stepNumber >= 1 && stepNumber <= 3) {
-          setCurrentStep(stepNumber);
-        }
-      }
-
-      // Handle timestamp and WebSocket subscription
-      if (
-        timestampFromUrl &&
-        timestampFromUrl !== videoGenerationState.currentTimestamp
-      ) {
-        // If step=2 is specified
-        if (stepFromUrl === '2') {
-          setVideoGenerationState((prev) => ({
-            ...prev,
-            currentTimestamp: timestampFromUrl,
-            isLoadingAudioSubtitles: true,
-            isLoadingVideoScenes: true,
-          }));
-
-          // call fetch-preview api
-          const previewResponse = await fetch(
-            `/api/fetch-preview?timestamp=${timestampFromUrl}`,
-            {
-              method: 'GET',
-            },
-          );
-          // handle response from fetch-preview api that is a manifest
-          const response = await previewResponse.json();
-          const manifest = response.manifest; // Extract the manifest from the response
-
-          // Initialize removedOriginalScenes from manifest
-          if (manifest?.scenes) {
-            const removedScenes = new Set<number>();
-            manifest.scenes.forEach((scene: any) => {
-              if (scene.removed) {
-                // Extract scene ID from file names
-                const sceneIdMatch =
-                  scene.files?.mp3?.match(/scene-(\d+)\./) ||
-                  scene.files?.mp4?.match(/scene-(\d+)\./) ||
-                  scene.files?.ass?.match(/scene-(\d+)\./);
-                const sceneId = sceneIdMatch
-                  ? parseInt(sceneIdMatch[1])
-                  : scene.id;
-                removedScenes.add(sceneId);
-              }
-            });
-            setRemovedOriginalScenes(removedScenes);
-          }
-
-          setVideoGenerationState((prev) => ({
-            ...prev,
-            manifest: manifest || undefined,
-            isLoadingAudioSubtitles: false,
-            isLoadingVideoScenes: false,
-          }));
-        }
-      }
-    };
-
-    handleUrlParams();
-  }, []); // Empty dependencies array to run only once
+  // URL params handling
+  useCreateUrlParams({
+    setCurrentStep,
+    videoGenerationState,
+    setVideoGenerationState,
+    setRemovedOriginalScenes,
+  });
 
   const handleGenerateVideo = async (
     script: string,
@@ -767,232 +657,103 @@ export default function GeneratePage() {
       currentStep={currentStep}
       footerContent={
         currentStep === 2 ? (
-          <div
-            className="pl-0 pr-12 flex items-center justify-between"
-            style={{ width: '74%' }}
-          >
-            <button
-              onClick={() => setCurrentStep(1)}
-              className="h-12 px-5 min-w-[150px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white bg-transparent transition-all duration-200 hover:bg-white/10 hover:-translate-y-[1px]"
-              style={{
-                borderColor: '#5B5BFF',
-                borderWidth: '1.5px',
-                borderStyle: 'solid',
-                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-              }}
-            >
-              <img src="/back.svg" alt="Back" className="w-4 h-4" />
-              <span>Back to Idea</span>
-            </button>
-            <button
-              onClick={handleCombineVideo}
-              className="h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
-              style={{
-                background:
-                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
-                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-              }}
-            >
-              <span>Generate Video</span>
-            </button>
-          </div>
+          <Step2Footer
+            onBack={() => setCurrentStep(1)}
+            onGenerateVideo={handleCombineVideo}
+          />
         ) : currentStep === 3 ? (
-          <div
-            className="pl-2 pr-8 flex items-center justify-between"
-            style={{ width: '65%' }}
-          >
-            <button
-              onClick={async () => {
-                setCurrentStep(2);
-                try {
-                  const params = new URLSearchParams(window.location.search);
-                  params.set('step', '2');
-                  if (videoGenerationState.currentTimestamp) {
-                    params.set(
-                      'timestamp',
-                      videoGenerationState.currentTimestamp,
-                    );
-                  }
-                  const newUrl = `${
-                    window.location.pathname
-                  }?${params.toString()}`;
-                  window.history.replaceState(null, '', newUrl);
-
-                  // Call fetch-preview API to reload the preview data
-                  if (videoGenerationState.currentTimestamp) {
-                    setVideoGenerationState((prev) => ({
-                      ...prev,
-                      isLoadingAudioSubtitles: true,
-                      isLoadingVideoScenes: true,
-                    }));
-
-                    const previewResponse = await fetch(
-                      `/api/fetch-preview?timestamp=${videoGenerationState.currentTimestamp}`,
-                      {
-                        method: 'GET',
-                      },
-                    );
-
-                    const response = await previewResponse.json();
-                    const manifest = response.manifest;
-
-                    // Initialize removedOriginalScenes from manifest
-                    if (manifest?.scenes) {
-                      const removedScenes = new Set<number>();
-                      manifest.scenes.forEach((scene: any) => {
-                        if (scene.removed) {
-                          const sceneIdMatch =
-                            scene.files?.mp3?.match(/scene-(\d+)\./) ||
-                            scene.files?.mp4?.match(/scene-(\d+)\./) ||
-                            scene.files?.ass?.match(/scene-(\d+)\./);
-                          const sceneId = sceneIdMatch
-                            ? parseInt(sceneIdMatch[1])
-                            : scene.id;
-                          removedScenes.add(sceneId);
-                        }
-                      });
-                      setRemovedOriginalScenes(removedScenes);
-                    }
-
-                    setVideoGenerationState((prev) => ({
-                      ...prev,
-                      manifest: manifest || undefined,
-                      isLoadingAudioSubtitles: false,
-                      isLoadingVideoScenes: false,
-                    }));
-                  }
-                } catch (e) {
-                  console.warn(
-                    'Failed to update URL to step=2 or fetch preview',
-                    e,
+          <Step3Footer
+            onBack={async () => {
+              setCurrentStep(2);
+              try {
+                const params = new URLSearchParams(window.location.search);
+                params.set('step', '2');
+                if (videoGenerationState.currentTimestamp) {
+                  params.set(
+                    'timestamp',
+                    videoGenerationState.currentTimestamp,
                   );
                 }
-              }}
-              className="h-12 px-5 min-w-[150px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white bg-transparent transition-all duration-200 hover:bg-white/10 hover:-translate-y-[1px]"
-              style={{
-                borderColor: '#5B5BFF',
-                borderWidth: '1.5px',
-                borderStyle: 'solid',
-                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-              }}
-            >
-              <img src="/back.svg" alt="Back" className="w-4 h-4" />
-              <span>Back to Preview</span>
-            </button>
-            <button
-              onClick={async () => {
-                if (!videoCompletionData?.finalVideoUrl) {
-                  showToasterMessage(
-                    'Video URL not available for export',
-                    'error',
+                const newUrl = `${
+                  window.location.pathname
+                }?${params.toString()}`;
+                window.history.replaceState(null, '', newUrl);
+
+                if (videoGenerationState.currentTimestamp) {
+                  setVideoGenerationState((prev) => ({
+                    ...prev,
+                    isLoadingAudioSubtitles: true,
+                    isLoadingVideoScenes: true,
+                  }));
+                  const previewResponse = await fetch(
+                    `/api/fetch-preview?timestamp=${videoGenerationState.currentTimestamp}`,
+                    { method: 'GET' },
                   );
-                  return;
+                  const response = await previewResponse.json();
+                  const manifest = response.manifest;
+                  if (manifest?.scenes) {
+                    const removedScenes = new Set<number>();
+                    manifest.scenes.forEach((scene: any) => {
+                      if (scene.removed) {
+                        const sceneIdMatch =
+                          scene.files?.mp3?.match(/scene-(\d+)\./) ||
+                          scene.files?.mp4?.match(/scene-(\d+)\./) ||
+                          scene.files?.ass?.match(/scene-(\d+)\./);
+                        const sceneId = sceneIdMatch
+                          ? parseInt(sceneIdMatch[1])
+                          : scene.id;
+                        removedScenes.add(sceneId);
+                      }
+                    });
+                    setRemovedOriginalScenes(removedScenes);
+                  }
+                  setVideoGenerationState((prev) => ({
+                    ...prev,
+                    manifest: manifest || undefined,
+                    isLoadingAudioSubtitles: false,
+                    isLoadingVideoScenes: false,
+                  }));
                 }
-                try {
-                  setIsExportingFinalVideo(true);
-                  await exportVideoUtil({
-                    finalVideoUrl: videoCompletionData.finalVideoUrl,
-                    filename: `video-${videoCompletionData.generatedAt}.mp4`,
-                    showToasterMessage,
-                  });
-                } finally {
-                  setIsExportingFinalVideo(false);
-                }
-              }}
-              disabled={
-                isExportingFinalVideo || !videoCompletionData?.finalVideoUrl
+              } catch (e) {
+                console.warn(
+                  'Failed to update URL to step=2 or fetch preview',
+                  e,
+                );
               }
-              className={`h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95 ${
-                isExportingFinalVideo || !videoCompletionData?.finalVideoUrl
-                  ? 'opacity-50 cursor-not-allowed'
-                  : ''
-              }`}
-              style={{
-                background:
-                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
-                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-              }}
-            >
-              {isExportingFinalVideo ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                  <span>Exporting...</span>
-                </>
-              ) : !videoCompletionData?.finalVideoUrl ? (
-                <span>Creating your video...</span>
-              ) : (
-                <span>Export Video</span>
-              )}
-            </button>
-          </div>
+            }}
+            canExport={!!videoCompletionData?.finalVideoUrl}
+            isExporting={isExportingFinalVideo}
+            onExport={async () => {
+              if (!videoCompletionData?.finalVideoUrl) {
+                showToasterMessage(
+                  'Video URL not available for export',
+                  'error',
+                );
+                return;
+              }
+              try {
+                setIsExportingFinalVideo(true);
+                await exportVideoUtil({
+                  finalVideoUrl: videoCompletionData.finalVideoUrl,
+                  filename: `video-${videoCompletionData.generatedAt}.mp4`,
+                  showToasterMessage,
+                });
+              } finally {
+                setIsExportingFinalVideo(false);
+              }
+            }}
+          />
         ) : currentStep === 1 ? (
-          <div
-            className="ml-auto pr-4 flex items-center justify-end gap-12"
-            style={{ width: '65%' }}
-          >
-            <button
-              onClick={handleMagicScript}
-              disabled={isGeneratingScript}
-              className={`h-12 px-4 text-xs sm:text-sm font-semibold flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
-              style={{
-                borderColor: '#5B5BFF',
-                borderWidth: '1.5px',
-                borderStyle: 'solid',
-                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-              }}
-            >
-              {isGeneratingScript ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                  <span>Enhancing...</span>
-                </>
-              ) : (
-                <>
-                  <span>✨</span>
-                  <span>Write Magic Script</span>
-                </>
-              )}
-            </button>
-            <button
-              onClick={handleGenerateVideoFromFooter}
-              disabled={
-                generationState.isGenerating ||
-                !script.trim() ||
-                script.trim().split(/\s+/).length < 5
-              }
-              className={`h-12 px-4 text-xs sm:text-sm font-semibold flex items-center justify-center space-x-2 transition-all duration-300 hover:brightness-90 hover:-translate-y-[1px] ${
-                generationState.isGenerating ||
-                !script.trim() ||
-                script.trim().split(/\s+/).length < 5
-                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed rounded-xl'
-                  : 'text-white'
-              }`}
-              style={
-                !generationState.isGenerating &&
-                script.trim() &&
-                script.trim().split(/\s+/).length >= 5
-                  ? {
-                      borderRadius: '0.75rem',
-                      background:
-                        'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
-                      boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-                    }
-                  : {}
-              }
-            >
-              {generationState.isGenerating ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                  <span>Generating...</span>
-                </>
-              ) : (
-                <span>
-                  Preview Scenes for {selectedDuration === '30s' ? '10' : '20'}{' '}
-                  Credits
-                </span>
-              )}
-            </button>
-          </div>
+          <Step1Footer
+            onMagicScript={handleMagicScript}
+            isGeneratingScript={isGeneratingScript}
+            onGenerate={handleGenerateVideoFromFooter}
+            canGenerate={
+              !generationState.isGenerating &&
+              !!script.trim() &&
+              script.trim().split(/\s+/).length >= 5
+            }
+          />
         ) : null
       }
     >
@@ -1009,30 +770,34 @@ export default function GeneratePage() {
                 : 'translate-x-full'
             }`}
           >
-            <VideoCreator
-              isGenerating={generationState.isGenerating}
-              onGenerateVideo={handleGenerateVideo}
-              onGenerateScript={handleGenerateScript}
-              generationStatus={generationState.generationStatus}
-              statusMessage={generationState.statusMessage}
-              showNextButton={
-                generationState.hasStartedProcess &&
-                currentStep === 1 &&
-                (scenes.length > 0 ||
-                  generationState.generationStatus === 'completed')
-              }
-              onNextStep={handleNextStep}
-              onMagicScript={handleMagicScript}
-              isGeneratingScript={isGeneratingScript}
-              script={script}
-              onScriptChange={setScript}
-              onGenerateVideoFromFooter={handleGenerateVideoFromFooter}
-              selectedDuration={selectedDuration}
-              selectedVoice={selectedVoice}
-              selectedLanguage={selectedLanguage}
-              selectedTemplate={selectedTemplate}
-              onTemplateSelect={setSelectedTemplate}
-            />
+            <div className="space-y-6">
+              <VideoCreator
+                isGenerating={generationState.isGenerating}
+                onGenerateVideo={handleGenerateVideo}
+                onGenerateScript={handleGenerateScript}
+                generationStatus={generationState.generationStatus}
+                statusMessage={generationState.statusMessage}
+                showNextButton={
+                  generationState.hasStartedProcess &&
+                  currentStep === 1 &&
+                  (scenes.length > 0 ||
+                    generationState.generationStatus === 'completed')
+                }
+                onNextStep={handleNextStep}
+                onMagicScript={handleMagicScript}
+                isGeneratingScript={isGeneratingScript}
+                script={script}
+                onScriptChange={setScript}
+                onGenerateVideoFromFooter={handleGenerateVideoFromFooter}
+                selectedDuration={selectedDuration}
+                selectedVoice={selectedVoice}
+                selectedLanguage={selectedLanguage}
+                selectedTemplate={selectedTemplate}
+                onTemplateSelect={setSelectedTemplate}
+              />
+
+              {/* Template grid kept inline or inside VideoCreator */}
+            </div>
           </div>
 
           <div
