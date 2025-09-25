@@ -91,6 +91,8 @@ export default function GeneratePage() {
   );
   const [creatingSceneId, setCreatingSceneId] = useState<number | null>(null);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
+  const [disableInitialTransition, setDisableInitialTransition] =
+    useState(true);
   const [videoCompletionData, setVideoCompletionData] =
     useState<Manifest | null>(null);
   const [isExportingFinalVideo, setIsExportingFinalVideo] = useState(false);
@@ -425,6 +427,13 @@ export default function GeneratePage() {
     videoGenerationState,
     setVideoGenerationState,
     setRemovedOriginalScenes,
+    onInitialStep: (s) => {
+      // If user lands directly on step 2 or 3, disable first transition
+      if (s >= 2) setDisableInitialTransition(true);
+      else setDisableInitialTransition(false);
+      // Re-enable transitions after first paint
+      requestAnimationFrame(() => setDisableInitialTransition(false));
+    },
   });
 
   const handleGenerateVideo = async (
@@ -701,7 +710,7 @@ export default function GeneratePage() {
       <div className="flex flex-col justify-start px-4 h-full overflow-y-auto">
         <div className="relative overflow-hidden flex-1">
           <div
-            className={`h-full overflow-y-scroll custom-scrollbar transition-transform duration-500 ease-in-out ${
+            className={`h-full overflow-y-scroll custom-scrollbar ${
               currentStep === 1
                 ? 'translate-x-0'
                 : currentStep > 1
@@ -740,7 +749,7 @@ export default function GeneratePage() {
           </div>
 
           <div
-            className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar transition-transform duration-500 ease-in-out px-3 ${
+            className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar ${
               currentStep === 2
                 ? 'translate-x-0'
                 : currentStep > 2
@@ -785,7 +794,7 @@ export default function GeneratePage() {
 
           {/* Step 3: Export Video */}
           <div
-            className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar transition-transform duration-500 ease-in-out ${
+            className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar ${
               currentStep === 3 ? 'translate-x-0' : 'translate-x-full'
             }`}
           >

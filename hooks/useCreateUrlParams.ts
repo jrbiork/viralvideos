@@ -15,6 +15,7 @@ interface Params {
     }>
   >;
   setRemovedOriginalScenes: (s: Set<number>) => void;
+  onInitialStep?: (step: number) => void;
 }
 
 export function useCreateUrlParams({
@@ -22,6 +23,7 @@ export function useCreateUrlParams({
   videoGenerationState,
   setVideoGenerationState,
   setRemovedOriginalScenes,
+  onInitialStep,
 }: Params) {
   const processedRef = useRef(false);
 
@@ -36,7 +38,10 @@ export function useCreateUrlParams({
 
       if (stepFromUrl) {
         const stepNumber = parseInt(stepFromUrl);
-        if (stepNumber >= 1 && stepNumber <= 3) setCurrentStep(stepNumber);
+        if (stepNumber >= 1 && stepNumber <= 3) {
+          setCurrentStep(stepNumber);
+          onInitialStep && onInitialStep(stepNumber);
+        }
       }
 
       if (
