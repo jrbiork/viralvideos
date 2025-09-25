@@ -43,7 +43,11 @@ async function getUserInfoFromCognito(accessToken: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { token, email: fallbackEmail, name: fallbackName } = await request.json();
+    const {
+      token,
+      email: fallbackEmail,
+      name: fallbackName,
+    } = await request.json();
 
     if (!token) {
       return NextResponse.json({ error: 'Token required' }, { status: 400 });
@@ -99,6 +103,7 @@ export async function POST(request: NextRequest) {
           email: synthesizedEmail,
           name: userInfo.name,
           username: userData.username,
+          picture: userInfo.picture,
         };
 
         const userManagementResponse = await fetch(
@@ -120,7 +125,10 @@ export async function POST(request: NextRequest) {
           );
         }
       } catch (error) {
-        console.error('Error managing user via API Gateway (synthesized):', error);
+        console.error(
+          'Error managing user via API Gateway (synthesized):',
+          error,
+        );
       }
 
       const response = NextResponse.json({
@@ -161,6 +169,7 @@ export async function POST(request: NextRequest) {
         email: userEmail,
         name: userInfo.name,
         username: userData.username,
+        picture: userInfo.picture,
       };
 
       const userManagementResponse = await fetch(
@@ -283,6 +292,7 @@ export async function GET(request: NextRequest) {
         email: derivedEmail,
         name: userInfo.name,
         username: userData.username,
+        picture: userInfo.picture,
       };
 
       const userManagementResponse = await fetch(

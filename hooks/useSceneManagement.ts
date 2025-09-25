@@ -167,9 +167,6 @@ export function useSceneManagement() {
     // Prevent multiple calls with the same parameters
     const callKey = `${state.selectedSceneId}-${currentTimestamp}`;
     if (lastAutoPlayCall.current === callKey) {
-      console.log(
-        '🎬 handleAutoPlay already called with same parameters, skipping',
-      );
       return;
     }
     lastAutoPlayCall.current = callKey;
@@ -191,12 +188,10 @@ export function useSceneManagement() {
         (s: any) => s.id === state.selectedSceneId,
       );
 
-      console.log('🎬 Selected scene index:', selectedscenePosition);
-
       if (selectedscenePosition !== -1) {
         // Stop all videos first
         const allVideos = document.querySelectorAll('video');
-        console.log('🎬 Stopping', allVideos.length, 'videos');
+
         allVideos.forEach((video) => {
           video.pause();
           video.currentTime = 0;
@@ -211,7 +206,6 @@ export function useSceneManagement() {
             `video[src*="${videoKey}"]`,
           ) as HTMLVideoElement;
           if (videoElement && !videoElement.dataset.autoPlaying) {
-            console.log('🎬 Found video element, attempting to play');
             // Mark as auto-playing to prevent conflicts
             videoElement.dataset.autoPlaying = 'true';
 
@@ -223,7 +217,6 @@ export function useSceneManagement() {
                 videoElement.dataset.autoPlaying = 'false';
               });
             } else {
-              console.log('🎬 Video not ready yet, waiting...');
               videoElement.addEventListener(
                 'canplay',
                 () => {
@@ -331,10 +324,7 @@ export function useSceneManagement() {
           const firstStart = subtitles.length > 0 ? subtitles[0].start : 0;
           if (currentTime < firstStart - epsilon) {
             lastSubtitleRef.current = '';
-            console.log('[subs] Before first cue -> clear', {
-              sceneId: scene.id,
-              firstStart,
-            });
+
             dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
             return;
           }
@@ -342,12 +332,6 @@ export function useSceneManagement() {
           if (currentSub) {
             lastSubtitleRef.current = currentSub.coloredText;
             synthesizedRef.current = false; // back to normal stream
-            console.log('[subs] Using current cue', {
-              sceneId: scene.id,
-              start: currentSub.start,
-              end: currentSub.end,
-              textPreview: currentSub.coloredText?.slice(0, 80),
-            });
           }
 
           if (!currentSub) {
@@ -363,15 +347,6 @@ export function useSceneManagement() {
             ) {
               // Avoid re-synthesizing on every tick
               if (synthesizedRef.current) {
-                console.log(
-                  '[subs] Using previously synthesized final fallback',
-                  {
-                    sceneId: scene.id,
-                    cachedPreview: (lastSubtitleRef.current || '')
-                      .replace(/\{[^}]*\}/g, '')
-                      .slice(0, 120),
-                  },
-                );
                 dispatch({
                   type: 'SET_CURRENT_SUBTITLE',
                   payload: lastSubtitleRef.current,
@@ -396,13 +371,6 @@ export function useSceneManagement() {
                 s.replace(/\{[^}]*\}/g, '').toUpperCase();
               const cachedStripped = stripAss(lastSubtitleRef.current || '');
               if (cachedStripped.includes(core.toUpperCase())) {
-                console.log(
-                  '[subs] Cached already contains final word, skip synth append',
-                  {
-                    sceneId: scene.id,
-                    core,
-                  },
-                );
                 dispatch({
                   type: 'SET_CURRENT_SUBTITLE',
                   payload: lastSubtitleRef.current,
@@ -412,15 +380,7 @@ export function useSceneManagement() {
               }
               // Show only the final word to avoid repeating the previous phrase visually
               const synthesized = `{\\c&H00FFFF&}${finalToken}`;
-              console.log('[subs] Synthesized final word fallback', {
-                sceneId: scene.id,
-                lastSubEnd,
-                currentTime,
-                finalToken,
-                synthesizedPreview: synthesized
-                  .replace(/\{[^}]*\}/g, '')
-                  .slice(0, 120),
-              });
+
               lastSubtitleRef.current = synthesized;
               synthesizedRef.current = true;
               dispatch({
@@ -428,12 +388,6 @@ export function useSceneManagement() {
                 payload: synthesized,
               });
             } else {
-              console.log('[subs] Fallback to cached subtitle', {
-                sceneId: scene.id,
-                cachedPreview: (lastSubtitleRef.current || '')
-                  .replace(/\{[^}]*\}/g, '')
-                  .slice(0, 80),
-              });
               dispatch({
                 type: 'SET_CURRENT_SUBTITLE',
                 payload: lastSubtitleRef.current,
@@ -450,10 +404,7 @@ export function useSceneManagement() {
         }
       } else {
         // Clear subtitle if no ASS content found
-        console.log('[subs] No ASS content found for key -> clear', {
-          sceneId: scene.id,
-          assKey,
-        });
+
         dispatch({
           type: 'SET_CURRENT_SUBTITLE',
           payload: '',
@@ -463,7 +414,6 @@ export function useSceneManagement() {
 
     // Add event listeners only once
     videoRef.addEventListener('play', () => {
-      console.log('🎬 Video play event triggered for scene:', scene.id);
       // Enable auto-advance when user manually plays a video
       if (!state.autoAdvanceEnabled) {
         dispatch({ type: 'SET_AUTO_ADVANCE_ENABLED', payload: true });
@@ -513,7 +463,6 @@ export function useSceneManagement() {
     videoRef.addEventListener('ended', () => {
       // Reset auto-playing flag
       videoRef.dataset.autoPlaying = 'false';
-      console.log('[subs] Video ended', { sceneId: scene.id });
 
       const audioElement = document.getElementById(
         `audio-${scene.id}`,

@@ -20,6 +20,7 @@ interface RequestBody {
   username: string;
   email: string;
   name?: string;
+  picture?: string;
 }
 
 export const handler = async (
@@ -33,6 +34,7 @@ export const handler = async (
     let username: string;
     let email: string;
     let name: string | undefined;
+    let picture: string | undefined;
 
     if (!event.body) {
       console.error('No request body found');
@@ -50,6 +52,7 @@ export const handler = async (
     username = requestBody.username;
     email = requestBody.email;
     name = requestBody.name;
+    picture = requestBody.picture;
 
     if (!userId || !username || !email) {
       console.error('Missing required user info in request body:', requestBody);
@@ -76,7 +79,14 @@ export const handler = async (
     }
 
     const now = new Date().toISOString();
-    return await handleCreateOrUpdateUser(userId, username, email, name, now);
+    return await handleCreateOrUpdateUser(
+      userId,
+      username,
+      email,
+      name,
+      picture,
+      now,
+    );
   } catch (error) {
     console.error('Upsert user error:', error);
     return {
@@ -94,6 +104,7 @@ async function handleCreateOrUpdateUser(
   username: string,
   email: string,
   name: string | undefined,
+  picture: string | undefined,
   now: string,
 ): Promise<APIGatewayProxyResult> {
   // Check if user already exists
@@ -108,15 +119,23 @@ async function handleCreateOrUpdateUser(
   const existingUser = await docClient.send(getCommand);
 
   if (existingUser.Item) {
-    // User exists, update lastLoginAt and name if provided
+    // User exists, update lastLoginAt and name/picture if provided
     let updateExpression = 'SET lastLoginAt = :lastLoginAt';
     const expressionAttributeValues: any = {
       ':lastLoginAt': now,
     };
+    const expressionAttributeNames: any = {};
 
     if (name) {
       updateExpression += ', #name = :name';
       expressionAttributeValues[':name'] = name;
+      expressionAttributeNames['#name'] = 'name';
+    }
+
+    if (picture) {
+      updateExpression += ', #picture = :picture';
+      expressionAttributeValues[':picture'] = picture;
+      expressionAttributeNames['#picture'] = 'picture';
     }
 
     const updateCommand = new UpdateCommand({
@@ -127,7 +146,10 @@ async function handleCreateOrUpdateUser(
       },
       UpdateExpression: updateExpression,
       ExpressionAttributeValues: expressionAttributeValues,
-      ExpressionAttributeNames: name ? { '#name': 'name' } : undefined,
+      ExpressionAttributeNames:
+        Object.keys(expressionAttributeNames).length > 0
+          ? expressionAttributeNames
+          : undefined,
       ReturnValues: 'ALL_NEW',
     });
 
@@ -161,6 +183,7 @@ async function handleCreateOrUpdateUser(
         username: username,
         email: email,
         name: name,
+        picture: picture,
         createdAt: now,
         lastLoginAt: now,
         creditsAvailable: 10,
@@ -180,6 +203,7 @@ async function handleCreateOrUpdateUser(
       username,
       email,
       name,
+      picture,
       createdAt: now,
       lastLoginAt: now,
       creditsAvailable: 10,
@@ -197,6 +221,7 @@ async function handleCreateOrUpdateUser(
           username: username,
           email: email,
           name: name,
+          picture: picture,
           createdAt: now,
           lastLoginAt: now,
           creditsAvailable: 10,

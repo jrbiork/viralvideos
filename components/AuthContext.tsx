@@ -37,7 +37,8 @@ interface AuthCacheEntry {
 
 class AuthCache {
   private cache: AuthCacheEntry | null = null;
-  private readonly ttl = 20 * 60 * 1000; // 20 minutes in milliseconds
+  // Extend session cache TTL to reduce repeated /api/auth/session calls
+  private readonly ttl = 6 * 60 * 60 * 1000; // 6 hours
 
   get(): User | null {
     if (!this.cache) return null;

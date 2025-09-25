@@ -29,8 +29,9 @@ interface CachedUserData {
 // In-memory cache for user data
 class UserDataCache {
   private cache = new Map<string, CachedUserData>();
-  private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  private readonly STALE_WHILE_REVALIDATE = 10 * 60 * 1000; // 10 minutes
+  // Extend cache duration significantly to reduce API calls
+  private readonly CACHE_DURATION = 6 * 60 * 60 * 1000; // 6 hours
+  private readonly STALE_WHILE_REVALIDATE = 12 * 60 * 60 * 1000; // 12 hours
 
   set(userId: string, data: UserData): void {
     const now = Date.now();

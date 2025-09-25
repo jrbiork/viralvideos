@@ -151,6 +151,7 @@ export async function POST(request: NextRequest) {
       email: string;
       name: string;
       username: string;
+      picture?: string;
     } = await request.json();
 
     // Forward the request to API Gateway
