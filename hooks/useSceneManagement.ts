@@ -68,6 +68,8 @@ function sceneManagementReducer(
 export function useSceneManagement() {
   const [state, dispatch] = useReducer(sceneManagementReducer, initialState);
   const lastAutoPlayCall = useRef<string>('');
+  const lastSubtitleRef = useRef<string>('');
+  const synthesizedRef = useRef<boolean>(false);
 
   const handleEditScene = (sceneId: number, narration: string) => {
     dispatch({ type: 'SET_EDITING_SCENE', payload: sceneId });
@@ -97,7 +99,10 @@ export function useSceneManagement() {
   };
 
   const handleSceneSelection = (sceneId: number) => {
-    // Clear subtitle state when selecting a new scene
+    // Reset cached subtitle when switching scenes
+    lastSubtitleRef.current = '';
+    synthesizedRef.current = false;
+    console.log('[subs] Scene selected -> reset subtitle cache', { sceneId });
     dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
     dispatch({ type: 'SET_SELECTED_SCENE_ID', payload: sceneId });
   };
@@ -274,24 +279,175 @@ export function useSceneManagement() {
       if (assContent) {
         try {
           const subtitles = assContent ? parseAssFile(assContent) : [];
+          console.log('[subs] Parsed ASS', {
+            sceneId: scene.id,
+            assKey,
+            subtitlesCount: subtitles.length,
+          });
 
           const currentTime = videoRef.currentTime;
-          // Allow a small epsilon so the last word/event isn't skipped due to float precision
-          const epsilon = 0.08; // ~80ms tolerance
-          const currentSub = subtitles.find(
+          // Slightly larger tolerance and a small lookahead to avoid missing short cues
+          const epsilon = 0.25; // ~250ms tolerance
+          const lookaheadWindow = 0.3; // ~300ms lookahead for imminent cue
+          let currentSub = subtitles.find(
             (sub) =>
               currentTime >= sub.start && currentTime <= sub.end + epsilon,
           );
 
-          dispatch({
-            type: 'SET_CURRENT_SUBTITLE',
-            payload: currentSub ? currentSub.coloredText : '',
+          if (!currentSub) {
+            const nextSub = subtitles.find(
+              (sub) =>
+                sub.start > currentTime &&
+                sub.start - currentTime <= lookaheadWindow,
+            );
+            if (nextSub) {
+              currentSub = nextSub;
+            }
+          }
+
+          const lastSub =
+            subtitles.length > 0 ? subtitles[subtitles.length - 1] : undefined;
+          console.log('[subs] Tick', {
+            sceneId: scene.id,
+            currentTime: Number.isFinite(currentTime)
+              ? currentTime.toFixed(3)
+              : String(currentTime),
+            duration: Number.isFinite(videoRef.duration)
+              ? videoRef.duration.toFixed(3)
+              : String(videoRef.duration),
+            epsilon,
+            lookaheadWindow,
+            found: Boolean(currentSub),
+            subBounds: currentSub
+              ? { start: currentSub.start, end: currentSub.end }
+              : null,
+            cached: Boolean(lastSubtitleRef.current),
+            lastBounds: lastSub
+              ? { start: lastSub.start, end: lastSub.end }
+              : null,
           });
+
+          // Before the first cue starts, show nothing
+          const firstStart = subtitles.length > 0 ? subtitles[0].start : 0;
+          if (currentTime < firstStart - epsilon) {
+            lastSubtitleRef.current = '';
+            console.log('[subs] Before first cue -> clear', {
+              sceneId: scene.id,
+              firstStart,
+            });
+            dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
+            return;
+          }
+
+          if (currentSub) {
+            lastSubtitleRef.current = currentSub.coloredText;
+            synthesizedRef.current = false; // back to normal stream
+            console.log('[subs] Using current cue', {
+              sceneId: scene.id,
+              start: currentSub.start,
+              end: currentSub.end,
+              textPreview: currentSub.coloredText?.slice(0, 80),
+            });
+          }
+
+          if (!currentSub) {
+            // If we're after the last subtitle but before video end, synthesize a final word fallback
+            const lastSubEnd = lastSub ? lastSub.end : undefined;
+            const beforeVideoEnds = Number.isFinite(videoRef.duration)
+              ? currentTime <= videoRef.duration + 0.01
+              : true;
+            if (
+              lastSubEnd !== undefined &&
+              currentTime > lastSubEnd - epsilon &&
+              beforeVideoEnds
+            ) {
+              // Avoid re-synthesizing on every tick
+              if (synthesizedRef.current) {
+                console.log(
+                  '[subs] Using previously synthesized final fallback',
+                  {
+                    sceneId: scene.id,
+                    cachedPreview: lastSubtitleRef.current?.slice(0, 120),
+                  },
+                );
+                dispatch({
+                  type: 'SET_CURRENT_SUBTITLE',
+                  payload: lastSubtitleRef.current,
+                });
+                return;
+              }
+
+              const narration = (scene.narration || '').trim();
+              const words = narration.split(/\s+/).filter(Boolean);
+              const lastWordRaw =
+                words.length > 0 ? words[words.length - 1] : '';
+              // Keep punctuation as-is, but upper-case the core word to match style
+              const match = lastWordRaw.match(
+                /([A-Za-zÁ-ÿ']+)([^A-Za-zÁ-ÿ']*)/,
+              );
+              const core = match ? match[1] : lastWordRaw;
+              const trailing = match ? match[2] : '';
+              const finalToken = `${core.toUpperCase()}${trailing}`;
+
+              // If cached already contains the final word (ignoring ASS tags), don't append again
+              const stripAss = (s: string) =>
+                s.replace(/\{[^}]*\}/g, '').toUpperCase();
+              const cachedStripped = stripAss(lastSubtitleRef.current || '');
+              if (cachedStripped.includes(core.toUpperCase())) {
+                console.log(
+                  '[subs] Cached already contains final word, skip synth append',
+                  {
+                    sceneId: scene.id,
+                    core,
+                  },
+                );
+                dispatch({
+                  type: 'SET_CURRENT_SUBTITLE',
+                  payload: lastSubtitleRef.current,
+                });
+                synthesizedRef.current = true;
+                return;
+              }
+              // Show only the final word to avoid repeating the previous phrase visually
+              const synthesized = `{\\c&H00FFFF&}${finalToken}`;
+              console.log('[subs] Synthesized final word fallback', {
+                sceneId: scene.id,
+                lastSubEnd,
+                currentTime,
+                finalToken,
+                synthesizedPreview: synthesized.slice(0, 120),
+              });
+              lastSubtitleRef.current = synthesized;
+              synthesizedRef.current = true;
+              dispatch({
+                type: 'SET_CURRENT_SUBTITLE',
+                payload: synthesized,
+              });
+            } else {
+              console.log('[subs] Fallback to cached subtitle', {
+                sceneId: scene.id,
+                cachedPreview: lastSubtitleRef.current?.slice(0, 80),
+              });
+              dispatch({
+                type: 'SET_CURRENT_SUBTITLE',
+                payload: lastSubtitleRef.current,
+              });
+            }
+          } else {
+            dispatch({
+              type: 'SET_CURRENT_SUBTITLE',
+              payload: currentSub.coloredText,
+            });
+          }
         } catch (error) {
           console.error('Error parsing ASS content:', error);
         }
       } else {
         // Clear subtitle if no ASS content found
+        console.log('[subs] No ASS content found for key -> clear', {
+          sceneId: scene.id,
+          assKey,
+        });
         dispatch({
           type: 'SET_CURRENT_SUBTITLE',
           payload: '',
@@ -351,6 +507,7 @@ export function useSceneManagement() {
     videoRef.addEventListener('ended', () => {
       // Reset auto-playing flag
       videoRef.dataset.autoPlaying = 'false';
+      console.log('[subs] Video ended', { sceneId: scene.id });
 
       const audioElement = document.getElementById(
         `audio-${scene.id}`,
@@ -359,7 +516,6 @@ export function useSceneManagement() {
         audioElement.pause();
         audioElement.currentTime = 0;
       }
-      dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
 
       // Auto-select next scene if available
       if (scenes && scenes.length > 0) {
