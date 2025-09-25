@@ -712,6 +712,10 @@ export default function GeneratePage() {
         <div className="relative overflow-hidden flex-1">
           <div
             className={`h-full overflow-y-scroll custom-scrollbar ${
+              disableInitialTransition
+                ? ''
+                : 'transition-transform duration-500 ease-in-out'
+            } ${
               currentStep === 1
                 ? 'translate-x-0'
                 : currentStep > 1
@@ -751,6 +755,10 @@ export default function GeneratePage() {
 
           <div
             className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar ${
+              disableInitialTransition
+                ? ''
+                : 'transition-transform duration-500 ease-in-out'
+            } ${
               currentStep === 2
                 ? 'translate-x-0'
                 : currentStep > 2
@@ -796,8 +804,10 @@ export default function GeneratePage() {
           {/* Step 3: Export Video */}
           <div
             className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar ${
-              currentStep === 3 ? 'translate-x-0' : 'translate-x-full'
-            }`}
+              disableInitialTransition
+                ? ''
+                : 'transition-transform duration-500 ease-in-out'
+            } ${currentStep === 3 ? 'translate-x-0' : 'translate-x-full'}`}
           >
             <div className="flex flex-col md:flex-row h-full">
               <div className="flex-[2]">

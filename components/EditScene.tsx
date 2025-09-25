@@ -415,24 +415,35 @@ export default function EditScene({
               className="absolute inset-0 backdrop-blur-sm rounded-xl z-40"
               style={{ backgroundColor: 'rgba(117, 82, 242, 0.20)' }}
             >
+              {/* Revert icon (top-right) */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRestoreOriginalScene && onRestoreOriginalScene(scene.id);
+                }}
+                className="absolute top-2 right-2 z-10 text-purple-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-full p-1.5 transition-all duration-200"
+                title="Restore scene"
+              >
+                <svg
+                  className="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 10l-4-4m0 0l4-4m-4 4h11a4 4 0 010 8h-1"
+                  />
+                </svg>
+              </button>
+
               {/* Centered content (message + button) */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="flex flex-col items-center space-y-3 px-3 text-center">
-                  <span className="text-white text-sm font-medium">
-                    This scene will not be included in the final video
-                  </span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRestoreOriginalScene &&
-                        onRestoreOriginalScene(scene.id);
-                    }}
-                    className="px-3 py-2 rounded-md text-white text-xs font-semibold hover:brightness-95 transition-colors shadow"
-                    style={{ backgroundColor: '#7552F2' }}
-                  >
-                    Restore scene
-                  </button>
-                </div>
+              <div className="absolute inset-0 flex items-center justify-center px-3 text-center">
+                <span className="text-white text-sm font-medium">
+                  This scene will not be included in the final video
+                </span>
               </div>
             </div>
           )}
