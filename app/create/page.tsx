@@ -234,6 +234,7 @@ export default function GeneratePage() {
     setRegeneratingSceneId,
     setIsVideoGenerating,
     setVideoCompletionData,
+    onCancelEdit: handleCancelEdit,
   });
 
   // WebSocket hook for real-time updates

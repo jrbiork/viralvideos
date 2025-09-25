@@ -411,35 +411,28 @@ export default function EditScene({
 
           {/* Removed Overlay - Only for original scenes */}
           {scene.removed && !scene.isUserAdded && (
-            <div className="absolute inset-0 bg-gray-500/60 backdrop-blur-sm rounded-xl flex items-center justify-center z-40">
-              <div className="flex flex-col items-center space-y-3">
-                <div className="w-8 h-8 bg-gray-500/30 rounded-full flex items-center justify-center">
-                  <svg
-                    className="w-4 h-4 text-gray-200"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+            <div
+              className="absolute inset-0 backdrop-blur-sm rounded-xl z-40"
+              style={{ backgroundColor: 'rgba(117, 82, 242, 0.20)' }}
+            >
+              {/* Centered content (message + button) */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex flex-col items-center space-y-3 px-3 text-center">
+                  <span className="text-white text-sm font-medium">
+                    This scene will not be included in the final video
+                  </span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRestoreOriginalScene &&
+                        onRestoreOriginalScene(scene.id);
+                    }}
+                    className="px-3 py-2 rounded-md text-white text-xs font-semibold hover:brightness-95 transition-colors shadow"
+                    style={{ backgroundColor: '#7552F2' }}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
+                    Restore scene
+                  </button>
                 </div>
-                <span className="text-white text-sm font-medium">
-                  Scene removed
-                </span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRestoreOriginalScene && onRestoreOriginalScene(scene.id);
-                  }}
-                  className="px-3 py-1.5 rounded-md bg-white/90 text-slate-900 text-xs font-semibold hover:bg-white transition-colors shadow"
-                >
-                  Restore scene
-                </button>
               </div>
             </div>
           )}
@@ -524,6 +517,14 @@ export default function EditScene({
                 height: 'auto',
               }}
             >
+              {scene.animated && (
+                <div
+                  className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md"
+                  style={{ backgroundColor: 'rgba(117, 82, 242, 0.6)' }}
+                >
+                  Animated
+                </div>
+              )}
               <img
                 src={
                   currentImageUrl ||
@@ -577,6 +578,14 @@ export default function EditScene({
                 border: '2px dashed #6B7280',
               }}
             >
+              {scene.animated && (
+                <div
+                  className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md"
+                  style={{ backgroundColor: 'rgba(117, 82, 242, 0.6)' }}
+                >
+                  Animated
+                </div>
+              )}
               <div className="flex flex-col items-center space-y-2 text-gray-400">
                 <svg
                   className="w-8 h-8"

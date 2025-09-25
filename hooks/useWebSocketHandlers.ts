@@ -21,6 +21,7 @@ interface UseWebSocketHandlersProps {
   setVideoCompletionData?: React.Dispatch<
     React.SetStateAction<Manifest | null>
   >;
+  onCancelEdit?: () => void;
 }
 
 export function useWebSocketHandlers({
@@ -33,6 +34,7 @@ export function useWebSocketHandlers({
   setRegeneratingSceneId,
   setIsVideoGenerating,
   setVideoCompletionData,
+  onCancelEdit,
 }: UseWebSocketHandlersProps) {
   // Handle video completion
   const handleVideoCompleted = useCallback(
@@ -117,6 +119,11 @@ export function useWebSocketHandlers({
           isLoadingVideoScenes: false,
           isLoadingAudioSubtitles: false,
         }));
+
+        // If a scene was being edited (regenerated), exit edit mode
+        if (currentEditingSceneId !== null && onCancelEdit) {
+          onCancelEdit();
+        }
 
         // Update video elements with new ASS and subtitle content
         // This handles both scene creation and audio regeneration
@@ -223,6 +230,7 @@ export function useWebSocketHandlers({
       setAdditionalScenes,
       currentEditingSceneId,
       setRegeneratingSceneId,
+      onCancelEdit,
     ],
   );
 
