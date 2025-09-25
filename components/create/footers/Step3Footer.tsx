@@ -1,36 +1,21 @@
 import React from 'react';
 
 interface Step3FooterProps {
-  onBack: () => Promise<void> | void;
   canExport: boolean;
   isExporting: boolean;
   onExport: () => Promise<void> | void;
 }
 
 export default function Step3Footer({
-  onBack,
   canExport,
   isExporting,
   onExport,
 }: Step3FooterProps) {
   return (
     <div
-      className="pl-2 pr-8 flex items-center justify-between"
+      className="pl-2 pr-8 flex items-center justify-end"
       style={{ width: '65%' }}
     >
-      <button
-        onClick={onBack}
-        className="h-12 px-5 min-w-[150px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white bg-transparent transition-all duration-200 hover:bg-white/10 hover:-translate-y-[1px]"
-        style={{
-          borderColor: '#5B5BFF',
-          borderWidth: '1.5px',
-          borderStyle: 'solid',
-          boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-        }}
-      >
-        <img src="/back.svg" alt="Back" className="w-4 h-4" />
-        <span>Back to Preview</span>
-      </button>
       <button
         onClick={onExport}
         disabled={isExporting || !canExport}

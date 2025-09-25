@@ -98,11 +98,9 @@ export async function generateStoryBreakdown(
       messages: [
         {
           role: 'system',
-          content: `You are a short-form video scriptwriter for TikTok/Reels/Shorts.
-Create a ${totalDuration}-second 9:16 vertical video split into exactly ${sceneCount} scenes (each ${sceneDuration}s).
-
+          content: `Create a ${totalDuration}-second 9:16 vertical video split into exactly ${sceneCount} scenes (each ${sceneDuration}s).
 Strict rules:
-- **No brands, logos, trademarks, public figures, mascots, or celebrity likenesses.** If the user names any, **rewrite to a generic archetype** (e.g., “an elderly Southern gentleman in a white suit and string tie”)—never use real names or marks.
+- If the user names any, **rewrite to a generic archetype** (e.g., “an elderly Southern gentleman in a white suit and string tie”)—never use real names or marks.
 - **Two concise character bylines at the top level** (<= 10 words each): \`charactersBylines = [female, male]\`.
 - **Every scene must:**
   1) Start \`description\` with \`[FL: <female byline>] [ML: <male byline>]\` then the visual.
@@ -110,7 +108,9 @@ Output: **JSON only** following the provided schema.`,
         },
         {
           role: 'user',
-          content: prompt,
+          content:
+            'Elabore the following idea being concise and specific, mentioning examples if possible: ' +
+            prompt,
         },
       ],
       temperature: 1,

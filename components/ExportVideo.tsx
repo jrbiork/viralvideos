@@ -114,7 +114,7 @@ export default function ExportVideo({
           {/* Final Preview Section */}
           <div>
             <div className="relative flex justify-center">
-              <div className="aspect-[9/16] bg-gradient-to-br from-pink-400 to-pink-600 rounded-xl overflow-hidden w-full max-w-[280px]">
+              <div className="aspect-[9/16] rounded-xl overflow-hidden w-full max-w-[280px] border border-slate-700">
                 {thumbnailUrl ? (
                   <img
                     src={thumbnailUrl}

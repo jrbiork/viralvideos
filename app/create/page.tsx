@@ -276,7 +276,7 @@ export default function GeneratePage() {
   };
 
   // Example video URL
-  const exampleVideoUrl = '/assets/example.mp4';
+  const exampleVideoUrl = '/assets/mars-example.mp4';
 
   // Create scenes from manifest data
   const createScenesFromSubtitleFiles = useCallback((): Scene[] => {
@@ -657,70 +657,9 @@ export default function GeneratePage() {
       currentStep={currentStep}
       footerContent={
         currentStep === 2 ? (
-          <Step2Footer
-            onBack={() => setCurrentStep(1)}
-            onGenerateVideo={handleCombineVideo}
-          />
+          <Step2Footer onGenerateVideo={handleCombineVideo} />
         ) : currentStep === 3 ? (
           <Step3Footer
-            onBack={async () => {
-              setCurrentStep(2);
-              try {
-                const params = new URLSearchParams(window.location.search);
-                params.set('step', '2');
-                if (videoGenerationState.currentTimestamp) {
-                  params.set(
-                    'timestamp',
-                    videoGenerationState.currentTimestamp,
-                  );
-                }
-                const newUrl = `${
-                  window.location.pathname
-                }?${params.toString()}`;
-                window.history.replaceState(null, '', newUrl);
-
-                if (videoGenerationState.currentTimestamp) {
-                  setVideoGenerationState((prev) => ({
-                    ...prev,
-                    isLoadingAudioSubtitles: true,
-                    isLoadingVideoScenes: true,
-                  }));
-                  const previewResponse = await fetch(
-                    `/api/fetch-preview?timestamp=${videoGenerationState.currentTimestamp}`,
-                    { method: 'GET' },
-                  );
-                  const response = await previewResponse.json();
-                  const manifest = response.manifest;
-                  if (manifest?.scenes) {
-                    const removedScenes = new Set<number>();
-                    manifest.scenes.forEach((scene: any) => {
-                      if (scene.removed) {
-                        const sceneIdMatch =
-                          scene.files?.mp3?.match(/scene-(\d+)\./) ||
-                          scene.files?.mp4?.match(/scene-(\d+)\./) ||
-                          scene.files?.ass?.match(/scene-(\d+)\./);
-                        const sceneId = sceneIdMatch
-                          ? parseInt(sceneIdMatch[1])
-                          : scene.id;
-                        removedScenes.add(sceneId);
-                      }
-                    });
-                    setRemovedOriginalScenes(removedScenes);
-                  }
-                  setVideoGenerationState((prev) => ({
-                    ...prev,
-                    manifest: manifest || undefined,
-                    isLoadingAudioSubtitles: false,
-                    isLoadingVideoScenes: false,
-                  }));
-                }
-              } catch (e) {
-                console.warn(
-                  'Failed to update URL to step=2 or fetch preview',
-                  e,
-                );
-              }
-            }}
             canExport={!!videoCompletionData?.finalVideoUrl}
             isExporting={isExportingFinalVideo}
             onExport={async () => {
@@ -762,7 +701,7 @@ export default function GeneratePage() {
       <div className="flex flex-col justify-start px-4 h-full overflow-y-auto">
         <div className="relative overflow-hidden flex-1">
           <div
-            className={`h-full transition-transform duration-500 ease-in-out ${
+            className={`h-full overflow-y-scroll custom-scrollbar transition-transform duration-500 ease-in-out ${
               currentStep === 1
                 ? 'translate-x-0'
                 : currentStep > 1
@@ -801,7 +740,7 @@ export default function GeneratePage() {
           </div>
 
           <div
-            className={`absolute top-0 left-0 w-full h-full transition-transform duration-500 ease-in-out px-3 ${
+            className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar transition-transform duration-500 ease-in-out px-3 ${
               currentStep === 2
                 ? 'translate-x-0'
                 : currentStep > 2
@@ -846,7 +785,7 @@ export default function GeneratePage() {
 
           {/* Step 3: Export Video */}
           <div
-            className={`absolute top-0 left-0 w-full h-full transition-transform duration-500 ease-in-out ${
+            className={`absolute top-0 left-0 w-full h-full overflow-y-scroll custom-scrollbar transition-transform duration-500 ease-in-out ${
               currentStep === 3 ? 'translate-x-0' : 'translate-x-full'
             }`}
           >

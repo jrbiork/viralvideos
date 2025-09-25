@@ -166,7 +166,7 @@ export default function VideoCreator({
 
   return (
     <>
-      <div className="ml-4 h-full overflow-y-auto">
+      <div className="ml-4 h-full min-h-0 overflow-y-scroll custom-scrollbar">
         {/* Header */}
         <div className="mb-6 lg:mb-8 px-2.5">
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
@@ -275,11 +275,11 @@ export default function VideoCreator({
           </div>
         </div>
 
-        {/* Voice Selection and Image Template Selection - Side by Side */}
+        {/* Voice Selection and Image Template Selection - Stacked (block) */}
         <div className="mb-8 px-2.5">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="flex flex-col gap-6">
             {/* Voice Selection Section */}
-            <div>
+            <div className="w-full">
               <VoiceSelection
                 selectedVoice={selectedVoice}
                 onVoiceSelect={handleVoiceSelect}
@@ -290,7 +290,7 @@ export default function VideoCreator({
             </div>
 
             {/* Image Template Selection Section */}
-            <div>
+            <div className="w-full">
               <ImageTemplateSelection
                 selectedTemplate={externalSelectedTemplate}
                 onTemplateSelect={onTemplateSelect || (() => {})}

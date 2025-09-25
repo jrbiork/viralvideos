@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const wordLimit = 50;
 
     if (!prompt?.trim()) {
-      prompt = `Specify 3 curious facts about our planet, animals or science.`;
+      prompt = `Specify 3 curious facts about our planet, animals or science. Do not exceed ≤ ${wordLimit} words.`;
     }
 
     // Create the system prompt for OpenAI
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
                       - no hashtags or emojis.`;
 
     // Create the user prompt
-    const userPrompt = `Idea: ${prompt}\nTarget: 9:16 vertical, ${rawDuration}s.\nWrite the final paragraph now (≤${wordLimit} words).`;
+    const userPrompt = `Elabore following idea being concise and specific, mentioning examples if possible: ${prompt}\n Target: 9:16 vertical, ${rawDuration}s.\n Do not exceed ≤ ${wordLimit} words`;
 
     // Call OpenAI
     const completion = await openai.chat.completions.create({

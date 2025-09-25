@@ -42,6 +42,9 @@ export default function VideoGallery({}: VideoGalleryProps) {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [videoToDelete, setVideoToDelete] = useState<Video | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletingTimestamp, setDeletingTimestamp] = useState<
+    string | number | null
+  >(null);
   const [toasterMessage, setToasterMessage] = useState<string | null>(null);
   const [toasterType, setToasterType] = useState<'success' | 'error'>(
     'success',
@@ -131,24 +134,25 @@ export default function VideoGallery({}: VideoGalleryProps) {
 
   const confirmDelete = async () => {
     if (!videoToDelete) return;
+    // Optimistically close modal immediately
+    const timestamp = videoToDelete.timestamp;
+    setDeletingTimestamp(timestamp);
+    setDeleteModalOpen(false);
+    setVideoToDelete(null);
 
     setIsDeleting(true);
     try {
-      await authenticatedFetch(
-        `/api/delete-video?timestamp=${videoToDelete.timestamp}`,
-        {
-          method: 'DELETE',
-        },
-      );
-      setVideos(videos.filter((v) => v.timestamp !== videoToDelete.timestamp));
-      setDeleteModalOpen(false);
-      setVideoToDelete(null);
+      await authenticatedFetch(`/api/delete-video?timestamp=${timestamp}`, {
+        method: 'DELETE',
+      });
+      setVideos((prev) => prev.filter((v) => v.timestamp !== timestamp));
       showToasterMessage('Video deleted successfully', 'success');
     } catch (error) {
       console.error('Error deleting video:', error);
       showToasterMessage('Failed to delete video. Please try again.', 'error');
     } finally {
       setIsDeleting(false);
+      setDeletingTimestamp(null);
     }
   };
 
@@ -346,7 +350,7 @@ export default function VideoGallery({}: VideoGalleryProps) {
               .map((video) => (
                 <div
                   key={video.timestamp}
-                  className="w-[247px] h-[382px] glass-effect rounded-xl p-4 transition-all duration-300 hover:transform hover:scale-105 hover:bg-slate-700/50"
+                  className="relative w-[247px] h-[382px] glass-effect rounded-xl p-4 transition-all duration-300 hover:transform hover:scale-105 hover:bg-slate-700/50"
                 >
                   <div className="relative mb-4 h-72 overflow-hidden rounded-xl">
                     {video.thumbnailUrl ? (
@@ -461,9 +465,25 @@ export default function VideoGallery({}: VideoGalleryProps) {
                           {video.sceneCount} scenes
                         </span>
                       </div>
-                      {video.size && <span>{formatFileSize(video.size)}</span>}
+                      {
+                        <span>
+                          {video.size ? formatFileSize(video.size) : ''}
+                        </span>
+                      }
                     </div>
                   </div>
+
+                  {/* Deleting Overlay for this video */}
+                  {isDeleting &&
+                    deletingTimestamp !== null &&
+                    String(deletingTimestamp) === String(video.timestamp) && (
+                      <div className="absolute inset-0 bg-black/60 rounded-xl flex items-center justify-center z-30">
+                        <div className="flex items-center gap-2 text-white text-sm font-medium">
+                          <span className="inline-block h-4 w-4 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
+                          Deleting video...
+                        </div>
+                      </div>
+                    )}
                 </div>
               ))}
           </div>
