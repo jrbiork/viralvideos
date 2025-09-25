@@ -549,7 +549,7 @@ export default function EditScene({
               />
 
               {/* Hover Overlay with Top-Right Icons */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                 <div className="absolute top-1 right-1 flex gap-1 pointer-events-none">
                   <button
                     onClick={(e) => {
@@ -609,7 +609,7 @@ export default function EditScene({
               </div>
 
               {/* Hover Overlay with Top-Right Icons */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                 <div className="absolute top-1 right-1 flex gap-1 pointer-events-none">
                   <button
                     onClick={(e) => {

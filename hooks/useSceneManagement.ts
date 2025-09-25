@@ -367,7 +367,9 @@ export function useSceneManagement() {
                   '[subs] Using previously synthesized final fallback',
                   {
                     sceneId: scene.id,
-                    cachedPreview: lastSubtitleRef.current?.slice(0, 120),
+                    cachedPreview: (lastSubtitleRef.current || '')
+                      .replace(/\{[^}]*\}/g, '')
+                      .slice(0, 120),
                   },
                 );
                 dispatch({
@@ -415,7 +417,9 @@ export function useSceneManagement() {
                 lastSubEnd,
                 currentTime,
                 finalToken,
-                synthesizedPreview: synthesized.slice(0, 120),
+                synthesizedPreview: synthesized
+                  .replace(/\{[^}]*\}/g, '')
+                  .slice(0, 120),
               });
               lastSubtitleRef.current = synthesized;
               synthesizedRef.current = true;
@@ -426,7 +430,9 @@ export function useSceneManagement() {
             } else {
               console.log('[subs] Fallback to cached subtitle', {
                 sceneId: scene.id,
-                cachedPreview: lastSubtitleRef.current?.slice(0, 80),
+                cachedPreview: (lastSubtitleRef.current || '')
+                  .replace(/\{[^}]*\}/g, '')
+                  .slice(0, 80),
               });
               dispatch({
                 type: 'SET_CURRENT_SUBTITLE',
