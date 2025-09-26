@@ -8,6 +8,7 @@ import {
   hasSufficientCreditsByUserId,
   updateCreditBalanceByUserId,
 } from '../utils/credits';
+import { getManifest } from '../utils/manifestUtils';
 
 interface RequestBody {
   imagePrompt: string;
@@ -74,12 +75,21 @@ export const handler = async (
     }
 
     // get last 4 digits of timestamp
-
     const seed = Math.floor(Math.random() * 10000);
     const sceneId = Date.now();
 
+    const manifest = await getManifest(userId, timestamp);
+    if (!manifest) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: 'Manifest not found' }),
+      };
+    }
+
+    const prompt = manifest.template + ': ' + imagePrompt;
+
     const imageUrl = await generateNanoBananaImage(
-      imagePrompt,
+      prompt,
       sceneId,
       userId,
       timestamp,
