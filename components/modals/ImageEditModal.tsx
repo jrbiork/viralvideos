@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 interface ImageEditModalProps {
   isOpen: boolean;
   onClose: () => void;
-  imageUrl?: string;
+  currentImageUrl?: string | null;
   displayIndex: number;
   onGenerateImage: (prompt: string) => Promise<void>;
   onAnimateImage: (prompt: string, duration: number) => Promise<void>;
@@ -20,7 +20,7 @@ interface ImageEditModalProps {
 export default function ImageEditModal({
   isOpen,
   onClose,
-  imageUrl,
+  currentImageUrl,
   displayIndex,
   onGenerateImage,
   onAnimateImage,
@@ -167,9 +167,9 @@ export default function ImageEditModal({
           <div className="lg:col-span-1 flex flex-col items-center">
             <h3 className="text-white font-semibold mb-4">Current Image</h3>
             <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-2 ring-slate-700 max-h-[40vh] mt-2">
-              {imageUrl ? (
+              {currentImageUrl ? (
                 <img
-                  src={imageUrl}
+                  src={currentImageUrl}
                   alt={`Scene ${displayIndex + 1}`}
                   className="w-full h-full object-cover"
                 />

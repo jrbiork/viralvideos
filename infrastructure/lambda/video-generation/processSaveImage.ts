@@ -76,9 +76,8 @@ export async function processSaveImage(
 
     hydratedManifest = await hydrateManifest(manifest);
 
-    broadcastProgress('preview_completed', userId, timestamp, {
-      manifest: hydratedManifest,
-    });
+    // Note: Removed 'preview_completed' broadcast to prevent isLoadingVideoScenes from being affected
+    // when saving an image. The 'image_created' broadcast is sufficient for updating the manifest.
     console.log('✅ Image saved via SQS for scene:', request.sceneId);
 
     // If this was triggered by SQS, delete the message from the queue

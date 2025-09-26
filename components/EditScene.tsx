@@ -310,14 +310,8 @@ export default function EditScene({
       const result = await response.json();
       console.log('✅ Image saved successfully:', result);
 
-      // Implement logic to replace the original image
-      if (generatedImageUrl) {
-        setCurrentImageUrl(generatedImageUrl);
-
-        setIsLoadingVideoScenes(true);
-
-        showToasterMessage?.('Image saved', 'success');
-      }
+      setCurrentImageUrl(generatedImageUrl);
+      showToasterMessage?.('Image saved', 'success');
     } catch (error) {
       console.error('❌ Error saving image:', error);
       showToasterMessage?.(
@@ -908,7 +902,7 @@ export default function EditScene({
         <ImageEditModal
           isOpen={isImageEditModalOpen}
           onClose={() => setIsImageEditModalOpen(false)}
-          imageUrl={imageUrl}
+          currentImageUrl={currentImageUrl}
           displayIndex={displayIndex}
           initialTab={initialImageEditTab}
           onGenerateImage={handleGenerateImageFromModal}
