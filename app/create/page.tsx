@@ -709,6 +709,7 @@ export default function GeneratePage() {
               !!script.trim() &&
               script.trim().split(/\s+/).length >= 5
             }
+            selectedDuration={selectedDuration}
           />
         ) : null
       }
