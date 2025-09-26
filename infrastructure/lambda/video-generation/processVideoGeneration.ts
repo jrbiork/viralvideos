@@ -107,8 +107,6 @@ export async function processVideoGeneration(
         request.sceneCount,
         sceneDuration,
         request.totalDuration,
-        request.userId,
-        timestamp,
       );
       scenes = storyBreakdown.scenes;
       voiceToneInstruction = storyBreakdown.voiceToneInstruction;

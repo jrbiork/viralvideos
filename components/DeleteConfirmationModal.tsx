@@ -75,13 +75,13 @@ export default function DeleteConfirmationModal({
       maxWidth="max-w-md"
     >
       <div className="space-y-4">
-        <div className="flex items-center space-x-3 p-4 bg-purple-500/10 rounded-lg border border-purple-500/20">
-          <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+        <div className="flex items-center space-x-3 p-4 rounded-lg border border-purple-500/20">
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center">
             <Trash2 className="w-6 h-6 text-purple-400" />
           </div>
           <div>
             <p className="text-white font-medium">
-              Are you sure you want to delete this video?
+              Are you sure you want to delete it?
             </p>
             <p className="text-purple-300 text-sm">
               Video from {formatDate(video.lastModified)}
@@ -120,12 +120,12 @@ export default function DeleteConfirmationModal({
                   cx="12"
                   cy="12"
                   r="10"
-                  stroke="currentColor"
+                  stroke="none"
                   strokeWidth="4"
                 ></circle>
                 <path
                   className="opacity-75"
-                  fill="currentColor"
+                  fill="none"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>

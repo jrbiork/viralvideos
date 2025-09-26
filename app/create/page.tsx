@@ -2,32 +2,32 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 
-import MainLayout from '../../components/MainLayout';
-import ProgressSteps from '../../components/ProgressSteps';
-import VideoCreator from '../../components/VideoCreator';
-import { Scene } from '../../components/EditScene';
+import MainLayout from '@/components/MainLayout';
+import ProgressSteps from '@/components/ProgressSteps';
+import VideoCreator from '@/components/VideoCreator';
+import { Scene } from '@/components/EditScene';
 
-import RightSidebar from '../../components/RightSidebar';
-import SceneCardsContainer from '../../components/SceneCardsContainer';
-import { DEFAULT_VOICE } from '../../lib/constants';
+import RightSidebar from '@/components/RightSidebar';
+import SceneCardsContainer from '@/components/SceneCardsContainer';
+import { DEFAULT_VOICE } from '@/lib/constants';
 
-import ExportVideo from '../../components/ExportVideo';
-import Toaster from '../../components/Toaster';
-import { parseColoredText } from '../../lib/subtitle-utils';
+import ExportVideo from '@/components/ExportVideo';
+import Toaster from '@/components/Toaster';
+import { parseColoredText } from '@/lib/subtitle-utils';
 import {
   buildMediaFiles,
   buildSubtitles,
   buildAssFiles,
 } from '@/lib/manifest-helpers';
-import { handleExportVideo as exportVideoUtil } from '../../lib/export-utils';
-import { AVAILABLE_TEMPLATES } from '../../lib/template-constants';
-import { useVideoGeneration } from '../../hooks/useVideoGeneration';
-import { useSceneManagement } from '../../hooks/useSceneManagement';
-import { useWebSocket } from '../../hooks/useWebSocket';
+import { handleExportVideo as exportVideoUtil } from '@/lib/export-utils';
+import { AVAILABLE_TEMPLATES } from '@/lib/template-constants';
+import { useVideoGeneration } from '@/hooks/useVideoGeneration';
+import { useSceneManagement } from '@/hooks/useSceneManagement';
+import { useWebSocket } from '@/hooks/useWebSocket';
 import { useCreateUrlParams } from '@/hooks/useCreateUrlParams';
-import { useWebSocketHandlers } from '../../hooks/useWebSocketHandlers';
-import VideoPreview from '../../components/VideoPreview';
-import { useUserDataCache } from '../../hooks/useUserDataCache';
+import { useWebSocketHandlers } from '@/hooks/useWebSocketHandlers';
+import VideoPreview from '@/components/VideoPreview';
+import { useUserDataCache } from '@/hooks/useUserDataCache';
 import Step1Footer from '@/components/create/footers/Step1Footer';
 import Step2Footer from '@/components/create/footers/Step2Footer';
 import Step3Footer from '@/components/create/footers/Step3Footer';
@@ -457,6 +457,8 @@ export default function GeneratePage() {
       selectedTemplateData?.description || '',
       duration,
       (timestamp) => {
+        // Enable transitions before changing step
+        setDisableInitialTransition(false);
         setCurrentStep(2);
         setVideoGenerationState((prev) => ({
           ...prev,
@@ -573,6 +575,9 @@ export default function GeneratePage() {
   };
 
   const handleNextStep = () => {
+    // Enable transitions before changing step
+    setDisableInitialTransition(false);
+
     if (scenes.length > 0) {
       setCurrentStep(2);
     } else {
@@ -603,6 +608,8 @@ export default function GeneratePage() {
       // Set generating state and navigate to step 3
       setIsVideoGenerating(true);
       setVideoCompletionData(null);
+      // Enable transitions before changing step
+      setDisableInitialTransition(false);
       setCurrentStep(3);
 
       // Update URL to reflect step 3, preserving timestamp

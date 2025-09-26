@@ -14,10 +14,7 @@ export default function Step1Footer({
   canGenerate,
 }: Step1FooterProps) {
   return (
-    <div
-      className="ml-auto pr-4 flex items-center justify-end gap-12"
-      style={{ width: '65%' }}
-    >
+    <div className="flex items-center justify-center" style={{ gap: '25rem' }}>
       <button
         onClick={onMagicScript}
         disabled={isGeneratingScript}

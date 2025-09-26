@@ -30,8 +30,6 @@ export async function generateStoryBreakdown(
   sceneCount: number,
   sceneDuration: number,
   totalDuration: number,
-  userId: string,
-  timestamp: string,
 ): Promise<{ scenes: Scene[]; voiceToneInstruction: string }> {
   console.log('🤖 Calling OpenAI for story breakdown...');
   console.log(
@@ -43,13 +41,6 @@ export async function generateStoryBreakdown(
   console.log('prompt:', prompt);
 
   try {
-    // Guidance for narration pacing and safety caps
-    const WPS = 2.2;
-
-    const maxWordsPerScene = Math.floor(sceneDuration * WPS);
-    console.log('maxWordsPerScene:', maxWordsPerScene);
-    const maxTotalWords = Math.floor(totalDuration * WPS);
-
     // Build schema programmatically so `required` always matches `properties`
     const sceneItemSchema = {
       type: 'object',
@@ -109,7 +100,7 @@ Output: **JSON only** following the provided schema.`,
         {
           role: 'user',
           content:
-            'Elabore the following idea being concise and specific, mentioning examples if possible: ' +
+            'Elaborate the following idea being concise and specific, mentioning examples if possible: ' +
             prompt,
         },
       ],
