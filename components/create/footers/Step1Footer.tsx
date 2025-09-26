@@ -16,7 +16,7 @@ export default function Step1Footer({
   selectedDuration,
 }: Step1FooterProps) {
   return (
-    <div className="flex items-center justify-center" style={{ gap: '25rem' }}>
+    <div className="flex items-center justify-center" style={{ gap: '5rem' }}>
       <button
         onClick={onMagicScript}
         disabled={isGeneratingScript}

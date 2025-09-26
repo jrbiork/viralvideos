@@ -34,6 +34,7 @@ interface VideoCreatorProps {
   selectedLanguage?: string;
   selectedTemplate?: string;
   onTemplateSelect?: (templateId: string) => void;
+  canGenerate?: boolean;
 }
 
 export default function VideoCreator({
@@ -54,6 +55,7 @@ export default function VideoCreator({
   selectedLanguage: externalSelectedLanguage,
   selectedTemplate: externalSelectedTemplate,
   onTemplateSelect,
+  canGenerate = false,
 }: VideoCreatorProps) {
   const [script, setScript] = useState(externalScript);
   const [internalIsGeneratingScript, setInternalIsGeneratingScript] =
@@ -166,7 +168,7 @@ export default function VideoCreator({
 
   return (
     <>
-      <div className="ml-4 h-full min-h-0 overflow-y-scroll custom-scrollbar">
+      <div className="ml-4 h-full min-h-0 overflow-y-scroll custom-scrollbar relative">
         {/* Header */}
         <div className="mb-6 lg:mb-8 px-2.5">
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
@@ -296,6 +298,90 @@ export default function VideoCreator({
                 onTemplateSelect={onTemplateSelect || (() => {})}
               />
             </div>
+          </div>
+        </div>
+
+        {/* Sticky Footer Buttons */}
+        <div className="sticky bottom-0 bg-gradient-to-t from-[#090526] via-[#090526] to-transparent pt-4 pb-2 px-2.5">
+          <div
+            className="flex items-center justify-end"
+            style={{ gap: '5rem' }}
+          >
+            <button
+              onClick={onMagicScript || handleMagicScript}
+              disabled={isGeneratingScript || internalIsGeneratingScript}
+              className={`h-12 px-4 text-xs sm:text-sm font-semibold flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
+              style={{
+                borderColor: '#5B5BFF',
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+                minWidth: '181.14px',
+              }}
+            >
+              {isGeneratingScript || internalIsGeneratingScript ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                  <span>Enhancing...</span>
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  <span>Write Magic Script</span>
+                </>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                if (onGenerateVideoFromFooter) {
+                  const duration = parseInt(
+                    selectedDuration.replace('s', ''),
+                  ) as 30 | 60;
+                  onGenerateVideoFromFooter(
+                    script || '',
+                    duration,
+                    selectedVoice,
+                    selectedLanguage,
+                  );
+                }
+              }}
+              disabled={!canGenerate}
+              className={`h-12 px-4 text-xs sm:text-sm font-semibold flex items-center justify-center space-x-2 transition-all duration-300 hover:brightness-90 hover:-translate-y-[1px] ${
+                !canGenerate
+                  ? 'bg-gray-600 text-gray-400 cursor-not-allowed rounded-xl'
+                  : 'text-white'
+              }`}
+              style={
+                canGenerate
+                  ? {
+                      borderRadius: '0.75rem',
+                      background:
+                        'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
+                      boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                    }
+                  : {}
+              }
+            >
+              <span>
+                Preview Scenes for {selectedDuration === '30s' ? '10' : '20'}{' '}
+                credits
+              </span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5 12H19M19 12L12 5M19 12L12 19"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
           </div>
         </div>
       </div>

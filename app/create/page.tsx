@@ -28,9 +28,6 @@ import { useCreateUrlParams } from '@/hooks/useCreateUrlParams';
 import { useWebSocketHandlers } from '@/hooks/useWebSocketHandlers';
 import VideoPreview from '@/components/VideoPreview';
 import { useUserDataCache } from '@/hooks/useUserDataCache';
-import Step1Footer from '@/components/create/footers/Step1Footer';
-import Step2Footer from '@/components/create/footers/Step2Footer';
-import Step3Footer from '@/components/create/footers/Step3Footer';
 
 import { Manifest } from '../types/manifest';
 
@@ -670,47 +667,35 @@ export default function GeneratePage() {
       rightSidebarContent={rightSidebarContent}
       backgroundColor={currentStep === 1 ? '#090526' : '#0F0A1E'}
       progressSteps={<ProgressSteps currentStep={currentStep} />}
-      showFooter
       currentStep={currentStep}
-      footerContent={
+      rightSidebarButton={
         currentStep === 2 ? (
-          <Step2Footer onGenerateVideo={handleCombineVideo} />
-        ) : currentStep === 3 ? (
-          <Step3Footer
-            canExport={!!videoCompletionData?.finalVideoUrl}
-            isExporting={isExportingFinalVideo}
-            onExport={async () => {
-              if (!videoCompletionData?.finalVideoUrl) {
-                showToasterMessage(
-                  'Video URL not available for export',
-                  'error',
-                );
-                return;
-              }
-              try {
-                setIsExportingFinalVideo(true);
-                await exportVideoUtil({
-                  finalVideoUrl: videoCompletionData.finalVideoUrl,
-                  filename: `video-${videoCompletionData.generatedAt}.mp4`,
-                  showToasterMessage,
-                });
-              } finally {
-                setIsExportingFinalVideo(false);
-              }
+          <button
+            onClick={handleCombineVideo}
+            className="h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
+            style={{
+              background:
+                'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+              boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
             }}
-          />
-        ) : currentStep === 1 ? (
-          <Step1Footer
-            onMagicScript={handleMagicScript}
-            isGeneratingScript={isGeneratingScript}
-            onGenerate={handleGenerateVideoFromFooter}
-            canGenerate={
-              !generationState.isGenerating &&
-              !!script.trim() &&
-              script.trim().split(/\s+/).length >= 5
-            }
-            selectedDuration={selectedDuration}
-          />
+          >
+            <span>Generate Video</span>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M5 12H19M19 12L12 5M19 12L12 19"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
         ) : null
       }
     >
@@ -755,6 +740,11 @@ export default function GeneratePage() {
                 selectedLanguage={selectedLanguage}
                 selectedTemplate={selectedTemplate}
                 onTemplateSelect={setSelectedTemplate}
+                canGenerate={
+                  !generationState.isGenerating &&
+                  !!script.trim() &&
+                  script.trim().split(/\s+/).length >= 5
+                }
               />
 
               {/* Template grid kept inline or inside VideoCreator */}
@@ -821,14 +811,10 @@ export default function GeneratePage() {
               <div className="flex-[2]">
                 <ExportVideo
                   onExportVideo={() => {}}
-                  isExporting={sceneState.isExporting}
+                  isExporting={isExportingFinalVideo}
                   onBack={undefined}
                   isVideoGenerating={isVideoGenerating}
                   videoCompletionData={videoCompletionData}
-                  onRemoveWatermark={() => {
-                    // TODO: Implement watermark removal
-                    console.log('Remove watermark clicked');
-                  }}
                   showToasterMessage={showToasterMessage}
                   userSubscription={userSubscription}
                 />
@@ -845,7 +831,56 @@ export default function GeneratePage() {
                       <VideoPreview
                         videoUrl={videoCompletionData.finalVideoUrl}
                         loop={false}
-                      />
+                      >
+                        <button
+                          onClick={async () => {
+                            if (!videoCompletionData?.finalVideoUrl) {
+                              showToasterMessage(
+                                'Video URL not available for export',
+                                'error',
+                              );
+                              return;
+                            }
+                            try {
+                              setIsExportingFinalVideo(true);
+                              await exportVideoUtil({
+                                finalVideoUrl:
+                                  videoCompletionData.finalVideoUrl,
+                                filename: `video-${videoCompletionData.generatedAt}.mp4`,
+                                showToasterMessage,
+                              });
+                            } finally {
+                              setIsExportingFinalVideo(false);
+                            }
+                          }}
+                          disabled={
+                            isExportingFinalVideo ||
+                            !videoCompletionData?.finalVideoUrl
+                          }
+                          className={`h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95 ${
+                            isExportingFinalVideo ||
+                            !videoCompletionData?.finalVideoUrl
+                              ? 'opacity-50 cursor-not-allowed'
+                              : ''
+                          }`}
+                          style={{
+                            background:
+                              'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                            boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                          }}
+                        >
+                          {isExportingFinalVideo ? (
+                            <>
+                              <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
+                              <span>Exporting...</span>
+                            </>
+                          ) : !videoCompletionData?.finalVideoUrl ? (
+                            <span>Creating your video...</span>
+                          ) : (
+                            <span>Export Video</span>
+                          )}
+                        </button>
+                      </VideoPreview>
                     ) : (
                       <div className="bg-slate-900 border border-slate-700 rounded-2xl h-96 flex items-center justify-center text-gray-400">
                         Creating your video...

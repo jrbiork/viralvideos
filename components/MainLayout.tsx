@@ -16,6 +16,7 @@ interface MainLayoutProps {
   showFooter?: boolean;
   footerContent?: ReactNode;
   currentStep?: number;
+  rightSidebarButton?: ReactNode;
 }
 
 export default function MainLayout({
@@ -28,6 +29,7 @@ export default function MainLayout({
   showFooter = false,
   footerContent,
   currentStep,
+  rightSidebarButton,
 }: MainLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -136,34 +138,16 @@ export default function MainLayout({
                 style={{ marginRight: '45px', backgroundColor: '#090526' }}
               >
                 {rightSidebarContent}
+                {rightSidebarButton && (
+                  <div className="flex justify-center mt-8 mb-4 px-4">
+                    {rightSidebarButton}
+                  </div>
+                )}
               </div>
             )}
           </div>
         </div>
       </div>
-
-      {/* Footer */}
-      {showFooter && (
-        <div className="sticky bottom-0 z-50 w-full" id="footer-wrapper">
-          <footer
-            className="mx-auto transition-all duration-300 ease-in-out flex items-center justify-between"
-            style={{
-              backgroundColor: 'rgba(26,9,64,255)',
-              width: '100%',
-              maxWidth: '100%',
-              padding: '0.75rem 1.5rem',
-              height: '56px',
-              borderRadius: '12px',
-              boxShadow: '0 -4px 20px rgba(0, 0, 0, 0.15)',
-            }}
-            id="footer"
-          >
-            <div className="flex items-center justify-center w-full text-white text-sm">
-              {footerContent}
-            </div>
-          </footer>
-        </div>
-      )}
     </div>
   );
 }

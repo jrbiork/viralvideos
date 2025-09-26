@@ -7,12 +7,14 @@ interface VideoPreviewProps {
   videoUrl: string;
   autoPlay?: boolean;
   loop?: boolean;
+  children?: React.ReactNode;
 }
 
 export default function VideoPreview({
   videoUrl,
   autoPlay = false,
   loop = false,
+  children,
 }: VideoPreviewProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -126,7 +128,7 @@ export default function VideoPreview({
   }
 
   return (
-    <div className="flex justify-center">
+    <div className="flex flex-col items-center">
       <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden">
         <video
           ref={videoRef}
@@ -145,6 +147,7 @@ export default function VideoPreview({
           onError={handleError}
         />
       </div>
+      {children && <div className="mt-6">{children}</div>}
     </div>
   );
 }
