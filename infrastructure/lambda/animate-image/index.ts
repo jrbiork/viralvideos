@@ -50,12 +50,7 @@ export const handler = async (
     const { animationPrompt, animationDuration, sceneId, imageUrl } =
       JSON.parse(event.body) as RequestBody;
 
-    if (!animationPrompt) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'animationPrompt is required' }),
-      };
-    }
+    // animationPrompt can be empty
     if (sceneId === undefined || sceneId === null) {
       return {
         statusCode: 400,

@@ -102,7 +102,6 @@ export function useSceneManagement() {
     // Reset cached subtitle when switching scenes
     lastSubtitleRef.current = '';
     synthesizedRef.current = false;
-    console.log('[subs] Scene selected -> reset subtitle cache', { sceneId });
     dispatch({ type: 'SET_CURRENT_SUBTITLE', payload: '' });
     dispatch({ type: 'SET_SELECTED_SCENE_ID', payload: sceneId });
   };
@@ -272,11 +271,6 @@ export function useSceneManagement() {
       if (assContent) {
         try {
           const subtitles = assContent ? parseAssFile(assContent) : [];
-          console.log('[subs] Parsed ASS', {
-            sceneId: scene.id,
-            assKey,
-            subtitlesCount: subtitles.length,
-          });
 
           const currentTime = videoRef.currentTime;
           // Slightly larger tolerance and a small lookahead to avoid missing short cues
@@ -300,25 +294,6 @@ export function useSceneManagement() {
 
           const lastSub =
             subtitles.length > 0 ? subtitles[subtitles.length - 1] : undefined;
-          console.log('[subs] Tick', {
-            sceneId: scene.id,
-            currentTime: Number.isFinite(currentTime)
-              ? currentTime.toFixed(3)
-              : String(currentTime),
-            duration: Number.isFinite(videoRef.duration)
-              ? videoRef.duration.toFixed(3)
-              : String(videoRef.duration),
-            epsilon,
-            lookaheadWindow,
-            found: Boolean(currentSub),
-            subBounds: currentSub
-              ? { start: currentSub.start, end: currentSub.end }
-              : null,
-            cached: Boolean(lastSubtitleRef.current),
-            lastBounds: lastSub
-              ? { start: lastSub.start, end: lastSub.end }
-              : null,
-          });
 
           // Before the first cue starts, show nothing
           const firstStart = subtitles.length > 0 ? subtitles[0].start : 0;

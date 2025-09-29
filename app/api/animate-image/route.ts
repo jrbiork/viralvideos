@@ -31,13 +31,6 @@ export async function POST(request: NextRequest) {
       imageUrl,
     });
 
-    if (!animationPrompt) {
-      return NextResponse.json(
-        { error: 'Missing animationPrompt' },
-        { status: 400 },
-      );
-    }
-
     if (!animationDuration) {
       return NextResponse.json(
         { error: 'Missing animationDuration' },

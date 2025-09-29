@@ -39,9 +39,7 @@ export async function processAnimateImage(
     if (sceneId === undefined || sceneId === null) {
       throw new Error('Missing sceneId');
     }
-    if (!animationPrompt) {
-      throw new Error('Missing animationPrompt');
-    }
+
     if (!imageUrl) {
       throw new Error('Missing imageUrl');
     }

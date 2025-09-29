@@ -62,11 +62,6 @@ export default function ImageEditModal({
   };
 
   const handleAnimateImage = async () => {
-    if (!animatePrompt.trim()) {
-      alert('Please enter a prompt for the animation');
-      return;
-    }
-
     try {
       await onAnimateImage(animatePrompt, animationDuration);
       onClearValidationError();
@@ -365,14 +360,14 @@ export default function ImageEditModal({
                       <div className="flex items-center justify-end">
                         <button
                           onClick={handleAnimateImage}
-                          disabled={!animatePrompt.trim() || isAnimatingImage}
+                          disabled={isAnimatingImage}
                           className={`${
-                            animatePrompt.trim() && !isAnimatingImage
+                            !isAnimatingImage
                               ? 'text-white hover:brightness-95'
                               : 'bg-slate-700 text-slate-400 cursor-not-allowed'
                           } inline-flex items-center text-xs font-semibold transition-colors`}
                           style={
-                            animatePrompt.trim() && !isAnimatingImage
+                            !isAnimatingImage
                               ? {
                                   borderRadius: '12px',
                                   background:

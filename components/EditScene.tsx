@@ -166,12 +166,9 @@ export default function EditScene({
 
       if (response.ok) {
         const result = await response.json();
-        console.log('Image animation successful:', result);
+        console.log('Image animation started:', result);
 
-        // Close modal after 2 seconds
-        setTimeout(() => {
-          setIsImageEditModalOpen(false);
-        }, 2000);
+        setIsImageEditModalOpen(false);
       } else {
         const errorData = await response.json();
         console.error('Image animation failed:', errorData);
