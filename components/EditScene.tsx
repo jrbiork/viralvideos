@@ -90,12 +90,7 @@ export default function EditScene({
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(
     imageUrl || null,
   );
-  const [isAiAnimationModalOpen, setIsAiAnimationModalOpen] = useState(false);
-  const [animationPrompt, setAnimationPrompt] = useState('');
-  const [animationDuration, setAnimationDuration] = useState('5s');
-  const [validationErrors, setValidationErrors] = useState({ image: false });
-  // animationRequested is controlled by parent (SceneCardsContainer)
-  const [isRequestingAnimation, setIsRequestingAnimation] = useState(false);
+
   const [initialImageEditTab, setInitialImageEditTab] = useState<
     'edit' | 'animate'
   >('edit');
@@ -113,7 +108,7 @@ export default function EditScene({
         },
         body: JSON.stringify({
           imagePrompt: prompt,
-          timestamp: queryParams.get('timestamp'),
+          timestamp: timestamp || queryParams.get('timestamp'),
         }),
       });
 
@@ -160,7 +155,7 @@ export default function EditScene({
           animationDuration: duration,
           timestamp: queryParams.get('timestamp'),
           sceneId: scene.id,
-          imageUrl: imageUrl,
+          imageUrl: currentImageUrl || imageUrl,
         }),
       });
 
@@ -553,17 +548,23 @@ export default function EditScene({
                   >
                     <img src="/edit.svg" alt="Edit" className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setInitialImageEditTab('animate');
-                      setIsImageEditModalOpen(true);
-                    }}
-                    className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
-                    title="Animate"
-                  >
-                    <img src="/animate.svg" alt="Animate" className="w-4 h-4" />
-                  </button>
+                  {!scene.isUserAdded && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setInitialImageEditTab('animate');
+                        setIsImageEditModalOpen(true);
+                      }}
+                      className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
+                      title="Animate"
+                    >
+                      <img
+                        src="/animate.svg"
+                        alt="Animate"
+                        className="w-4 h-4"
+                      />
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
@@ -612,17 +613,6 @@ export default function EditScene({
                     title="Edit"
                   >
                     <img src="/edit.svg" alt="Edit" className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setInitialImageEditTab('animate');
-                      setIsImageEditModalOpen(true);
-                    }}
-                    className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
-                    title="Animate"
-                  >
-                    <img src="/animate.svg" alt="Animate" className="w-4 h-4" />
                   </button>
                 </div>
               </div>
@@ -911,6 +901,8 @@ export default function EditScene({
           generatedImageUrl={generatedImageUrl}
           validationErrors={{ image: false }}
           onClearValidationError={() => {}}
+          showAnimateTab={!scene.isUserAdded}
+          showEditTab={!scene.isUserAdded}
         />
       </div>
     </>

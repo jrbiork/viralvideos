@@ -237,6 +237,34 @@ export default function VideoCreator({
             </div>
           </div>
 
+          {/* Write Magic Script under input */}
+          <div className="mt-3">
+            <button
+              onClick={onMagicScript || handleMagicScript}
+              disabled={isGeneratingScript || internalIsGeneratingScript}
+              className={`h-10 px-3 text-xs sm:text-sm font-semibold inline-flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
+              style={{
+                borderColor: '#5B5BFF',
+                borderWidth: '1.5px',
+                borderStyle: 'solid',
+                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+                minWidth: '181.14px',
+              }}
+            >
+              {isGeneratingScript || internalIsGeneratingScript ? (
+                <>
+                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                  <span>Enhancing...</span>
+                </>
+              ) : (
+                <>
+                  <span>✨</span>
+                  <span>Write Magic Script</span>
+                </>
+              )}
+            </button>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
             {/* Duration Selection - Right aligned */}
@@ -307,30 +335,6 @@ export default function VideoCreator({
             className="flex items-center justify-end"
             style={{ gap: '5rem' }}
           >
-            <button
-              onClick={onMagicScript || handleMagicScript}
-              disabled={isGeneratingScript || internalIsGeneratingScript}
-              className={`h-12 px-4 text-xs sm:text-sm font-semibold flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
-              style={{
-                borderColor: '#5B5BFF',
-                borderWidth: '1.5px',
-                borderStyle: 'solid',
-                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-                minWidth: '181.14px',
-              }}
-            >
-              {isGeneratingScript || internalIsGeneratingScript ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                  <span>Enhancing...</span>
-                </>
-              ) : (
-                <>
-                  <span>✨</span>
-                  <span>Write Magic Script</span>
-                </>
-              )}
-            </button>
             <button
               onClick={() => {
                 if (onGenerateVideoFromFooter) {

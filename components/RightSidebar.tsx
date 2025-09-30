@@ -154,11 +154,21 @@ export default function RightSidebar({
                       )}
                     </div>
                   )}
-                  {!videoUrl && isSelected && (
-                    <div className="flex justify-center items-center h-64">
-                      <p className="text-gray-400">Video not available</p>
-                    </div>
-                  )}
+                  {!videoUrl &&
+                    isSelected &&
+                    (scene.isUserAdded ? (
+                      <div className="flex justify-center">
+                        <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden flex items-center justify-center">
+                          <p className="text-gray-300 text-center px-4">
+                            Video scene not generated yet.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex justify-center items-center h-64">
+                        <p className="text-gray-400">Video not available</p>
+                      </div>
+                    ))}
                 </div>
               );
             })}

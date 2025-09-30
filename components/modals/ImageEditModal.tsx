@@ -15,6 +15,8 @@ interface ImageEditModalProps {
   validationErrors: { image: boolean };
   onClearValidationError: () => void;
   initialTab?: 'edit' | 'animate';
+  showAnimateTab?: boolean;
+  showEditTab?: boolean;
 }
 
 export default function ImageEditModal({
@@ -32,6 +34,8 @@ export default function ImageEditModal({
   validationErrors,
   onClearValidationError,
   initialTab,
+  showAnimateTab = true,
+  showEditTab = true,
 }: ImageEditModalProps) {
   const [editPrompt, setEditPrompt] = useState('');
   const [animatePrompt, setAnimatePrompt] = useState('');
@@ -41,9 +45,10 @@ export default function ImageEditModal({
 
   React.useEffect(() => {
     if (isOpen) {
-      setActiveTab(initialTab || 'edit');
+      // Force edit tab if animate tab is hidden
+      setActiveTab(!showAnimateTab ? 'edit' : initialTab || 'edit');
     }
-  }, [isOpen, initialTab]);
+  }, [isOpen, initialTab, showAnimateTab]);
 
   const handleGenerateImage = async () => {
     if (!editPrompt.trim()) {
@@ -114,28 +119,34 @@ export default function ImageEditModal({
             Scene {displayIndex + 1}
           </h2>
           {/* Tabs */}
-          <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-48">
-            <button
-              className={`${
-                activeTab === 'edit'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-300'
-              } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-              onClick={() => setActiveTab('edit')}
-            >
-              Edit
-            </button>
-            <button
-              className={`${
-                activeTab === 'animate'
-                  ? 'bg-indigo-600 text-white'
-                  : 'text-slate-300'
-              } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
-              onClick={() => setActiveTab('animate')}
-            >
-              Animate
-            </button>
-          </div>
+          {(showEditTab || showAnimateTab) && (
+            <div className="flex items-center gap-2 bg-slate-800 rounded-xl p-1 w-48">
+              {showEditTab && (
+                <button
+                  className={`${
+                    activeTab === 'edit'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-300'
+                  } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+                  onClick={() => setActiveTab('edit')}
+                >
+                  Edit
+                </button>
+              )}
+              {showAnimateTab && (
+                <button
+                  className={`${
+                    activeTab === 'animate'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-300'
+                  } flex-1 py-2 rounded-lg text-sm font-medium transition-colors`}
+                  onClick={() => setActiveTab('animate')}
+                >
+                  Animate
+                </button>
+              )}
+            </div>
+          )}
           <button
             onClick={onClose}
             className="w-6 h-6 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 flex items-center justify-center transition-colors"
@@ -276,7 +287,7 @@ export default function ImageEditModal({
             /* Right: Edit / Animate */
             <div className="flex flex-col lg:col-span-3">
               {/* Tab Content */}
-              {activeTab === 'edit' ? (
+              {activeTab === 'edit' || !showAnimateTab ? (
                 <div>
                   <h4 className="text-white font-semibold mb-2">Prompt</h4>
                   <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 mt-6">
