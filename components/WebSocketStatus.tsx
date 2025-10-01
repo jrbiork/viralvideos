@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { useWebSocketContext } from './WebSocketContext';
 
 interface WebSocketStatusProps {
   showControls?: boolean;
@@ -12,22 +12,8 @@ export default function WebSocketStatus({
   showControls = false,
   className = '',
 }: WebSocketStatusProps) {
-  const { isConnected, isConnecting, connect, disconnect, ping } = useWebSocket(
-    {
-      onMessage: (message) => {
-        // WebSocket message received
-      },
-      onConnect: () => {
-        // WebSocket connected
-      },
-      onDisconnect: () => {
-        // WebSocket disconnected
-      },
-      onError: (error) => {
-        console.error('WebSocket error:', error);
-      },
-    },
-  );
+  const { isConnected, isConnecting, connect, disconnect, ping } =
+    useWebSocketContext();
 
   const getStatusColor = () => {
     if (isConnecting) return 'text-yellow-500';

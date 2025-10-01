@@ -190,7 +190,7 @@ export default function VideoCreator({
                     ? 'border-red-500 focus:ring-red-500'
                     : 'border-slate-700'
                 }`}
-                placeholder="Write your script here..."
+                placeholder="Write your idea here..."
                 value={script}
                 onChange={(e) => {
                   const newValue = e.target.value;
@@ -211,18 +211,7 @@ export default function VideoCreator({
                 }}
                 disabled={isGenerating}
               />
-              {(!script || !script.trim()) && (
-                <div className="absolute bottom-3 left-4 right-24 text-xs text-gray-400 pointer-events-none">
-                  <p className="mb-1">
-                    Tip: keep under 50 words for the best video pacing
-                  </p>
-                  <p className="italic">
-                    Example: "A breathtaking dive into the mysterious world
-                    beneath the ocean, narrated with cinematic flair and
-                    uplifting music."
-                  </p>
-                </div>
-              )}
+              {/* Removed tip section below textarea */}
               <div
                 className={`absolute bottom-2 right-2 text-xs font-medium ${
                   isOverLimit
@@ -237,37 +226,36 @@ export default function VideoCreator({
             </div>
           </div>
 
-          {/* Write Magic Script under input */}
-          <div className="mt-3">
-            <button
-              onClick={onMagicScript || handleMagicScript}
-              disabled={isGeneratingScript || internalIsGeneratingScript}
-              className={`h-10 px-3 text-xs sm:text-sm font-semibold inline-flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
-              style={{
-                borderColor: '#5B5BFF',
-                borderWidth: '1.5px',
-                borderStyle: 'solid',
-                boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-                minWidth: '181.14px',
-              }}
-            >
-              {isGeneratingScript || internalIsGeneratingScript ? (
-                <>
-                  <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                  <span>Enhancing...</span>
-                </>
-              ) : (
-                <>
-                  <span>✨</span>
-                  <span>Write Magic Script</span>
-                </>
-              )}
-            </button>
-          </div>
+          {/* Under-input actions: Enhance button and Duration selector on same line */}
+          <div className="mt-3 flex items-center justify-between gap-4">
+            <div>
+              <button
+                onClick={onMagicScript || handleMagicScript}
+                disabled={isGeneratingScript || internalIsGeneratingScript}
+                className={`h-10 px-3 text-xs sm:text-sm font-semibold inline-flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
+                style={{
+                  borderColor: '#5B5BFF',
+                  borderWidth: '1.5px',
+                  borderStyle: 'solid',
+                  boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+                  minWidth: '181.14px',
+                }}
+              >
+                {isGeneratingScript || internalIsGeneratingScript ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                    <span>Enhancing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    <span>Enhance your idea with AI</span>
+                  </>
+                )}
+              </button>
+            </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-            {/* Duration Selection - Right aligned */}
+            {/* Duration Selection */}
             <div className="flex justify-end w-full sm:w-auto ml-auto">
               <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
                 <button
@@ -303,6 +291,9 @@ export default function VideoCreator({
               </div>
             </div>
           </div>
+
+          {/* Action Buttons (now only spacer for layout consistency) */}
+          <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"></div>
         </div>
 
         {/* Voice Selection and Image Template Selection - Stacked (block) */}

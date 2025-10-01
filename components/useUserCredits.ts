@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuth } from './AuthContext';
 import { useAuthenticatedFetch } from './useAuthenticatedFetch';
 import { WebSocketMessage } from '@/app/types/websocket';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocketContext } from './WebSocketContext';
 import { useUserDataCache } from '../hooks/useUserDataCache';
 
 interface UserCredits {
@@ -18,9 +18,12 @@ export function useUserCredits() {
   const [credits, setCredits] = useState<UserCredits | null>(null);
   const refreshPromiseRef = useRef<Promise<UserCredits | null> | null>(null);
 
-  // listen to credit_updated  from websocket and update credits
-  const { isConnected } = useWebSocket({
-    onMessage: (message: WebSocketMessage) => {
+  // Use WebSocket context for global connection
+  const { isConnected, subscribe } = useWebSocketContext();
+
+  // Subscribe to credit_updated messages from websocket
+  useEffect(() => {
+    const handleMessage = (message: WebSocketMessage) => {
       // Handle different message types
       switch (message.action) {
         case 'credit_updated':
@@ -35,20 +38,19 @@ export function useUserCredits() {
           }
           break;
       }
-    },
-    onConnect: () => {
-      // WebSocket connected - refresh credits to ensure we have the latest data
+    };
+
+    const unsubscribe = subscribe('user-credits', handleMessage);
+    return unsubscribe;
+  }, [subscribe, updateCredits]);
+
+  // Refresh credits when WebSocket connects
+  useEffect(() => {
+    if (isConnected) {
       console.log('WebSocket credit_updated connected', isConnected);
       refreshCredits();
-    },
-    onDisconnect: () => {
-      // WebSocket disconnected
-      console.log('WebSocket credit_updated disconnected', isConnected);
-    },
-    onError: (error) => {
-      console.error('WebSocket credit_updated', error);
-    },
-  });
+    }
+  }, [isConnected]);
 
   const fetchCredits = async (): Promise<UserCredits> => {
     if (!user) {

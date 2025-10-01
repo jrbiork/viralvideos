@@ -66,6 +66,8 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
               src={getPictureUrl(user.picture)!}
               alt={user.email || user.name}
               className="w-8 h-8 rounded-full object-cover"
+              referrerPolicy="no-referrer"
+              crossOrigin="anonymous"
               onError={(e) => {
                 console.error('Image failed to load:', e);
                 setImageError(true);

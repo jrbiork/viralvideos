@@ -12,8 +12,8 @@ import SceneCardsContainer from '@/components/SceneCardsContainer';
 import { DEFAULT_VOICE } from '@/lib/constants';
 
 import ExportVideo from '@/components/ExportVideo';
-import Toaster from '@/components/Toaster';
 import { parseColoredText } from '@/lib/subtitle-utils';
+import { useToaster } from '@/hooks/useToaster';
 import {
   buildMediaFiles,
   buildSubtitles,
@@ -23,7 +23,7 @@ import { handleExportVideo as exportVideoUtil } from '@/lib/export-utils';
 import { AVAILABLE_TEMPLATES } from '@/lib/template-constants';
 import { useVideoGeneration } from '@/hooks/useVideoGeneration';
 import { useSceneManagement } from '@/hooks/useSceneManagement';
-import { useWebSocket } from '@/hooks/useWebSocket';
+import { useWebSocketContext } from '@/components/WebSocketContext';
 import { useCreateUrlParams } from '@/hooks/useCreateUrlParams';
 import { useWebSocketHandlers } from '@/hooks/useWebSocketHandlers';
 import VideoPreview from '@/components/VideoPreview';
@@ -109,12 +109,8 @@ export default function GeneratePage() {
     manifest: undefined as Manifest | undefined,
   });
 
-  // Toaster state
-  const [showToaster, setShowToaster] = useState(false);
-  const [toasterMessage, setToasterMessage] = useState('');
-  const [toasterType, setToasterType] = useState<'success' | 'error' | 'info'>(
-    'error',
-  );
+  // Toaster hook
+  const { showToasterMessage, ToasterComponent } = useToaster();
 
   // Additional scenes state (for user-added scenes with position tracking)
   const [additionalScenes, setAdditionalScenes] = useState<
@@ -128,16 +124,6 @@ export default function GeneratePage() {
   const [removedOriginalScenes, setRemovedOriginalScenes] = useState<
     Set<number>
   >(new Set());
-
-  // Helper function to show toaster messages
-  const showToasterMessage = (
-    message: string,
-    type: 'success' | 'error' | 'info',
-  ) => {
-    setToasterMessage(message);
-    setToasterType(type);
-    setShowToaster(true);
-  };
 
   // Custom handleAddScene function to add new scenes
   const handleAddSceneCustom = (position: number) => {
@@ -234,21 +220,14 @@ export default function GeneratePage() {
     onCancelEdit: handleCancelEdit,
   });
 
-  // WebSocket hook for real-time updates
-  const { isConnected } = useWebSocket({
-    onMessage: handleWebSocketMessage,
-    onConnect: () => {
-      // WebSocket connected
-      console.log('WebSocket connected: ', isConnected);
-    },
-    onDisconnect: () => {
-      // WebSocket disconnected
-      console.log('WebSocket disconnected: ', isConnected);
-    },
-    onError: (error) => {
-      console.error('WebSocket error:', error);
-    },
-  });
+  // Use WebSocket context for global connection
+  const { isConnected, subscribe } = useWebSocketContext();
+
+  // Subscribe to WebSocket messages for this page
+  useEffect(() => {
+    const unsubscribe = subscribe('create-page', handleWebSocketMessage);
+    return unsubscribe;
+  }, [subscribe, handleWebSocketMessage]);
 
   // Helper functions to extract data from manifest
   const getMediaFiles = useCallback(
@@ -407,17 +386,6 @@ export default function GeneratePage() {
     videoGenerationState.currentTimestamp,
     scenes.length,
   ]); // Add scenes.length to dependencies
-
-  // Auto-hide toaster after 4 seconds
-  useEffect(() => {
-    if (showToaster) {
-      const timer = setTimeout(() => {
-        setShowToaster(false);
-      }, 4000);
-
-      return () => clearTimeout(timer);
-    }
-  }, [showToaster]);
 
   // URL params handling
   useCreateUrlParams({
@@ -895,12 +863,7 @@ export default function GeneratePage() {
       </div>
 
       {/* Toaster */}
-      <Toaster
-        message={toasterMessage}
-        type={toasterType}
-        isVisible={showToaster}
-        onClose={() => setShowToaster(false)}
-      />
+      {ToasterComponent}
     </MainLayout>
   );
 }
