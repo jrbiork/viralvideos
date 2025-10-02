@@ -46,7 +46,10 @@
     "utils/videoEffects.ts",
     "utils/manifestUtils.ts",
     "utils/assUtils.ts",
-    "utils/broadcastProgress.ts"
+    "utils/broadcastProgress.ts",
+    "video-generation/videoCombiner.ts",
+    "utils/audioUtils.ts",
+    "utils/videoCombiner.ts"
   ],
   "exclude": ["node_modules", "**/*.test.ts"]
 }

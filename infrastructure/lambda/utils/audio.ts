@@ -1,12 +1,8 @@
-import {
-  S3Client,
-  PutObjectCommand,
-  GetObjectCommand,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+
 import OpenAI from 'openai';
 
-import { Scene } from '../video-generation/script';
+import { Scene } from './script';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });

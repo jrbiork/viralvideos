@@ -47,6 +47,7 @@ export async function processVideoCombine(
       timestamp,
       manifest,
       removedScenes,
+      null,
     );
 
     //

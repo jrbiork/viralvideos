@@ -6,7 +6,7 @@ import { generateSubtitles } from '../utils/subtitles';
 import { addSceneIds } from '../utils/script';
 import { generateStoryBreakdown, Scene } from '../utils/script';
 import { uploadToS3, getObjectFromS3 } from '../utils/s3Uploader';
-import { checkAudioCaptionExists } from './util/audioUtils';
+import { checkAudioCaptionExists } from '../utils/audioUtils';
 import { getImageUrls } from '../utils/imageUtils';
 import { generateNanoBananaImage } from '../utils/imageNanoBanana';
 

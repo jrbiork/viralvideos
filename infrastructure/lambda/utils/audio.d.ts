@@ -1,4 +1,4 @@
-import { Scene } from '../video-generation/script';
+import { Scene } from './script';
 export interface SubtitleWord {
     word: string;
     start: number;

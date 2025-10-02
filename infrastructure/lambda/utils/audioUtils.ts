@@ -5,7 +5,7 @@ import {
   HeadObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { getObjectFromS3 } from './s3Uploader';
+import { getObjectFromS3 } from '../utils/s3Uploader';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 

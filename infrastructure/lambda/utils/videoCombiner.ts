@@ -4,12 +4,12 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Manifest, ManifestScene } from '../../types/s3Types';
+import { Manifest, ManifestScene } from '../types/s3Types';
 
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { UserItem } from '../../utils/user';
+import { UserItem } from './user';
 
 const ffmpeg = require('fluent-ffmpeg');
 
@@ -328,15 +328,25 @@ async function processScene(
       reject(new Error(`Timeout combining scene ${scenePosition}`));
     }, 5 * 60 * 1000); // 5 minute timeout
 
-    const command = ffmpeg()
-      .input(videoPath)
-      .inputOptions(['-async', '1', '-itsoffset', '0']);
+    const command = ffmpeg().input(videoPath);
 
     if (audioPath) {
       command.input(audioPath);
+      command.outputOptions([
+        '-map',
+        '1:a:0',
+        '-c:a',
+        'aac',
+        '-b:a',
+        '128k',
+        '-filter:a',
+        'apad',
+      ]);
     }
 
     command.outputOptions([
+      '-map',
+      '0:v:0',
       '-c:v',
       'libx264',
       '-preset',
@@ -345,22 +355,14 @@ async function processScene(
       '28',
       '-pix_fmt',
       'yuv420p',
-      '-c:a',
-      'aac',
-      '-b:a',
-      '128k',
-      '-map',
-      '0:v:0',
-      '-shortest',
       '-vsync',
       '1',
       '-threads',
       '0',
+      '-shortest',
     ]);
 
-    if (audioPath) {
-      command.outputOptions(['-map', '1:a:0']);
-    }
+    console.log('🔍 command output options new:', command.outputOptions());
 
     // Add subtitle overlay if available
     if (subtitlePath && fs.existsSync(subtitlePath)) {
@@ -372,7 +374,7 @@ async function processScene(
       .output(combinedScenePath)
       .on('end', async () => {
         clearTimeout(timeout);
-        console.log(`✅ Scene ${scenePosition} combined successfully`);
+        console.log(`✅ Scene ${scenePosition} combined successfully!`);
 
         // Save combined scene to S3 for testing purposes
         try {

@@ -1,5 +1,5 @@
-import { Manifest } from '../../types/s3Types';
-import { UserItem } from '../../utils/user';
+import { Manifest } from '../types/s3Types';
+import { UserItem } from './user';
 export interface Scene {
     description: string;
     duration: number;
