@@ -41,6 +41,7 @@ interface VideoGalleryProps {}
 
 export interface VideoGalleryHandle {
   refreshVideos: () => void;
+  addVideoFromManifest: (manifest: any) => void;
 }
 
 const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
@@ -102,10 +103,55 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
       }
     };
 
-    // Expose refreshVideos method via ref
+    // Helper to transform manifest data to Video format
+    const transformManifestToVideo = (manifest: any): Video => {
+      // Get thumbnail from first scene
+      const thumbnailUrl = manifest.scenes?.[0]?.files?.jpg || null;
+
+      return {
+        key: manifest.key,
+        finalVideoUrl: manifest.finalVideoUrl,
+        thumbnailUrl,
+        timestamp: manifest.timestamp || manifest.generatedAt,
+        createdAt: new Date(
+          parseInt(manifest.generatedAt || manifest.updatedAt),
+        ).toISOString(),
+        lastModified: new Date(
+          parseInt(manifest.updatedAt || manifest.generatedAt),
+        ).toISOString(),
+        totalDuration: manifest.totalDuration || 0,
+        sceneCount: manifest.sceneCount || 0,
+        videoGenerated:
+          Boolean(manifest.finalVideoUrl) || Boolean(manifest.videoGenerated),
+        size: manifest.size ? parseInt(manifest.size) : undefined,
+      };
+    };
+
+    // Expose methods via ref
     useImperativeHandle(ref, () => ({
       refreshVideos: () => {
         fetchVideos();
+      },
+      addVideoFromManifest: (manifest: any) => {
+        const newVideo = transformManifestToVideo(manifest);
+
+        // Add to beginning of array, avoiding duplicates
+        setVideos((prevVideos) => {
+          // Check if video already exists
+          const exists = prevVideos.some(
+            (v) => String(v.timestamp) === String(newVideo.timestamp),
+          );
+
+          if (exists) {
+            // Update existing video
+            return prevVideos.map((v) =>
+              String(v.timestamp) === String(newVideo.timestamp) ? newVideo : v,
+            );
+          } else {
+            // Add new video at the beginning
+            return [newVideo, ...prevVideos];
+          }
+        });
       },
     }));
 
@@ -380,14 +426,14 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                       )}
 
                       {/* Exported Tag - Bottom Right */}
-                      {video.videoGenerated && video.finalVideoUrl && (
+                      {(video.finalVideoUrl || video.videoGenerated) && (
                         <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
                           Exported
                         </div>
                       )}
 
-                      {/* Play Button - Only show for generated videos */}
-                      {video.videoGenerated && video.finalVideoUrl && (
+                      {/* Play Button - Show when a playable URL exists */}
+                      {video.finalVideoUrl && (
                         <button
                           onClick={(e) => handlePlayVideo(video, e)}
                           className="absolute inset-0 flex items-center justify-center bg-black/10 hover:bg-black/20 transition-all duration-200 z-10 group"
@@ -423,17 +469,17 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                           </button>
                           <button
                             onClick={(e) => handleExport(video, e)}
-                            disabled={!video.videoGenerated}
+                            disabled={!video.finalVideoUrl}
                             className={`w-full px-3 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-200 ${
-                              video.videoGenerated
+                              video.finalVideoUrl
                                 ? 'text-slate-300 hover:bg-slate-700'
                                 : 'text-slate-500 cursor-not-allowed'
                             }`}
                           >
                             <Download className="w-4 h-4" />
-                            Export {!video.videoGenerated && '(Not Available)'}
+                            Export {!video.finalVideoUrl && '(Not Available)'}
                           </button>
-                          {video.videoGenerated && video.finalVideoUrl && (
+                          {video.finalVideoUrl && (
                             <button
                               onClick={(e) => handleShareLink(video, e)}
                               className="w-full px-3 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 transition-colors duration-200"

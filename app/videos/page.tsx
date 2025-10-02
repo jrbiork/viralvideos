@@ -1,7 +1,9 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import VideoGallery from '../../components/VideoGallery';
+import VideoGallery, {
+  VideoGalleryHandle,
+} from '../../components/VideoGallery';
 import MainLayout from '../../components/MainLayout';
 import { useWebSocketContext } from '../../components/WebSocketContext';
 import { WebSocketMessage } from '../types/websocket';
@@ -9,7 +11,7 @@ import { useToaster } from '@/hooks/useToaster';
 
 export default function VideosPage() {
   const { subscribe } = useWebSocketContext();
-  const videoGalleryRef = useRef<{ refreshVideos: () => void } | null>(null);
+  const videoGalleryRef = useRef<VideoGalleryHandle | null>(null);
   const { showToasterMessage, ToasterComponent } = useToaster();
 
   useEffect(() => {
@@ -23,9 +25,12 @@ export default function VideosPage() {
         if (message.action === 'video_completed') {
           showToasterMessage('Video generated successfully!', 'success');
 
-          // Refresh the video gallery
-          if (videoGalleryRef.current?.refreshVideos) {
-            videoGalleryRef.current.refreshVideos();
+          // Add the video directly from the manifest without a full refresh
+          if (
+            videoGalleryRef.current?.addVideoFromManifest &&
+            message.data.manifest
+          ) {
+            videoGalleryRef.current.addVideoFromManifest(message.data.manifest);
           }
         }
       },
