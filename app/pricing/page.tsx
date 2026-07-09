@@ -82,57 +82,80 @@ export default function Pricing() {
     }
   };
 
+  const handleSubscribe = async (priceId: string, planName: string) => {
+    if (!isAuthenticated) {
+      router.push('/signin');
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          priceId,
+          planName,
+          promoCode: showPromotion ? 'SAVE20' : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('Failed to create checkout session:', data.error);
+        alert('Failed to start checkout. Please try again.');
+        return;
+      }
+
+      // Redirect to Stripe Checkout
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+      alert('Failed to start checkout. Please try again.');
+    }
+  };
+
   const plans = [
     {
-      name: 'Starter',
-      price: '$9',
-      period: '/month',
-      credits: '400 credits',
+      name: 'Free',
+      price: '$0',
+      period: '',
+      quota: '3 story videos',
       features: [
-        '1 series',
-        'Voiceovers',
-        'AI generated content',
-        'Background music',
+        'Up to 5 scenes per video',
+        'AI script, voiceover and visuals',
+        'Unlimited scene editing',
         'No watermark',
-        'Auto-publish on TikTok and Youtube',
+        'Vertical format for any platform',
       ],
       popular: false,
-      buttonText: 'Subscribe',
+      buttonText: 'Get Started',
       buttonAction: () => router.push('/signin'),
     },
     {
-      name: 'Creator',
-      price: '$29',
+      name: 'Pro',
+      price: '$9',
       period: '/month',
-      credits: '1200 credits',
+      quota: '30 story videos per month',
       features: [
-        '2 series',
-        'Voiceovers',
-        'AI generated content',
+        'Up to 6 scenes per video',
+        'AI script, voiceover and visuals',
+        'Unlimited scene editing',
         'Background music',
         'No watermark',
-        'Auto-publish on TikTok and Youtube',
+        'Vertical format for any platform',
       ],
       popular: true,
       buttonText: 'Subscribe',
-      buttonAction: () => router.push('/signin'),
-    },
-    {
-      name: 'Influencer',
-      price: '$99',
-      period: '/month',
-      credits: '2400 credits',
-      features: [
-        '3 series',
-        'Voiceovers',
-        'AI generated content',
-        'Background music',
-        'No watermark',
-        'Auto-publish on TikTok and Youtube',
-      ],
-      popular: false,
-      buttonText: 'Subscribe',
-      buttonAction: () => router.push('/signin'),
+      buttonAction: () =>
+        handleSubscribe(
+          process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || '',
+          'pro',
+        ),
     },
   ];
 
@@ -167,7 +190,7 @@ export default function Pricing() {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="text-white text-xl font-bold">Viral Shorts</span>
+            <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
           <div className="flex items-center space-x-4">
             {!isAuthenticated ? (
@@ -183,7 +206,7 @@ export default function Pricing() {
                   onClick={() => router.push('/signin')}
                   className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
                 >
-                  Get 10 Free Credits
+                  Get 3 Free Videos
                 </button>
               </>
             ) : (
@@ -211,8 +234,8 @@ export default function Pricing() {
             </span>
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Choose the perfect plan for your video creation needs. Start with 10
-            free credits, no credit card required.
+            Choose the perfect plan for your video creation needs. Start with 3
+            free videos, no credit card required.
           </p>
         </div>
 
@@ -311,7 +334,7 @@ export default function Pricing() {
         {/* Pricing Cards */}
         <div
           id="pricing-cards"
-          className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto"
+          className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto"
         >
           {plans.map((plan, index) => (
             <div
@@ -340,7 +363,7 @@ export default function Pricing() {
                   </span>
                   <span className="text-gray-400">{plan.period}</span>
                 </div>
-                <p className="text-gray-300 text-sm">{plan.credits}</p>
+                <p className="text-gray-300 text-sm">{plan.quota}</p>
               </div>
 
               <ul className="space-y-4 mb-8">
@@ -384,11 +407,12 @@ export default function Pricing() {
           <div className="space-y-6">
             <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
               <h3 className="text-xl font-semibold text-white mb-3">
-                What are credits?
+                How many videos can I create?
               </h3>
               <p className="text-gray-300">
-                Credits are used to generate videos. Each video generation costs
-                1 credit, regardless of the video length or quality.
+                Free accounts include 3 story videos with up to 5 scenes each.
+                Pro accounts can create 30 videos every month with up to 6
+                scenes each. Editing scenes is always free and unlimited.
               </p>
             </div>
 
@@ -397,18 +421,18 @@ export default function Pricing() {
                 Can I cancel anytime?
               </h3>
               <p className="text-gray-300">
-                Yes, you can cancel your subscription at any time. Your credits
-                will remain available until used or expired.
+                Yes, you can cancel your subscription at any time. You keep
+                your Pro quota until the end of the billing period.
               </p>
             </div>
 
             <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
               <h3 className="text-xl font-semibold text-white mb-3">
-                Do credits expire?
+                Does my monthly quota roll over?
               </h3>
               <p className="text-gray-300">
-                Credits from paid plans never expire. Free trial credits expire
-                after 30 days.
+                No — the Pro quota resets to 30 videos at the start of each
+                billing period.
               </p>
             </div>
 
@@ -417,8 +441,8 @@ export default function Pricing() {
                 What video formats are supported?
               </h3>
               <p className="text-gray-300">
-                We support MP4 format with vertical aspect ratios (9:16)
-                optimized for TikTok, Instagram Reels, and YouTube Shorts.
+                We support MP4 format with vertical aspect ratios (9:16), ready
+                to share on any platform.
               </p>
             </div>
           </div>
@@ -428,18 +452,18 @@ export default function Pricing() {
         <div className="max-w-4xl mx-auto mt-20">
           <div className="bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-2xl p-12 text-center border border-purple-400/50">
             <h2 className="text-3xl font-bold text-white mb-6">
-              Ready to Create Viral Videos?
+              Ready to Create Story Videos?
             </h2>
             <p className="text-xl text-gray-300 mb-8">
-              Join thousands of creators who are already using Viral Shorts to
-              grow their audience.
+              Join thousands of educators and storytellers who are already
+              using StoryReel to bring their ideas to life.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
                 onClick={() => router.push('/signin')}
                 className="px-8 py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
               >
-                Get 10 Free Credits
+                Get 3 Free Videos
               </button>
               <button
                 onClick={() => router.push('/')}
@@ -473,7 +497,7 @@ export default function Pricing() {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="text-white text-xl font-bold">Viral Shorts</span>
+            <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
 
           <div className="flex items-center space-x-6 mb-4 md:mb-0">
@@ -492,7 +516,7 @@ export default function Pricing() {
           </div>
 
           <div className="text-gray-400 text-sm text-center md:text-right">
-            <div>Copyright © 2025 Viral Shorts</div>
+            <div>Copyright © 2025 StoryReel</div>
             <div className="mt-1">All rights reserved</div>
           </div>
         </div>
