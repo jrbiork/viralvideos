@@ -6,7 +6,7 @@ export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
   const steps = [
     { id: 1, label: 'Write your idea' },
     { id: 2, label: 'Preview your video' },
-    { id: 3, label: 'Export your viral short' },
+    { id: 3, label: 'Export your story video' },
   ];
 
   return (

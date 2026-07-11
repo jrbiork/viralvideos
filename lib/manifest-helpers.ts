@@ -20,6 +20,27 @@ export function buildMediaFiles(manifest?: Manifest): Record<string, string> {
   return mediaFiles;
 }
 
+/**
+ * True only once every non-removed scene has a real (existence-checked, see
+ * hydrateManifest on the backend) mp4 URL. Used to gate the video preview
+ * panel so it never shows a partial/broken mix of ready and not-yet-ready
+ * scenes — self-correcting regardless of whether the manifest arrived via a
+ * WebSocket broadcast or a plain REST fetch.
+ */
+export function isManifestFullyReady(manifest?: Manifest): boolean {
+  if (!manifest || !manifest.scenes.length) return false;
+  const mediaFiles = buildMediaFiles(manifest);
+  const timestamp = manifest.generatedAt;
+  return manifest.scenes
+    .filter((scene) => !scene.removed)
+    .every((scene) => {
+      const sceneNumber =
+        scene.files.mp3?.match(/scene-(\d+)\./)?.[1] ||
+        scene.scenePosition.toString();
+      return Boolean(mediaFiles[`${timestamp}.scene-${sceneNumber}.mp4`]);
+    });
+}
+
 export function buildSubtitles(manifest?: Manifest): Record<string, string> {
   if (!manifest) return {};
   const subtitles: Record<string, string> = {};

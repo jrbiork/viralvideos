@@ -33,6 +33,19 @@ export default function VideosPage() {
             videoGalleryRef.current.addVideoFromManifest(message.data.manifest);
           }
         }
+
+        // Handle preview_completed message (scenes generated, video not yet
+        // combined/exported) — show the draft in the gallery immediately
+        if (message.action === 'preview_completed') {
+          showToasterMessage('Video scenes generated!', 'success');
+
+          if (
+            videoGalleryRef.current?.addVideoFromManifest &&
+            message.data.manifest
+          ) {
+            videoGalleryRef.current.addVideoFromManifest(message.data.manifest);
+          }
+        }
       },
     );
 
@@ -43,8 +56,8 @@ export default function VideosPage() {
   }, [subscribe, showToasterMessage]);
 
   return (
-    <MainLayout showCreditsUpgrade={true}>
-      <div className="w-full h-full flex items-center justify-center">
+    <MainLayout>
+      <div className="w-full h-full">
         {/* Video Gallery */}
         <VideoGallery ref={videoGalleryRef} />
       </div>

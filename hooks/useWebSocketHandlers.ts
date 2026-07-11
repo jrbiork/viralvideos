@@ -234,15 +234,6 @@ export function useWebSocketHandlers({
     ],
   );
 
-  // Handle insufficient credits
-  const handleInsufficientCredits = useCallback(
-    (data: any) => {
-      console.log('Insufficient credits:', data);
-      showToasterMessage('Insufficient credits', 'error');
-    },
-    [showToasterMessage],
-  );
-
   // Handle generic errors broadcasted by backend
   const handleError = useCallback(
     (data: { error?: string; message?: string }) => {
@@ -295,9 +286,6 @@ export function useWebSocketHandlers({
         case 'error':
           handleError(message.data);
           break;
-        case 'insufficient_credits':
-          handleInsufficientCredits(message.data);
-          break;
         default:
           // Unknown message type
           break;
@@ -309,7 +297,6 @@ export function useWebSocketHandlers({
       handlePreviewCompleted,
       handleVideoCompleted,
       handleError,
-      handleInsufficientCredits,
     ],
   );
 
@@ -320,6 +307,5 @@ export function useWebSocketHandlers({
     handleAudioSubtitleCreated,
     handlePreviewCompleted,
     handleError,
-    handleInsufficientCredits,
   };
 }

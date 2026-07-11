@@ -1,18 +1,10 @@
 'use client';
 
 import { useRouter, usePathname } from 'next/navigation';
-import { useAuthenticatedFetch } from './useAuthenticatedFetch';
-import CreditsDisplay from './CreditsDisplay';
-import UserDropdown from './UserDropdown';
 
-interface SidebarProps {
-  showCreditsUpgrade?: boolean;
-}
-
-export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
+export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, user } = useAuthenticatedFetch();
 
   const navigationItems = [
     {
@@ -77,57 +69,6 @@ export default function Sidebar({ showCreditsUpgrade = true }: SidebarProps) {
 
       {/* Spacer to push bottom content down */}
       <div className="flex-1"></div>
-
-      {/* Bottom Section - Credits and User */}
-      <div className="space-y-4">
-        {/* Credits Section */}
-        {showCreditsUpgrade && isAuthenticated && (
-          <div className="bg-slate-800/50 rounded-xl p-4 border border-slate-700">
-            <div className="flex items-center space-x-3 mb-3">
-              <div
-                className="w-10 h-10 rounded-full flex items-center justify-center"
-                style={{
-                  background:
-                    'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
-                }}
-              >
-                <img src="/coins.svg" alt="Credits" className="w-6 h-6" />
-              </div>
-              <div>
-                <CreditsDisplay />
-              </div>
-            </div>
-
-            <p className="text-white mb-3" style={{ fontSize: '0.875rem' }}>
-              Need more? Buy more credits
-            </p>
-
-            <button
-              onClick={() => router.push('/pricing')}
-              className="w-full text-white font-semibold py-2 px-4 transition-all duration-200 hover:shadow-lg"
-              style={{
-                borderRadius: '0.75rem',
-                background: 'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)',
-                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background =
-                  'linear-gradient(90deg, #6B4FCC 0%, #1F8ACC 100%)';
-                e.currentTarget.style.boxShadow =
-                  '0 4px 12px 0 rgba(100, 0, 160, 0.4)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background =
-                  'linear-gradient(90deg, #8A66FF 0%, #2FADFF 100%)';
-                e.currentTarget.style.boxShadow =
-                  '0 2px 6px 0 rgba(100, 0, 160, 0.25)';
-              }}
-            >
-              Buy Credits
-            </button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }

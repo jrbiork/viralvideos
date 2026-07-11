@@ -129,12 +129,16 @@ export function useVideoGeneration() {
       }
     } catch (error) {
       console.error('Error queuing video generation:', error);
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : 'Failed to queue video generation. Please try again.';
       dispatch({ type: 'SET_GENERATION_STATUS', payload: 'error' });
       dispatch({
         type: 'SET_STATUS_MESSAGE',
-        payload: 'Failed to queue video generation. Please try again.',
+        payload: message,
       });
-      alert('Failed to queue video generation. Please try again.');
+      alert(message);
     } finally {
       dispatch({ type: 'SET_GENERATING', payload: false });
     }

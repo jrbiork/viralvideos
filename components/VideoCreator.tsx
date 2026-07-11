@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import CreditsDisplay from './CreditsDisplay';
 import VoiceSelection from './VoiceSelection';
 import ImageTemplateSelection from './ImageTemplateSelection';
 import LanguageSelection from './LanguageSelection';
@@ -169,21 +168,45 @@ export default function VideoCreator({
   return (
     <>
       <div className="ml-4 h-full min-h-0 overflow-y-scroll custom-scrollbar relative">
-        {/* Header */}
-        <div className="mb-6 lg:mb-8 px-2.5">
-          <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-            Let's create your viral short!
-          </h1>
-          <p className="text-gray-300 text-sm lg:text-base">
-            Generate a short video in minutes using AI-powered captions, audio,
-            and animations.
-          </p>
-        </div>
-
         {/* Script Section */}
-        <div className="mb-8 px-2.5">
+        <div className="mb-3 px-2.5">
           <div className="mb-4">
-            <div className="relative w-full">
+            <div className="flex items-start justify-between gap-4 mb-2">
+              {/* Header */}
+              <div>
+                <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
+                  Let's create your story video!
+                </h1>
+                <p className="text-gray-300 text-sm lg:text-base">
+                  Generate a short video in minutes using AI-powered captions,
+                  audio, and animations.
+                </p>
+              </div>
+              <button
+                onClick={onMagicScript || handleMagicScript}
+                disabled={isGeneratingScript || internalIsGeneratingScript}
+                className={`mt-8 h-10 px-3 text-xs sm:text-sm font-semibold inline-flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
+                style={{
+                  borderColor: '#5B5BFF',
+                  borderWidth: '1.5px',
+                  borderStyle: 'solid',
+                  boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+                }}
+              >
+                {isGeneratingScript || internalIsGeneratingScript ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                    <span>Enhancing...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✨</span>
+                    <span>Enhance your idea with AI</span>
+                  </>
+                )}
+              </button>
+            </div>
+            <div className="relative w-full mt-4">
               <textarea
                 className={`w-full h-48 bg-slate-800 border rounded-lg p-4 text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 box-border ${
                   isOverLimit
@@ -211,7 +234,6 @@ export default function VideoCreator({
                 }}
                 disabled={isGenerating}
               />
-              {/* Removed tip section below textarea */}
               <div
                 className={`absolute bottom-2 right-2 text-xs font-medium ${
                   isOverLimit
@@ -226,95 +248,29 @@ export default function VideoCreator({
             </div>
           </div>
 
-          {/* Under-input actions: Enhance button and Duration selector on same line */}
-          <div className="mt-3 flex items-center justify-between gap-4">
-            <div>
-              <button
-                onClick={onMagicScript || handleMagicScript}
-                disabled={isGeneratingScript || internalIsGeneratingScript}
-                className={`h-10 px-3 text-xs sm:text-sm font-semibold inline-flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
-                style={{
-                  borderColor: '#5B5BFF',
-                  borderWidth: '1.5px',
-                  borderStyle: 'solid',
-                  boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-                  minWidth: '181.14px',
-                }}
-              >
-                {isGeneratingScript || internalIsGeneratingScript ? (
-                  <>
-                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
-                    <span>Enhancing...</span>
-                  </>
-                ) : (
-                  <>
-                    <span>✨</span>
-                    <span>Enhance your idea with AI</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-            {/* Duration Selection */}
-            <div className="flex justify-end w-full sm:w-auto ml-auto">
-              <div className="flex bg-slate-800 rounded-lg p-1 border border-slate-700">
-                <button
-                  onClick={() => setSelectedDuration('30s')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedDuration === '30s'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                  style={
-                    selectedDuration === '30s'
-                      ? { backgroundColor: '#7552F2' }
-                      : {}
-                  }
-                >
-                  30s
-                </button>
-                <button
-                  onClick={() => setSelectedDuration('60s')}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    selectedDuration === '60s'
-                      ? 'text-white'
-                      : 'text-gray-400 hover:text-white'
-                  }`}
-                  style={
-                    selectedDuration === '60s'
-                      ? { backgroundColor: '#7552F2' }
-                      : {}
-                  }
-                >
-                  60s
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Action Buttons (now only spacer for layout consistency) */}
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between"></div>
         </div>
 
-        {/* Voice Selection and Image Template Selection - Stacked (block) */}
+        {/* Image Style and Voice Selection - inline, side by side */}
         <div className="mb-8 px-2.5">
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col sm:flex-row gap-6">
+            {/* Image Template Selection Section */}
+            <div className="w-full sm:w-1/2">
+              <ImageTemplateSelection
+                selectedTemplate={externalSelectedTemplate}
+                onTemplateSelect={onTemplateSelect || (() => {})}
+              />
+            </div>
+
             {/* Voice Selection Section */}
-            <div className="w-full">
+            <div className="w-full sm:w-1/2">
               <VoiceSelection
                 selectedVoice={selectedVoice}
                 onVoiceSelect={handleVoiceSelect}
                 onVoiceClone={() =>
                   console.log('Voice clone functionality coming soon')
                 }
-              />
-            </div>
-
-            {/* Image Template Selection Section */}
-            <div className="w-full">
-              <ImageTemplateSelection
-                selectedTemplate={externalSelectedTemplate}
-                onTemplateSelect={onTemplateSelect || (() => {})}
               />
             </div>
           </div>
@@ -357,10 +313,7 @@ export default function VideoCreator({
                   : {}
               }
             >
-              <span>
-                Preview Scenes for {selectedDuration === '30s' ? '10' : '20'}{' '}
-                credits
-              </span>
+              <span>Generate Preview Scenes</span>
               <svg
                 width="16"
                 height="16"

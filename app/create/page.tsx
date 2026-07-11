@@ -18,6 +18,7 @@ import {
   buildMediaFiles,
   buildSubtitles,
   buildAssFiles,
+  isManifestFullyReady,
 } from '@/lib/manifest-helpers';
 import { handleExportVideo as exportVideoUtil } from '@/lib/export-utils';
 import { AVAILABLE_TEMPLATES } from '@/lib/template-constants';
@@ -27,9 +28,14 @@ import { useWebSocketContext } from '@/components/WebSocketContext';
 import { useCreateUrlParams } from '@/hooks/useCreateUrlParams';
 import { useWebSocketHandlers } from '@/hooks/useWebSocketHandlers';
 import VideoPreview from '@/components/VideoPreview';
+import Modal from '@/components/Modal';
 import { useUserDataCache } from '@/hooks/useUserDataCache';
+import { MAX_SCENES } from '@/components/useUserQuota';
 
 import { Manifest } from '../types/manifest';
+
+const HARDCODED_VIDEO_PROMPT =
+  'Bitcoin is a decentralized digital currency created in 2009. It operates on a blockchain technology without a central authority, making transactions secure and transparent. Examples of its use include online purchases, investment, and remittances.';
 
 export default function GeneratePage() {
   const [currentStep, setCurrentStep] = useState(1);
@@ -60,7 +66,7 @@ export default function GeneratePage() {
     }
     setIsVoiceLoaded(true);
   }, []);
-  const [script, setScript] = useState('');
+  const [script, setScript] = useState(HARDCODED_VIDEO_PROMPT);
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
     '30s',
@@ -125,14 +131,100 @@ export default function GeneratePage() {
     Set<number>
   >(new Set());
 
+  // In-memory edits accumulated in the UI until the user clicks "Apply changes"
+  const [pendingEdits, setPendingEdits] = useState<{
+    narrationEdits: {
+      sceneId: number;
+      scenePosition: number;
+      narration: string;
+    }[];
+    imageEdits: { sceneId: number; generatedImageUrl: string }[];
+    addedScenes: {
+      sceneId: number;
+      scenePosition: number;
+      captionText: string;
+      imageUrl: string;
+    }[];
+  }>({ narrationEdits: [], imageEdits: [], addedScenes: [] });
+  const [isApplyingEdits, setIsApplyingEdits] = useState(false);
+  const [showPendingChangesModal, setShowPendingChangesModal] =
+    useState(false);
+
+  // Scene ids already marked removed in the persisted manifest (hydrated by
+  // useCreateUrlParams on load) — these are NOT pending changes, they were
+  // already applied. Only ids in removedOriginalScenes but not yet reflected
+  // in the manifest represent a genuine queued-but-unapplied removal.
+  const manifestRemovedSceneIds = useMemo(() => {
+    const ids = new Set<number>();
+    videoGenerationState.manifest?.scenes?.forEach((manifestScene: any) => {
+      if (manifestScene.removed) {
+        const sceneIdMatch =
+          manifestScene.files?.mp3?.match(/scene-(\d+)\./) ||
+          manifestScene.files?.mp4?.match(/scene-(\d+)\./) ||
+          manifestScene.files?.ass?.match(/scene-(\d+)\./);
+        const sceneId = sceneIdMatch
+          ? parseInt(sceneIdMatch[1])
+          : manifestScene.scenePosition;
+        ids.add(sceneId);
+      }
+    });
+    return ids;
+  }, [videoGenerationState.manifest]);
+
+  const pendingRemovedSceneIds = Array.from(removedOriginalScenes).filter(
+    (id) => !manifestRemovedSceneIds.has(id),
+  );
+
+  const pendingEditsCount =
+    pendingEdits.narrationEdits.length +
+    pendingEdits.imageEdits.length +
+    pendingEdits.addedScenes.length +
+    pendingRemovedSceneIds.length;
+
+  // Record a replaced image for an existing scene (original scenes only)
+  const handleQueueImageEdit = useCallback(
+    (sceneId: number, generatedImageUrl: string) => {
+      setPendingEdits((prev) => ({
+        ...prev,
+        imageEdits: [
+          ...prev.imageEdits.filter((e) => e.sceneId !== sceneId),
+          { sceneId, generatedImageUrl },
+        ],
+      }));
+    },
+    [],
+  );
+
+  // Record a new user-added scene to be created on the next Apply
+  const handleQueueAddedScene = useCallback(
+    (
+      sceneId: number,
+      scenePosition: number,
+      captionText: string,
+      imageUrl: string,
+    ) => {
+      setPendingEdits((prev) => ({
+        ...prev,
+        addedScenes: [
+          ...prev.addedScenes.filter((s) => s.sceneId !== sceneId),
+          { sceneId, scenePosition, captionText, imageUrl },
+        ],
+      }));
+    },
+    [],
+  );
+
   // Custom handleAddScene function to add new scenes
   const handleAddSceneCustom = (position: number) => {
-    // Validation: Only allow one additional scene to be added at a time
-    if (additionalScenes.length > 0) {
-      showToasterMessage(
-        'Please complete the current scene before adding another one',
-        'error',
-      );
+    // Validation: don't exceed the max scene count (existing non-removed +
+    // already-queued additions + the one about to be added)
+    const currentNonRemovedOriginal = originalScenes.filter(
+      (s) => !s.removed,
+    ).length;
+    const resultingTotal =
+      currentNonRemovedOriginal + additionalScenes.length + 1;
+    if (resultingTotal > MAX_SCENES) {
+      showToasterMessage(`Maximum ${MAX_SCENES} scenes allowed`, 'error');
       return;
     }
 
@@ -229,6 +321,42 @@ export default function GeneratePage() {
     return unsubscribe;
   }, [subscribe, handleWebSocketMessage]);
 
+  // Clear pending edits once a batch apply completes (preview_completed)
+  useEffect(() => {
+    if (!isApplyingEdits) return;
+
+    const unsubscribe = subscribe('create-page-batch-apply', (message) => {
+      if (message.action === 'error') {
+        // Rejected server-side (e.g. scene limit exceeded) — the general
+        // WebSocket handler already shows the toast; just stop the spinner
+        // and leave pendingEdits/removedOriginalScenes queued for retry.
+        setIsApplyingEdits(false);
+        return;
+      }
+
+      if (message.action !== 'preview_completed') return;
+
+      // Added scenes are now part of the manifest — drop the local placeholders
+      const appliedAddedIds = pendingEdits.addedScenes.map((s) => s.sceneId);
+      if (appliedAddedIds.length > 0) {
+        setAdditionalScenes((prev) =>
+          prev.filter((item) => !appliedAddedIds.includes(item.scene.id)),
+        );
+      }
+
+      setPendingEdits({
+        narrationEdits: [],
+        imageEdits: [],
+        addedScenes: [],
+      });
+      setRemovedOriginalScenes(new Set());
+      setIsApplyingEdits(false);
+      showToasterMessage('Changes applied', 'success');
+    });
+
+    return unsubscribe;
+  }, [isApplyingEdits, subscribe, pendingEdits.addedScenes, showToasterMessage]);
+
   // Helper functions to extract data from manifest
   const getMediaFiles = useCallback(
     () => buildMediaFiles(videoGenerationState.manifest),
@@ -270,9 +398,13 @@ export default function GeneratePage() {
           )
         : manifestScene.scenePosition;
 
-      // Get the narration from the subtitle field
+      // Get the narration from the subtitle field, overridden by any pending edit
+      const pendingNarration = pendingEdits.narrationEdits.find(
+        (e) => e.sceneId === actualSceneId,
+      )?.narration;
       const narration =
-        manifestScene.files?.subtitle ||
+        pendingNarration ??
+        manifestScene.files?.subtitle ??
         `Scene ${manifestScene.scenePosition + 1}`;
 
       // Get duration from manifest scene files, fallback to calculated duration
@@ -289,11 +421,15 @@ export default function GeneratePage() {
         narration: narration,
         duration: actualDuration,
         scenePosition: manifestScene.scenePosition,
-        removed: removedOriginalScenes.has(actualSceneId), // Use local state for removed scenes
-        animated: manifestScene.animated || false, // Default to false for original scenes
+        removed:
+          manifestScene.removed || removedOriginalScenes.has(actualSceneId), // Manifest is authoritative; local state covers not-yet-applied removals
       };
     });
-  }, [videoGenerationState.manifest, removedOriginalScenes]);
+  }, [
+    videoGenerationState.manifest,
+    removedOriginalScenes,
+    pendingEdits.narrationEdits,
+  ]);
 
   // Combine original scenes with additional user-added scenes
   const originalScenes = useMemo(
@@ -310,14 +446,15 @@ export default function GeneratePage() {
       allScenes.map((s) => ({ id: s.id, description: s.description })),
     );
 
-    // Sort additional scenes by the requested insertion position (ascending)
-    const sortedAdditionalScenes = [...additionalScenes].sort(
-      (a, b) => a.position - b.position,
-    );
-
+    // Each scene's `position` was captured against the combined scenes array
+    // (including previously-added scenes) at the moment it was added. Since
+    // additionalScenes is only ever appended to, insertion order already
+    // matches that reference frame — sorting by position here would replay
+    // positions against the wrong (original-only) array and misplace scenes
+    // added after earlier ones.
     console.log(
-      '📝 Sorted additionalScenes to insert:',
-      sortedAdditionalScenes.map((item) => ({
+      '📝 additionalScenes to insert (in insertion order):',
+      additionalScenes.map((item) => ({
         id: item.scene.id,
         position: item.position,
         description: item.scene.description,
@@ -325,7 +462,7 @@ export default function GeneratePage() {
     );
 
     // Insert each additional scene at its requested position, pushing existing scenes to the right
-    for (const { scene, position } of sortedAdditionalScenes) {
+    for (const { scene, position } of additionalScenes) {
       // Clamp the insertion index to [0, allScenes.length]
       const insertAt = Math.max(0, Math.min(position, allScenes.length));
       allScenes.splice(insertAt, 0, scene);
@@ -472,70 +609,93 @@ export default function GeneratePage() {
     handleGenerateVideo(script, duration, selectedVoice);
   };
 
-  const handleRegenerateAudio = async (sceneId: number) => {
-    if (!scenes.length || !videoGenerationState.currentTimestamp) {
-      console.error('No scenes or timestamp available');
+  // Record an edited narration for an existing scene in memory.
+  // The actual audio/subtitle regeneration happens when the user clicks "Apply changes".
+  const handleRegenerateAudio = (
+    sceneId: number,
+    narrationOverride?: string,
+  ) => {
+    const scene = scenes.find((s: Scene) => s.id === sceneId);
+    if (!scene) {
+      console.error('Scene not found:', sceneId);
       return;
     }
 
-    // Set loading state for this scene
-    setRegeneratingSceneId(sceneId);
+    const narration =
+      narrationOverride || sceneState.editedNarration || scene.narration;
 
-    const queryParams = new URLSearchParams(window.location.search);
+    setPendingEdits((prev) => ({
+      ...prev,
+      narrationEdits: [
+        ...prev.narrationEdits.filter((e) => e.sceneId !== sceneId),
+        {
+          sceneId,
+          scenePosition: scene.scenePosition ?? 0,
+          narration,
+        },
+      ],
+    }));
+
+    // Exit edit mode; the optimistic narration is shown via the pending override
+    handleCancelEdit();
+  };
+
+  // Send all accumulated in-memory edits to the backend in a single batch
+  const handleApplyEdits = async () => {
+    if (pendingEditsCount === 0 || !videoGenerationState.currentTimestamp) {
+      return;
+    }
+
+    const incompleteScene = additionalScenes.find(
+      (item) => !item.scene.narration || !item.scene.narration.trim(),
+    );
+    if (incompleteScene) {
+      showToasterMessage(
+        'One of your new scenes is missing narration. Add narration or remove the scene before applying changes.',
+        'error',
+      );
+      return;
+    }
+
+    setIsApplyingEdits(true);
+    setVideoGenerationState((prev) => ({
+      ...prev,
+      isLoadingVideoScenes: true,
+    }));
 
     try {
-      // Find the scene to regenerate
-      const scene = scenes.find((s: Scene) => s.id === sceneId);
-      console.log('log1 scene:', scene);
-      if (!scene) {
-        console.error('Scene not found:', sceneId);
-        return;
-      }
-
-      // Create a copy of the scene with updated narration if it's being edited
-      const updatedScene = {
-        ...scene,
-        narration: sceneState.editedNarration || scene.narration,
-      };
-      console.log('log1 updatedScene:', updatedScene);
-
-      // Call the generate-audio-subtitle API
-      const response = await fetch('/api/generate-audio-subtitle', {
+      const response = await fetch('/api/apply-edits', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          scene: updatedScene, // Send the single scene with updated narration
-          instructions: 'Speak in a cheerful and positive tone',
-          voice: selectedVoice, // Include the selected voice
-          timestamp:
-            videoGenerationState.currentTimestamp ||
-            queryParams.get('timestamp'),
+          timestamp: videoGenerationState.currentTimestamp,
+          edits: {
+            narrationEdits: pendingEdits.narrationEdits,
+            imageEdits: pendingEdits.imageEdits,
+            addedScenes: pendingEdits.addedScenes,
+            removedSceneIds: pendingRemovedSceneIds,
+          },
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to regenerate audio: ${response.statusText}`);
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to apply changes');
       }
 
-      const result = await response.json();
-      console.log('📡 Response from generate-audio-subtitle API:', result);
-
-      // The API now returns a queued status - the actual result will come via WebSocket
-      if (result.status === 'queued') {
-        console.log(
-          '✅ Audio regeneration queued successfully:',
-          result.messageId,
-        );
-        // The WebSocket handler will process the preview_completed message
-        // and update the video generation state automatically
-      } else {
-        console.error('❌ Unexpected response format:', result);
-      }
+      // Pending state is cleared when the preview_completed WebSocket event arrives
+      console.log('✅ Batch edit queued');
     } catch (error) {
-      console.error('Error regenerating audio:', error);
-      alert('Failed to regenerate audio. Please try again.');
+      console.error('Error applying edits:', error);
+      setIsApplyingEdits(false);
+      setVideoGenerationState((prev) => ({
+        ...prev,
+        isLoadingVideoScenes: false,
+      }));
+      showToasterMessage(
+        error instanceof Error ? error.message : 'Failed to apply changes',
+        'error',
+      );
     }
   };
 
@@ -613,6 +773,34 @@ export default function GeneratePage() {
     }
   };
 
+  // "Generate Video" is blocked behind a confirmation whenever there are
+  // queued-but-unapplied edits, since those edits are not sent as part of
+  // /api/combine-video and would otherwise be silently dropped.
+  const handleGenerateVideoClick = () => {
+    if (pendingEditsCount > 0) {
+      setShowPendingChangesModal(true);
+      return;
+    }
+    handleCombineVideo();
+  };
+
+  const handleApplyChangesFromModal = () => {
+    setShowPendingChangesModal(false);
+    handleApplyEdits();
+  };
+
+  const handleDiscardPendingAndGenerate = () => {
+    setPendingEdits({ narrationEdits: [], imageEdits: [], addedScenes: [] });
+    setRemovedOriginalScenes((prev) => {
+      const next = new Set(prev);
+      pendingRemovedSceneIds.forEach((id) => next.delete(id));
+      return next;
+    });
+    setAdditionalScenes([]);
+    setShowPendingChangesModal(false);
+    handleCombineVideo();
+  };
+
   // Right sidebar content
   const rightSidebarContent = (
     <RightSidebar
@@ -631,39 +819,77 @@ export default function GeneratePage() {
 
   return (
     <MainLayout
-      showCreditsUpgrade={true}
       rightSidebarContent={rightSidebarContent}
       backgroundColor={currentStep === 1 ? '#090526' : '#0F0A1E'}
       progressSteps={<ProgressSteps currentStep={currentStep} />}
       currentStep={currentStep}
       rightSidebarButton={
         currentStep === 2 ? (
-          <button
-            onClick={handleCombineVideo}
-            className="h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
-            style={{
-              background:
-                'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
-              boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-            }}
-          >
-            <span>Generate Video</span>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+          <div className="flex items-center gap-3">
+            {pendingEditsCount > 0 && (
+              <button
+                onClick={handleApplyEdits}
+                disabled={isApplyingEdits}
+                className={`h-12 px-6 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 border-[1.5px] border-[#5B5BFF] hover:bg-[#5B5BFF] ${
+                  isApplyingEdits ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+                style={{
+                  boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+                }}
+              >
+                {isApplyingEdits ? (
+                  <>
+                    <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                    <span>Applying...</span>
+                  </>
+                ) : (
+                  <span>Apply changes ({pendingEditsCount})</span>
+                )}
+              </button>
+            )}
+            <button
+              onClick={handleGenerateVideoClick}
+              disabled={
+                !isManifestFullyReady(videoGenerationState.manifest) ||
+                isApplyingEdits
+              }
+              title={
+                isApplyingEdits
+                  ? 'Waiting for pending changes to finish applying...'
+                  : !isManifestFullyReady(videoGenerationState.manifest)
+                  ? 'Waiting for all scenes to finish generating...'
+                  : undefined
+              }
+              className={`h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 ${
+                isManifestFullyReady(videoGenerationState.manifest) &&
+                !isApplyingEdits
+                  ? 'hover:-translate-y-[1px] hover:brightness-95'
+                  : 'opacity-50 cursor-not-allowed'
+              }`}
+              style={{
+                background:
+                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+              }}
             >
-              <path
-                d="M5 12H19M19 12L12 5M19 12L12 19"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
+              <span>Generate Video</span>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M5 12H19M19 12L12 5M19 12L12 19"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
         ) : null
       }
     >
@@ -754,6 +980,16 @@ export default function GeneratePage() {
               handleDeleteScene={handleDeleteScene}
               handleDeleteUserAddedScene={handleDeleteUserAddedScene}
               onRestoreOriginalScene={(sceneId: number) => {
+                const currentActiveTotal = scenes.filter(
+                  (s) => !s.removed,
+                ).length;
+                if (currentActiveTotal + 1 > MAX_SCENES) {
+                  showToasterMessage(
+                    `You're at the ${MAX_SCENES}-scene limit. Remove a scene before restoring this one.`,
+                    'error',
+                  );
+                  return;
+                }
                 console.log('[Scenes] Restoring original scene:', sceneId);
                 setRemovedOriginalScenes((prev) => {
                   const next = new Set(prev);
@@ -764,6 +1000,8 @@ export default function GeneratePage() {
               }}
               deletingSceneId={deletingSceneId}
               removedOriginalScenes={removedOriginalScenes}
+              onQueueImageEdit={handleQueueImageEdit}
+              onQueueAddedScene={handleQueueAddedScene}
             />
           </div>
 
@@ -861,6 +1099,48 @@ export default function GeneratePage() {
           </div>
         </div>
       </div>
+
+      {/* Pending changes confirmation, shown when Generate Video is clicked
+          while there are queued-but-unapplied edits */}
+      <Modal
+        isOpen={showPendingChangesModal}
+        onClose={() => setShowPendingChangesModal(false)}
+        title="You have unsaved changes"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-300 text-sm">
+            You have {pendingEditsCount} pending change
+            {pendingEditsCount === 1 ? '' : 's'} that haven't been applied
+            yet. Apply them before generating, or discard them and generate
+            with the current scenes.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onClick={() => setShowPendingChangesModal(false)}
+              className="flex-1 px-4 py-3 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:bg-[#5B5BFF] font-medium transition-all duration-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleDiscardPendingAndGenerate}
+              className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors duration-200"
+            >
+              Discard &amp; Generate
+            </button>
+            <button
+              onClick={handleApplyChangesFromModal}
+              className="flex-1 px-4 py-3 text-white rounded-xl font-medium transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
+              style={{
+                background:
+                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+              }}
+            >
+              Apply Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Toaster */}
       {ToasterComponent}

@@ -215,12 +215,20 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
       setVideoToDelete(null);
     };
 
+    const navigateToEdit = (video: Video) => {
+      // Navigate to create page with the video's timestamp and step=2
+      router.push(`/create?timestamp=${video.timestamp}&step=2`);
+    };
+
     const handleEdit = (video: Video, e: React.MouseEvent) => {
       e.stopPropagation();
       setOpenMenu(null);
+      navigateToEdit(video);
+    };
 
-      // Navigate to create page with the video's timestamp and step=2
-      router.push(`/create?timestamp=${video.timestamp}&step=2`);
+    const handleThumbnailClick = (video: Video) => {
+      setOpenMenu(null);
+      navigateToEdit(video);
     };
 
     const handlePlayVideo = (video: Video, e: React.MouseEvent) => {
@@ -310,10 +318,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
 
     if (loading) {
       return (
-        <div
-          className="fixed inset-0 flex items-center justify-center"
-          style={{ top: '64px', left: '250px', right: '0px', bottom: '0px' }}
-        >
+        <div className="w-full h-full flex items-center justify-center">
           <div className="text-center animate-fade-in-up">
             <div className="relative mb-6 flex justify-center">
               <div className="relative w-16 h-16">
@@ -390,7 +395,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
     }
 
     return (
-      <div className="relative flex h-full">
+      <div className="relative flex h-full w-full">
         {/* Main Gallery */}
         <div className="w-full flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
@@ -406,10 +411,13 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                     key={video.timestamp}
                     className="relative w-[247px] h-[382px] glass-effect rounded-xl p-4 transition-all duration-300 hover:transform hover:scale-105 hover:bg-slate-700/50"
                   >
-                    <div className="relative mb-4 h-72 overflow-hidden rounded-xl">
+                    <div
+                      className="relative mb-4 h-72 overflow-hidden rounded-xl cursor-pointer"
+                      onClick={() => handleThumbnailClick(video)}
+                    >
                       {video.thumbnailUrl ? (
                         <img
-                          className="w-full h-full object-cover cursor-pointer transition-transform duration-200 hover:scale-105"
+                          className="w-full h-full object-cover transition-transform duration-200 hover:scale-105"
                           src={video.thumbnailUrl}
                           alt={`Video thumbnail for ${video.timestamp}`}
                         />
@@ -425,10 +433,17 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                         </div>
                       )}
 
-                      {/* Exported Tag - Bottom Right */}
+                      {/* Done Tag - Bottom Right */}
                       {(video.finalVideoUrl || video.videoGenerated) && (
                         <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
-                          Exported
+                          Done
+                        </div>
+                      )}
+
+                      {/* Not Finished Tag - Bottom Right */}
+                      {!video.finalVideoUrl && !video.videoGenerated && (
+                        <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
+                          Not finished yet
                         </div>
                       )}
 

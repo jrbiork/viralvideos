@@ -9,7 +9,6 @@ import Breadcrumb from './Breadcrumb';
 interface MainLayoutProps {
   children: ReactNode;
   showSidebar?: boolean;
-  showCreditsUpgrade?: boolean;
   rightSidebarContent?: ReactNode;
   backgroundColor?: string;
   progressSteps?: ReactNode;
@@ -22,7 +21,6 @@ interface MainLayoutProps {
 export default function MainLayout({
   children,
   showSidebar = true,
-  showCreditsUpgrade = true,
   rightSidebarContent,
   backgroundColor = '#0F0A1E',
   progressSteps,
@@ -81,7 +79,7 @@ export default function MainLayout({
                   <path d="M8 5v14l11-7z" />
                 </svg>
               </div>
-              <span className="text-white text-xl font-bold">Viral Shorts</span>
+              <span className="text-white text-xl font-bold">StoryReel</span>
             </div>
 
             {/* Breadcrumb */}
@@ -114,7 +112,7 @@ export default function MainLayout({
             style={{ backgroundColor: 'rgba(26,9,64,255)' }}
             className="h-full"
           >
-            <Sidebar showCreditsUpgrade={showCreditsUpgrade} />
+            <Sidebar />
           </div>
         )}
 

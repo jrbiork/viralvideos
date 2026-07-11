@@ -1,5 +1,6 @@
 import React from 'react';
 import VideoSkeleton from './VideoSkeleton';
+import { isManifestFullyReady } from '@/lib/manifest-helpers';
 
 interface RightSidebarProps {
   currentStep: number;
@@ -9,6 +10,7 @@ interface RightSidebarProps {
   };
   videoGenerationState: {
     isLoadingVideoScenes: boolean;
+    isLoadingAudioSubtitles: boolean;
     currentTimestamp: string;
     manifest?: {
       generatedAt: string;
@@ -46,6 +48,14 @@ export default function RightSidebar({
   parseColoredText,
   exampleVideoUrl,
 }: RightSidebarProps) {
+  // Gate the preview on the manifest's own content (every non-removed scene
+  // has a real, existence-checked mp4) rather than a flag that can be
+  // cleared prematurely by the initial REST hydrate on direct navigation —
+  // see useCreateUrlParams.ts, which does not verify per-scene readiness.
+  const videoPreviewReady = isManifestFullyReady(
+    (videoGenerationState.manifest as any) || undefined,
+  );
+
   return (
     <div className="sticky">
       {currentStep === 1 &&
@@ -65,15 +75,17 @@ export default function RightSidebar({
           </div>
         )}
 
-      {currentStep === 2 && videoGenerationState.isLoadingVideoScenes && (
+      {currentStep === 2 && !videoPreviewReady && (
         <div className="flex justify-center items-center h-full">
-          <VideoSkeleton />
+          <VideoSkeleton
+            phase={
+              videoGenerationState.isLoadingAudioSubtitles ? 'audio' : 'scenes'
+            }
+          />
         </div>
       )}
 
-      {currentStep === 2 &&
-        !videoGenerationState.isLoadingVideoScenes &&
-        scenes.length > 0 && (
+      {currentStep === 2 && videoPreviewReady && scenes.length > 0 && (
           <>
             {scenes.map((scene: any, index: number) => {
               // Get the actual scene number from the manifest file names

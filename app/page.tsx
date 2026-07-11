@@ -5,6 +5,7 @@ import React, { Fragment } from 'react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import AnimatedBackground from '../components/AnimatedBackground';
+import ScrollPathEffect from '../components/ScrollPathEffect';
 import { useAuth } from '../components/AuthContext';
 import UserDropdown from '../components/UserDropdown';
 
@@ -69,7 +70,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen relative">
-      <AnimatedBackground />
+      <AnimatedBackground fixed />
+      {/* Scroll-driven decorative path spanning the full page height */}
+      <ScrollPathEffect />
       {/* Header */}
       <div className="sticky top-0 z-50 w-full" id="navbar-wrapper">
         <nav
@@ -97,7 +100,7 @@ export default function Home() {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="text-white text-xl font-bold">Viral Shorts</span>
+            <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
           <div className="flex items-center space-x-4">
             <button
@@ -119,7 +122,7 @@ export default function Home() {
                   onClick={() => router.push('/signin')}
                   className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
                 >
-                  Get 10 Free Credits
+                  Get 3 Free Videos
                 </button>
               </>
             ) : (
@@ -139,20 +142,20 @@ export default function Home() {
 
       {/* Hero Section */}
       <div className="container mx-auto px-6 py-20">
-        <div className="text-center">
+        <div className="relative z-10 text-center">
           <h1
             className="font-bold text-white mb-6"
             style={{ fontSize: '5.61rem' }}
           >
             Idea to{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">
-              viral short
+              story video
             </span>
             <span className="block">in a few clicks.</span>
           </h1>
           <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-            Text to viral shorts in minutes - no watermark. <br /> text → video
-            → post.
+            Turn any topic into a narrated story video — script, voiceover,
+            visuals, done. <br /> No watermark.
           </p>
 
           {/* CTA Buttons */}
@@ -161,7 +164,7 @@ export default function Home() {
               onClick={() => router.push('/signin')}
               className="px-8 py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
             >
-              Get 10 Free Credits
+              Get 3 Free Videos
             </button>
             <button
               className="px-8 py-3 text-white rounded-lg hover:bg-white/10 transition-colors font-semibold border"
@@ -201,8 +204,7 @@ export default function Home() {
           </div>
           <div className="text-center mb-20 -mt-8">
             <span className="text-gray-300 text-base font-bold">
-              TRUSTED BY 100k+ Creators, marketers, educators, and storytellers
-              worldwide.
+              TRUSTED BY 100k+ educators, storytellers, and creators worldwide.
             </span>
           </div>
 
@@ -215,7 +217,7 @@ export default function Home() {
               paddingBottom: '16rem',
             }}
           >
-            {/* Card 1 - Instagram */}
+            {/* Card 1 - Story time */}
             <div
               className="absolute w-[115.2%] max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
               style={{
@@ -227,8 +229,10 @@ export default function Home() {
             >
               <div className="relative w-full h-full rounded-2xl overflow-hidden">
                 <div className="absolute top-2 left-2 z-10">
-                  <div className="w-6 h-6 bg-gradient-to-r from-orange-400 to-pink-500 rounded flex items-center justify-center">
-                    <span className="text-white text-xs font-bold">IG</span>
+                  <div className="px-2 h-6 bg-black/60 rounded flex items-center justify-center">
+                    <span className="text-white text-[10px] font-bold">
+                      Story time
+                    </span>
                   </div>
                 </div>
                 <video
@@ -243,7 +247,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Card 2 - YouTube */}
+            {/* Card 2 - Explainer */}
             <div
               className="absolute w-[115.2%] max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
               style={{
@@ -255,14 +259,10 @@ export default function Home() {
             >
               <div className="relative w-full h-full rounded-2xl overflow-hidden">
                 <div className="absolute top-2 left-2 z-10">
-                  <div className="w-6 h-6 bg-red-500 rounded-full flex items-center justify-center">
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
+                  <div className="px-2 h-6 bg-black/60 rounded flex items-center justify-center">
+                    <span className="text-white text-[10px] font-bold">
+                      Explainer
+                    </span>
                   </div>
                 </div>
                 <video
@@ -277,7 +277,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Card 3 - TikTok */}
+            {/* Card 3 - Lesson */}
             <div
               className="absolute w-[115.2%] max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
               style={{
@@ -289,14 +289,10 @@ export default function Home() {
             >
               <div className="relative w-full h-full rounded-2xl overflow-hidden">
                 <div className="absolute top-2 left-2 z-10">
-                  <div className="w-6 h-6 bg-black rounded flex items-center justify-center">
-                    <svg
-                      className="w-3 h-3 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                    </svg>
+                  <div className="px-2 h-6 bg-black/60 rounded flex items-center justify-center">
+                    <span className="text-white text-[10px] font-bold">
+                      Lesson
+                    </span>
                   </div>
                 </div>
                 <video
@@ -313,11 +309,12 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Features Section */}
-        <div className="max-w-6xl mx-auto px-6 py-20">
-          <h2 className="text-4xl font-bold text-white text-center mb-16">
-            Creating Viral Faceless Videos Has Never Been So Easy
-          </h2>
+        <div className="relative">
+          {/* Features Section */}
+          <div className="relative z-10 max-w-6xl mx-auto px-6 py-20">
+            <h2 className="text-4xl font-bold text-white text-center mb-16">
+              Creating Story &amp; Educational Videos Has Never Been So Easy
+            </h2>
 
           {/* Top Row - Core Features */}
           <div className="grid md:grid-cols-3 gap-8 mb-12">
@@ -334,12 +331,12 @@ export default function Home() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-white">
-                  Create Youtube Shorts
+                  Create educational shorts
                 </h3>
               </div>
               <p className="text-gray-300">
-                Create Youtube Shorts with AI generated content. No need to
-                record anything.
+                Turn any topic into a clear explainer or lesson with AI
+                generated content. No need to record anything.
               </p>
             </div>
 
@@ -356,12 +353,12 @@ export default function Home() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-white">
-                  Create viral Tiktok videos
+                  Tell captivating stories
                 </h3>
               </div>
               <p className="text-gray-300">
-                Create Tiktok videos that go viral. No need to dance or lip
-                sync.
+                Generate the script, narration and visuals for your story from a
+                single idea.
               </p>
             </div>
 
@@ -378,11 +375,11 @@ export default function Home() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-bold text-white">
-                  Publish on Tiktok & Youtube
+                  Share anywhere
                 </h3>
               </div>
               <p className="text-gray-300">
-                Publish your videos directly from the app.
+                Export vertical videos ready to share on any platform.
               </p>
             </div>
           </div>
@@ -450,26 +447,27 @@ export default function Home() {
                 </h3>
               </div>
               <p className="text-gray-300">
-                StoryShort is constantly evolving. We are adding new features
+                StoryReel is constantly evolving. We are adding new features
                 every week.
               </p>
             </div>
           </div>
         </div>
 
-        {/* Promotional Banner */}
-        <div className="max-w-4xl mx-auto px-6 py-16">
-          <div className="bg-gray-800/50 rounded-2xl p-12 text-center border border-gray-700/50">
-            <h2 className="text-4xl font-bold text-white mb-6">
-              Say Goodbye To Boring Videos 👋
-            </h2>
-            <p className="text-xl text-gray-300 mb-8">
-              Get started with StoryShort.ai today and start creating engaging
-              videos for Tiktok and Youtube on autopilot.
-            </p>
-            <button className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-8 rounded-full transition-colors duration-200">
-              Get Started
-            </button>
+          {/* Promotional Banner */}
+          <div className="relative z-10 max-w-4xl mx-auto px-6 py-16">
+            <div className="bg-gray-800/50 rounded-2xl p-12 text-center border border-gray-700/50">
+              <h2 className="text-4xl font-bold text-white mb-6">
+                Say Goodbye To Boring Videos 👋
+              </h2>
+              <p className="text-xl text-gray-300 mb-8">
+                Get started with StoryReel today and turn your ideas into story
+                videos on autopilot.
+              </p>
+              <button className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-8 rounded-full transition-colors duration-200">
+                Get Started
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -494,7 +492,7 @@ export default function Home() {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="text-white text-xl font-bold">Viral Shorts</span>
+            <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
 
           <div className="flex items-center space-x-6 mb-4 md:mb-0">
@@ -513,7 +511,7 @@ export default function Home() {
           </div>
 
           <div className="text-gray-400 text-sm text-center md:text-right">
-            <div>Copyright © 2025 Viral Shorts</div>
+            <div>Copyright © 2025 StoryReel</div>
             <div className="mt-1">All rights reserved</div>
           </div>
         </div>

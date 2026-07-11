@@ -79,7 +79,7 @@ export default function Contact() {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="text-white text-xl font-bold">Viral Shorts</span>
+            <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
           <div className="flex items-center space-x-4">
             <button
@@ -99,7 +99,7 @@ export default function Contact() {
               onClick={() => router.push('/signin')}
               className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
             >
-              Get 10 Free Credits
+              Get 3 Free Videos
             </button>
           </div>
         </nav>
@@ -115,7 +115,7 @@ export default function Contact() {
             </span>
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Have questions about Viral Shorts? We'd love to hear from you. Send
+            Have questions about StoryReel? We'd love to hear from you. Send
             us a message and we'll respond as soon as possible.
           </p>
         </div>
@@ -241,7 +241,7 @@ export default function Contact() {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="text-white text-xl font-bold">Viral Shorts</span>
+            <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
 
           <div className="flex items-center space-x-6 mb-4 md:mb-0">
@@ -260,7 +260,7 @@ export default function Contact() {
           </div>
 
           <div className="text-gray-400 text-sm text-center md:text-right">
-            <div>Copyright © 2025 Viral Shorts</div>
+            <div>Copyright © 2025 StoryReel</div>
             <div className="mt-1">All rights reserved</div>
           </div>
         </div>

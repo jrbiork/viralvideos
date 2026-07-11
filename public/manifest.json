@@ -1,7 +1,7 @@
 {
-  "name": "Viral Videos MVP",
-  "short_name": "Viral Videos",
-  "description": "Generate 60-second vertical videos for TikTok and Instagram Reels using AI",
+  "name": "StoryReel",
+  "short_name": "StoryReel",
+  "description": "Turn any topic into a narrated story video with AI — script, voiceover, visuals, done.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

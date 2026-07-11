@@ -165,9 +165,18 @@ export async function POST(request: NextRequest) {
     if (!lambdaResponse.ok) {
       const errorText = await lambdaResponse.text();
       console.error('❌ API Gateway error response:', errorText);
+      // Surface the lambda's own error message when available (e.g. quota exceeded)
+      let lambdaError: string | undefined;
+      try {
+        lambdaError = JSON.parse(errorText).error;
+      } catch {
+        // not JSON, fall through to generic message
+      }
       return NextResponse.json(
         {
-          error: `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
+          error:
+            lambdaError ||
+            `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
           details: errorText,
         },
         { status: lambdaResponse.status },

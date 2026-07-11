@@ -79,10 +79,24 @@ export async function POST(request: NextRequest) {
     if (!lambdaResponse.ok) {
       const errorText = await lambdaResponse.text();
       console.error('❌ API Gateway error response:', errorText);
+
+      let lambdaError: string | undefined;
+      let imageQuota: unknown;
+      try {
+        const parsed = JSON.parse(errorText);
+        lambdaError = parsed.error;
+        imageQuota = parsed.imageQuota;
+      } catch {
+        // errorText wasn't JSON; fall back to the generic message below
+      }
+
       return NextResponse.json(
         {
-          error: `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
+          error:
+            lambdaError ||
+            `API Gateway error: ${lambdaResponse.status} ${lambdaResponse.statusText}`,
           details: errorText,
+          ...(imageQuota ? { imageQuota } : {}),
         },
         { status: lambdaResponse.status },
       );

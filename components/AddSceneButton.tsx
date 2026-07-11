@@ -4,6 +4,7 @@ interface AddSceneButtonProps {
   isFirst?: boolean; // Whether this is the first button (before all scenes)
   isLast?: boolean; // Whether this is the last button (after all scenes)
   disabled?: boolean; // Whether the button should be disabled
+  disabledReason?: string; // Tooltip text shown while disabled
 }
 
 export default function AddSceneButton({
@@ -12,6 +13,7 @@ export default function AddSceneButton({
   isFirst = false,
   isLast = false,
   disabled = false,
+  disabledReason = 'Add scene is disabled',
 }: AddSceneButtonProps) {
   return (
     <div className="flex items-center justify-center my-6">
@@ -51,7 +53,7 @@ export default function AddSceneButton({
         {/* Tooltip when disabled (on hover) */}
         {disabled && (
           <div className="pointer-events-none absolute left-1/2 -translate-x-1/2 mt-2 w-max max-w-xs px-3 py-2 rounded-md bg-slate-800 text-slate-200 text-xs shadow-lg border border-slate-700 opacity-0 group-hover:opacity-100 transition-opacity">
-            Add scene is disabled while another new scene is pending
+            {disabledReason}
           </div>
         )}
       </div>

@@ -8,9 +8,9 @@ import WebSocketStatus from '../components/WebSocketStatus';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Viral Videos MVP - AI Video Generator',
+  title: 'StoryReel — AI Story Video Generator',
   description:
-    'Generate 60-second vertical videos for TikTok and Instagram Reels using AI',
+    'Turn any topic into a narrated story video with AI — script, voiceover, visuals, done.',
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
@@ -28,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className} suppressHydrationWarning>
         <AuthProvider>
           <WebSocketProvider>
             {children}

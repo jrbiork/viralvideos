@@ -3,7 +3,7 @@ import { Manifest } from '../app/types/manifest';
 import { handleExportVideo, formatFileSize } from '../lib/export-utils';
 
 interface UserSubscription {
-  mode: 'free' | 'starter' | 'creator' | 'influencer';
+  mode: 'free' | 'pro' | 'starter' | 'creator' | 'influencer';
   renewalDate?: string | null;
   status: 'active' | 'cancelled' | 'expired';
 }

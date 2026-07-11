@@ -1,4 +1,32 @@
-export default function VideoSkeleton() {
+'use client';
+
+import { useEffect, useState } from 'react';
+
+// Messages shown while narration/subtitles are being generated (before any
+// scene has a script/audio yet). Cycled for perceived progress since the
+// backend doesn't expose finer-grained sub-steps for this phase.
+const AUDIO_PHASE_MESSAGES = ['Generating audio...', 'Building subtitles...'];
+
+interface VideoSkeletonProps {
+  // 'audio': script/narration/subtitles still in progress (cycles messages).
+  // 'scenes': audio is ready, Ken-Burns scene videos are being rendered.
+  phase?: 'audio' | 'scenes';
+}
+
+export default function VideoSkeleton({ phase = 'audio' }: VideoSkeletonProps) {
+  const [messageIndex, setMessageIndex] = useState(0);
+
+  useEffect(() => {
+    if (phase !== 'audio') return;
+    const interval = setInterval(() => {
+      setMessageIndex((i) => (i + 1) % AUDIO_PHASE_MESSAGES.length);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  const message =
+    phase === 'audio' ? AUDIO_PHASE_MESSAGES[messageIndex] : 'Creating scenes...';
+
   return (
     <div className="w-full h-full flex items-center justify-center">
       <div className="flex justify-center w-full mt-4">
@@ -23,7 +51,7 @@ export default function VideoSkeleton() {
               <div className="text-center">
                 <div className="flex items-center justify-center space-x-2 mb-2">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span className="text-white text-sm">Loading video...</span>
+                  <span className="text-white text-sm">{message}</span>
                 </div>
               </div>
             </div>

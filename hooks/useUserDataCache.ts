@@ -8,12 +8,17 @@ interface UserData {
     email: string;
     name: string;
     picture?: string;
-    creditsAvailable: number;
+    videosCreated?: number;
+    videosCreatedThisMonth?: number;
+    quotaPeriodStart?: string;
+    imagesGenerated?: number;
+    imagesGeneratedThisMonth?: number;
+    imageQuotaPeriodStart?: string;
     username: string;
     createdAt: string;
     lastLoginAt: string;
     subscription?: {
-      mode: 'free' | 'starter' | 'creator' | 'influencer';
+      mode: 'free' | 'pro' | 'starter' | 'creator' | 'influencer';
       renewalDate?: string | null;
       status: 'active' | 'cancelled' | 'expired';
     };
@@ -70,15 +75,6 @@ class UserDataCache {
       this.cache.delete(userId);
     } else {
       this.cache.clear();
-    }
-  }
-
-  // Update credits in cache without full refresh
-  updateCredits(userId: string, newCredits: number): void {
-    const cached = this.cache.get(userId);
-    if (cached) {
-      cached.data.user.creditsAvailable = newCredits;
-      cached.timestamp = Date.now(); // Update timestamp
     }
   }
 }
@@ -165,27 +161,6 @@ export function useUserDataCache() {
     }
   }, [user?.id, fetchUserData]);
 
-  // Update credits in cache (called from WebSocket updates)
-  const updateCredits = useCallback(
-    (newCredits: number) => {
-      if (user?.id) {
-        userDataCache.updateCredits(user.id, newCredits);
-        setUserData((prev) =>
-          prev
-            ? {
-                ...prev,
-                user: {
-                  ...prev.user,
-                  creditsAvailable: newCredits,
-                },
-              }
-            : null,
-        );
-      }
-    },
-    [user?.id],
-  );
-
   // Force refresh
   const refresh = useCallback(() => {
     return fetchUserData(true);
@@ -203,10 +178,8 @@ export function useUserDataCache() {
     loading,
     error,
     refresh,
-    updateCredits,
     clearCache,
-    // Convenience getters
-    credits: userData?.user.creditsAvailable ?? 0,
+    // Convenience getter
     userInfo: userData?.user,
   };
 }

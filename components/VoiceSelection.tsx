@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { DEFAULT_VOICE } from '../lib/constants';
+import { useFloatingPosition } from '../hooks/useFloatingPosition';
 
 interface Voice {
   id: string;
@@ -85,15 +87,17 @@ export default function VoiceSelection({
   onVoiceSelect,
   onVoiceClone,
 }: VoiceSelectionProps) {
-  const [visibleCount, setVisibleCount] = useState(6);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [loadingVoice, setLoadingVoice] = useState<string | null>(null);
   const [playingVoice, setPlayingVoice] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeDropdown = () => setIsOpen(false);
+  const dropdownPosition = useFloatingPosition(triggerRef, isOpen, closeDropdown);
 
-  const visibleVoices = AVAILABLE_VOICES.slice(0, visibleCount);
-  const hasMore = visibleCount < AVAILABLE_VOICES.length;
   const selectedVoiceData = AVAILABLE_VOICES.find(
     (voice) => voice.id === selectedVoice,
   );
@@ -153,6 +157,7 @@ export default function VoiceSelection({
 
   const handleVoiceSelect = (voiceId: string) => {
     onVoiceSelect(voiceId);
+    setIsOpen(false);
   };
 
   // Mark as loaded after hydration
@@ -160,140 +165,123 @@ export default function VoiceSelection({
     setIsLoaded(true);
   }, []);
 
+  // Close dropdown on outside click, and stop any playing audio
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        !panelRef.current?.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setPlayingVoice(null);
+      }
+    };
+  }, [isOpen]);
+
   // Show loading state until component is loaded
   if (!isLoaded) {
     return (
-      <div className="w-full bg-slate-900 rounded-xl p-6 border border-slate-700">
-        <div className="flex items-center justify-center h-[60px]">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent"></div>
+      <div className="w-full bg-slate-900 rounded-xl p-4 border border-slate-700">
+        <div className="flex items-center justify-center h-[48px]">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-500 border-t-transparent"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-slate-900 rounded-xl p-6 border border-slate-700">
-      {/* Header */}
-      <div
-        className={`flex items-center justify-between h-[60px] cursor-pointer hover:bg-slate-800/30 rounded-lg px-2 transition-colors duration-200 ${
-          !isCollapsed ? 'mb-6' : ''
-        }`}
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col justify-center h-full">
-            <h2 className="text-xl font-bold text-white leading-none mb-2">
-              Voice Selection
-            </h2>
-            <p className="text-gray-400 text-sm leading-none mt-1">
-              Choose a voice for your content
-            </p>
-          </div>
+    <div ref={containerRef} className="w-full flex items-center gap-3">
+      <label className="shrink-0 text-sm font-medium text-gray-300">
+        Voice
+      </label>
 
-          {/* Collapsed State - Show Selected Voice */}
-          {isCollapsed && selectedVoiceData && (
-            <div className="flex items-center space-x-3 ml-24">
-              {/* Play/Pause Button for Selected Voice */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePlayVoice(selectedVoice);
-                }}
-                disabled={isSelectedVoiceLoading}
-                className={`w-8 h-8 rounded-full ${selectedVoiceData.avatarColor} flex items-center justify-center hover:scale-105 transition-all duration-200`}
-              >
-                {isSelectedVoiceLoading ? (
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                ) : isSelectedVoicePlaying ? (
-                  <svg
-                    className="w-4 h-4 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                  </svg>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-white ml-0.5"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                )}
-              </button>
-
-              {/* Selected Voice Name */}
-              <div className="flex items-center space-x-2">
-                <span className="text-white font-medium">
-                  {selectedVoiceData.name}
-                </span>
-              </div>
-            </div>
-          )}
-
-          {/* Audio Waves in Header - Show when any voice is playing */}
-          {playingVoice && (
-            <div className="flex items-center space-x-1 ml-6">
-              <div
-                className="w-1 h-3 bg-purple-400 rounded-full animate-pulse"
-                style={{
-                  animationDelay: '0ms',
-                  animationDuration: '0.8s',
-                }}
-              ></div>
-              <div
-                className="w-1 h-4 bg-purple-500 rounded-full animate-pulse"
-                style={{
-                  animationDelay: '0.15s',
-                  animationDuration: '0.8s',
-                }}
-              ></div>
-              <div
-                className="w-1 h-2 bg-purple-400 rounded-full animate-pulse"
-                style={{
-                  animationDelay: '0.3s',
-                  animationDuration: '0.8s',
-                }}
-              ></div>
-              <div
-                className="w-1 h-3.5 bg-purple-500 rounded-full animate-pulse"
-                style={{
-                  animationDelay: '0.45s',
-                  animationDuration: '0.8s',
-                }}
-              ></div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-center">
-          <svg
-            className={`w-5 h-5 transform transition-transform duration-200 text-gray-400 ${
-              isCollapsed ? 'rotate-180' : ''
-            }`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M19 9l-7 7-7-7"
-            />
-          </svg>
-        </div>
-      </div>
-
-      {/* Voice List */}
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100'
+      <div ref={triggerRef} className="relative flex-1 min-w-0">
+      {/* Trigger */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between bg-slate-800/50 rounded-lg border px-3 py-2.5 transition-colors duration-200 hover:bg-slate-800 ${
+          isOpen ? 'border-purple-500/60' : 'border-slate-700'
         }`}
       >
-        <div className="grid grid-cols-3 gap-4 pt-0">
-          {visibleVoices.map((voice) => {
+        <div className="flex items-center space-x-3">
+          {selectedVoiceData && (
+            <span
+              onClick={(e) => {
+                e.stopPropagation();
+                handlePlayVoice(selectedVoice);
+              }}
+              className={`w-8 h-8 rounded-full ${selectedVoiceData.avatarColor} flex items-center justify-center hover:scale-105 transition-all duration-200 shrink-0`}
+            >
+              {isSelectedVoiceLoading ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              ) : isSelectedVoicePlaying ? (
+                <svg
+                  className="w-4 h-4 text-white"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              ) : (
+                <svg
+                  className="w-4 h-4 text-white ml-0.5"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </span>
+          )}
+          <span className="text-white font-medium text-sm">
+            {selectedVoiceData?.name || 'Select a voice'}
+          </span>
+        </div>
+
+        <svg
+          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+            isOpen ? 'rotate-180' : ''
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+
+      {/* Dropdown Panel — portaled so it isn't clipped by a scrollable ancestor */}
+      {isOpen &&
+        dropdownPosition &&
+        createPortal(
+        <div
+          ref={panelRef}
+          className="fixed z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-80 overflow-y-auto custom-scrollbar"
+          style={{
+            top: dropdownPosition.top,
+            left: dropdownPosition.left,
+            width: dropdownPosition.width,
+          }}
+        >
+          {AVAILABLE_VOICES.map((voice) => {
             const isSelected = selectedVoice === voice.id;
             const isLoading = loadingVoice === voice.id;
             const isPlaying = playingVoice === voice.id;
@@ -301,97 +289,66 @@ export default function VoiceSelection({
             return (
               <div
                 key={voice.id}
-                className={`group relative flex flex-col items-center p-4 rounded-lg border transition-all duration-300 hover:bg-slate-800/50 cursor-pointer ${
-                  isSelected
-                    ? 'bg-slate-800 border-purple-500/50'
-                    : 'bg-slate-800/30 border-slate-600'
+                className={`flex items-center justify-between px-2 py-2 rounded-md cursor-pointer transition-colors duration-150 ${
+                  isSelected ? 'bg-slate-800' : 'hover:bg-slate-800/60'
                 }`}
                 onClick={() => handleVoiceSelect(voice.id)}
               >
-                {/* Play/Pause Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handlePlayVoice(voice.id);
-                  }}
-                  disabled={isLoading}
-                  className={`w-12 h-12 rounded-full ${voice.avatarColor} flex items-center justify-center hover:scale-105 transition-all duration-200 relative mb-3`}
-                >
-                  {isLoading ? (
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-                  ) : isPlaying ? (
-                    <svg
-                      className="w-5 h-5 text-white"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                    </svg>
-                  ) : (
-                    <svg
-                      className="w-5 h-5 text-white ml-0.5"
-                      fill="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  )}
-                </button>
-
-                {/* Voice Info */}
-                <div className="text-center">
-                  <h3 className="text-white font-semibold text-sm transition-colors duration-300 group-hover:text-purple-300">
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePlayVoice(voice.id);
+                    }}
+                    disabled={isLoading}
+                    className={`w-8 h-8 rounded-full ${voice.avatarColor} flex items-center justify-center hover:scale-105 transition-all duration-200 shrink-0`}
+                  >
+                    {isLoading ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    ) : isPlaying ? (
+                      <svg
+                        className="w-4 h-4 text-white"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-4 h-4 text-white ml-0.5"
+                        fill="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path d="M8 5v14l11-7z" />
+                      </svg>
+                    )}
+                  </button>
+                  <span className="text-white text-sm font-medium">
                     {voice.name}
-                  </h3>
+                  </span>
                 </div>
 
-                {/* Selection Indicator - Only show checkmark */}
                 {isSelected && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                    <svg
-                      className="w-4 h-4 text-white"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                      strokeWidth={2.5}
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                  </div>
+                  <svg
+                    className="w-4 h-4 text-purple-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
                 )}
               </div>
             );
           })}
-
-          {/* View More Button */}
-          {hasMore && (
-            <div className="col-span-3 flex justify-center mt-6">
-              <button
-                onClick={() => setVisibleCount(AVAILABLE_VOICES.length)}
-                className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
-              >
-                <span className="text-sm font-medium">View more</span>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 9l-7 7-7-7"
-                  />
-                </svg>
-              </button>
-            </div>
-          )}
-        </div>
+        </div>,
+        document.body,
+      )}
       </div>
     </div>
   );

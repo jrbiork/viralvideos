@@ -26,9 +26,30 @@ let singletonConnected = false;
 let singletonConnecting = false;
 let reconnectAttempts = 0;
 let reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let connectPromise: Promise<void> | null = null;
 const subscribers = new Set<Subscriber>();
 let currentUserId: string | null = null;
+
+// Send a ping periodically so idle connections aren't closed by the server
+// (API Gateway/proxies drop WebSocket connections with no traffic).
+const HEARTBEAT_INTERVAL_MS = 30000;
+
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => {
+    if (singletonWS && singletonWS.readyState === WebSocket.OPEN) {
+      singletonWS.send(JSON.stringify({ action: 'ping' }));
+    }
+  }, HEARTBEAT_INTERVAL_MS);
+}
+
+function stopHeartbeat() {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
 
 function getWebSocketUrl(): string {
   return (
@@ -110,6 +131,7 @@ async function singletonConnect(
         reconnectAttempts = 0;
         notifyStatus();
         notify('connect');
+        startHeartbeat();
       };
 
       ws.onmessage = (ev) => {
@@ -125,6 +147,7 @@ async function singletonConnect(
         console.log('WS closed', ev.code, ev.reason);
         singletonConnected = false;
         singletonConnecting = false;
+        stopHeartbeat();
         notifyStatus();
         notify('disconnect');
 
@@ -158,6 +181,7 @@ function singletonDisconnect() {
     clearTimeout(reconnectTimeout);
     reconnectTimeout = null;
   }
+  stopHeartbeat();
   if (singletonWS) {
     try {
       singletonWS.close();

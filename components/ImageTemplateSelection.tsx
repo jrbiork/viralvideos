@@ -1,7 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { AVAILABLE_TEMPLATES, ImageTemplate } from '../lib/template-constants';
+import { useFloatingPosition } from '../hooks/useFloatingPosition';
 
 interface ImageTemplateSelectionProps {
   selectedTemplate?: string;
@@ -12,25 +14,34 @@ export default function ImageTemplateSelection({
   selectedTemplate = 'realistic',
   onTemplateSelect,
 }: ImageTemplateSelectionProps) {
-  const [isCollapsed, setIsCollapsed] = useState(true);
-  const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const [hoveredTemplate, setHoveredTemplate] = useState<string | null>(null);
+  const [previewPosition, setPreviewPosition] = useState<{
+    top: number;
+    left: number;
+  } | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeDropdown = () => {
+    setIsOpen(false);
+    setHoveredTemplate(null);
+  };
+  const dropdownPosition = useFloatingPosition(triggerRef, isOpen, closeDropdown);
 
   const selectedTemplateData = AVAILABLE_TEMPLATES.find(
     (template) => template.id === selectedTemplate,
   );
 
+  const hoveredTemplateData = AVAILABLE_TEMPLATES.find(
+    (template) => template.id === hoveredTemplate,
+  );
+
   const handleTemplateSelect = (templateId: string) => {
     onTemplateSelect(templateId);
-  };
-
-  const handlePreviewClick = (templateId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setPreviewTemplate(templateId);
-  };
-
-  const handleClosePreview = () => {
-    setPreviewTemplate(null);
+    setIsOpen(false);
+    setHoveredTemplate(null);
   };
 
   // Load from localStorage after hydration
@@ -44,62 +55,73 @@ export default function ImageTemplateSelection({
     setIsLoaded(true);
   }, [selectedTemplate, onTemplateSelect]);
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        !panelRef.current?.contains(target)
+      ) {
+        setIsOpen(false);
+        setHoveredTemplate(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
   // Show loading state until component is loaded
   if (!isLoaded) {
     return (
-      <div className="w-full bg-slate-900 rounded-xl p-6 border border-slate-700">
-        <div className="flex items-center justify-center h-[60px]">
-          <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent"></div>
+      <div className="w-full flex items-center gap-3">
+        <span className="shrink-0 text-sm font-medium text-gray-300">
+          Image Style
+        </span>
+        <div className="flex-1 bg-slate-800/50 rounded-lg border border-slate-700 h-[44px] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-5 w-5 border-2 border-purple-500 border-t-transparent"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full bg-slate-900 rounded-xl p-6 border border-slate-700">
-      {/* Header */}
-      <div
-        className={`flex items-center justify-between h-[60px] cursor-pointer hover:bg-slate-800/30 rounded-lg px-2 transition-colors duration-200 ${
-          !isCollapsed ? 'mb-6' : ''
-        }`}
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col justify-center h-full">
-            <h2 className="text-xl font-bold text-white leading-none mb-2">
-              Image Template
-            </h2>
-            <p className="text-gray-400 text-sm leading-none mt-1">
-              Choose a visual style
-            </p>
-          </div>
+    <div ref={containerRef} className="w-full flex items-center gap-3">
+      <label className="shrink-0 text-sm font-medium text-gray-300">
+        Image Style
+      </label>
 
-          {/* Collapsed State - Show Selected Template */}
-          {isCollapsed && selectedTemplateData && (
-            <div className="flex items-center space-x-3 ml-24">
-              {/* Template Icon */}
-              <div className="w-12 h-12 rounded-lg overflow-hidden border-2 border-white/20">
+      <div ref={triggerRef} className="relative flex-1 min-w-0">
+        {/* Trigger */}
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className={`w-full flex items-center justify-between bg-slate-800/50 rounded-lg border px-3 py-2.5 transition-colors duration-200 hover:bg-slate-800 ${
+            isOpen ? 'border-purple-500/60' : 'border-slate-700'
+          }`}
+        >
+          <div className="flex items-center space-x-3">
+            {selectedTemplateData && (
+              <div className="w-8 h-8 rounded-md overflow-hidden border-2 border-white/20 shrink-0">
                 <img
                   src={selectedTemplateData.imagePath}
                   alt={selectedTemplateData.name}
                   className="w-full h-full object-cover"
                 />
               </div>
+            )}
+            <span className="text-white font-medium text-sm">
+              {selectedTemplateData?.name || 'Select a style'}
+            </span>
+          </div>
 
-              {/* Selected Template Name */}
-              <div className="flex items-center space-x-2">
-                <span className="text-white font-medium">
-                  {selectedTemplateData.name}
-                </span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-center">
           <svg
-            className={`w-5 h-5 transform transition-transform duration-200 text-gray-400 ${
-              isCollapsed ? 'rotate-180' : ''
+            className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+              isOpen ? 'rotate-180' : ''
             }`}
             fill="none"
             stroke="currentColor"
@@ -112,79 +134,62 @@ export default function ImageTemplateSelection({
               d="M19 9l-7 7-7-7"
             />
           </svg>
-        </div>
-      </div>
+        </button>
 
-      {/* Template List */}
-      <div
-        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-          isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[2000px] opacity-100'
-        }`}
-      >
-        <div className="grid grid-cols-3 gap-4 pt-0">
-          {AVAILABLE_TEMPLATES.map((template) => {
-            const isSelected = selectedTemplate === template.id;
+        {/* Dropdown Panel — portaled so it isn't clipped by a scrollable ancestor */}
+        {isOpen &&
+          dropdownPosition &&
+          createPortal(
+          <div
+            ref={panelRef}
+            className="fixed z-50 bg-slate-900 border border-slate-700 rounded-lg shadow-xl p-2 max-h-80 overflow-y-auto custom-scrollbar"
+            style={{
+              top: dropdownPosition.top,
+              left: dropdownPosition.left,
+              width: dropdownPosition.width,
+            }}
+            onMouseLeave={() => setHoveredTemplate(null)}
+          >
+            {AVAILABLE_TEMPLATES.map((template) => {
+              const isSelected = selectedTemplate === template.id;
 
-            return (
-              <div
-                key={template.id}
-                className={`group relative flex flex-col items-center p-4 rounded-lg border transition-all duration-300 hover:bg-slate-800/50 cursor-pointer ${
-                  isSelected
-                    ? 'bg-slate-800 border-purple-500/50'
-                    : 'bg-slate-800/30 border-slate-600'
-                }`}
-                onClick={() => handleTemplateSelect(template.id)}
-              >
-                {/* Template Image */}
-                <div className="relative w-20 h-20 rounded-lg overflow-hidden border-2 border-white/20 mb-3 transition-all duration-300 group-hover:scale-110 group-hover:border-purple-400/50">
-                  <img
-                    src={template.imagePath}
-                    alt={template.name}
-                    className="w-full h-full object-cover transition-all duration-300 group-hover:scale-105"
-                  />
-                  {/* Preview Button */}
-                  <button
-                    onClick={(e) => handlePreviewClick(template.id, e)}
-                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center"
-                  >
-                    <div className="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white/30 transition-colors duration-200">
-                      <svg
-                        className="w-4 h-4 text-white"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                        />
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
-                        />
-                      </svg>
+              return (
+                <div
+                  key={template.id}
+                  className={`relative flex items-center justify-between px-2 py-2 rounded-md cursor-pointer transition-colors duration-150 ${
+                    isSelected ? 'bg-slate-800' : 'hover:bg-slate-800/60'
+                  }`}
+                  onClick={() => handleTemplateSelect(template.id)}
+                  onMouseEnter={(e) => {
+                    setHoveredTemplate(template.id);
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setPreviewPosition({
+                      top: rect.top + rect.height / 2,
+                      left: rect.right + 8,
+                    });
+                  }}
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-md overflow-hidden border-2 border-white/20 shrink-0">
+                      <img
+                        src={template.imagePath}
+                        alt={template.name}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  </button>
-                </div>
+                    <div>
+                      <span className="text-white text-sm font-medium block">
+                        {template.name}
+                      </span>
+                      <span className="text-gray-400 text-xs block">
+                        {template.description}
+                      </span>
+                    </div>
+                  </div>
 
-                {/* Template Info */}
-                <div className="text-center mb-3">
-                  <h3 className="text-white font-semibold text-sm mb-1 transition-colors duration-300 group-hover:text-purple-300">
-                    {template.name}
-                  </h3>
-                  <p className="text-gray-400 text-xs transition-colors duration-300 group-hover:text-gray-300">
-                    {template.description}
-                  </p>
-                </div>
-
-                {/* Selection Indicator - Only show checkmark */}
-                {isSelected && (
-                  <div className="absolute top-2 right-2 w-6 h-6 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full flex items-center justify-center shadow-lg">
+                  {isSelected && (
                     <svg
-                      className="w-4 h-4 text-white"
+                      className="w-4 h-4 text-purple-400 shrink-0"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -196,35 +201,46 @@ export default function ImageTemplateSelection({
                         d="M5 13l4 4L19 7"
                       />
                     </svg>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </div>
+                  )}
 
-      {/* Preview Modal */}
-      {previewTemplate && (
-        <div
-          className="fixed inset-0 bg-slate-900/90 backdrop-blur-md z-50 flex items-center justify-center transition-all duration-300"
-          onClick={handleClosePreview}
-        >
-          {/* Large Preview Image */}
-          <div className="w-96 h-96 rounded-2xl overflow-hidden border-4 border-purple-400/60 shadow-2xl transform transition-transform duration-300">
-            <img
-              src={
-                AVAILABLE_TEMPLATES.find((t) => t.id === previewTemplate)
-                  ?.imagePath
-              }
-              alt={
-                AVAILABLE_TEMPLATES.find((t) => t.id === previewTemplate)?.name
-              }
-              className="w-full h-full object-cover"
-            />
-          </div>
-        </div>
-      )}
+                </div>
+              );
+            })}
+          </div>,
+          document.body,
+        )}
+
+        {/* Bigger preview shown while hovering a dropdown item — portaled
+            separately since it must escape the dropdown panel's own
+            overflow-y-auto (which clips overflow-x too). */}
+        {hoveredTemplateData &&
+          previewPosition &&
+          createPortal(
+            <div
+              className="fixed z-50 w-48 rounded-xl overflow-hidden border-2 border-purple-400/60 shadow-2xl pointer-events-none"
+              style={{
+                top: previewPosition.top,
+                left: previewPosition.left,
+                transform: 'translateY(-50%)',
+              }}
+            >
+              <img
+                src={hoveredTemplateData.imagePath}
+                alt={hoveredTemplateData.name}
+                className="w-full h-48 object-cover"
+              />
+              <div className="bg-slate-900/95 px-3 py-2">
+                <p className="text-white text-sm font-semibold">
+                  {hoveredTemplateData.name}
+                </p>
+                <p className="text-gray-400 text-xs">
+                  {hoveredTemplateData.description}
+                </p>
+              </div>
+            </div>,
+            document.body,
+          )}
+      </div>
     </div>
   );
 }

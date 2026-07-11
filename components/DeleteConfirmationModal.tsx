@@ -75,15 +75,15 @@ export default function DeleteConfirmationModal({
       maxWidth="max-w-md"
     >
       <div className="space-y-4">
-        <div className="flex items-center space-x-3 p-4 rounded-lg border border-purple-500/20">
-          <div className="w-12 h-12 rounded-lg flex items-center justify-center">
-            <Trash2 className="w-6 h-6 text-purple-400" />
+        <div className="flex items-center space-x-3 p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
+          <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-red-500/10 border border-red-500/20">
+            <Trash2 className="w-6 h-6 text-red-400" />
           </div>
           <div>
             <p className="text-white font-medium">
               Are you sure you want to delete it?
             </p>
-            <p className="text-purple-300 text-sm">
+            <p className="text-slate-400 text-sm">
               Video from {formatDate(video.lastModified)}
             </p>
           </div>
@@ -99,14 +99,14 @@ export default function DeleteConfirmationModal({
           <button
             onClick={onClose}
             disabled={isDeleting}
-            className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200"
+            className="flex-1 px-4 py-3 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:bg-[#5B5BFF] disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-all duration-300"
           >
             Cancel
           </button>
           <button
             onClick={onConfirm}
             disabled={isDeleting}
-            className="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-600/70 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+            className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-red-600/70 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all duration-200 hover:-translate-y-[1px] flex items-center justify-center gap-2"
           >
             {isDeleting && (
               <svg

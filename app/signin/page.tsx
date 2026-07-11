@@ -73,12 +73,12 @@ export default function SignIn() {
                 <path d="M8 5v14l11-7z" />
               </svg>
             </div>
-            <span className="text-white text-2xl font-bold">Viral Shorts</span>
+            <span className="text-white text-2xl font-bold">StoryReel</span>
           </div>
 
           {/* Main Heading */}
           <h1 className="text-3xl font-bold text-white mb-8">
-            Sign in to bring your next viral idea to life.
+            Sign in to bring your next story to life.
           </h1>
 
           {/* Sign In Form */}

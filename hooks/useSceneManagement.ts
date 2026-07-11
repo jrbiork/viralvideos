@@ -78,14 +78,13 @@ export function useSceneManagement() {
 
   const handleSaveEdit = (
     sceneId: number,
+    narration: string,
     scenes: any[],
     onScenesUpdate: (updatedScenes: any[]) => void,
   ) => {
     if (scenes) {
       const updatedScenes = scenes.map((scene: any) =>
-        scene.id === sceneId
-          ? { ...scene, narration: state.editedNarration }
-          : scene,
+        scene.id === sceneId ? { ...scene, narration } : scene,
       );
       onScenesUpdate(updatedScenes);
       dispatch({ type: 'SET_EDITING_SCENE', payload: null });

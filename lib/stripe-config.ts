@@ -3,7 +3,7 @@ export const STRIPE_PLANS = {
   pro: {
     name: 'Pro',
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || '',
-    videosPerMonth: 30,
+    videosPerMonth: 15,
     price: 9,
   },
 } as const;

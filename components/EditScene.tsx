@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import ImageEditModal from './modals/ImageEditModal';
+import { MAX_SCENES } from './useUserQuota';
 
 export interface Scene {
   id: number;
@@ -10,7 +11,6 @@ export interface Scene {
   scenePosition?: number;
   placeholderImageUrl?: string;
   removed?: boolean;
-  animated?: boolean;
 }
 
 interface EditSceneProps {
@@ -18,10 +18,10 @@ interface EditSceneProps {
   editingScene: number | null;
   editedNarration: string;
   onEditScene: (sceneId: number, narration: string) => void;
-  onSaveEdit: (sceneId: number) => void;
+  onSaveEdit: (sceneId: number, narration?: string) => void;
   onCancelEdit: () => void;
   onEditedNarrationChange: (value: string) => void;
-  onRegenerateAudio?: (sceneId: number) => void;
+  onRegenerateAudio?: (sceneId: number, narration?: string) => void;
   imageUrl?: string;
   isSelected?: boolean;
   onSelect?: (sceneId: number) => void;
@@ -41,8 +41,13 @@ interface EditSceneProps {
     message: string,
     type: 'success' | 'error' | 'info',
   ) => void;
-  animationRequested?: boolean;
-  onAnimationRequested?: () => void;
+  onQueueImageEdit?: (sceneId: number, generatedImageUrl: string) => void;
+  onQueueAddedScene?: (
+    sceneId: number,
+    scenePosition: number,
+    captionText: string,
+    imageUrl: string,
+  ) => void;
 }
 
 export default function EditScene({
@@ -70,8 +75,8 @@ export default function EditScene({
   totalScenesCount = 0,
   isDisabled = false,
   showToasterMessage,
-  animationRequested,
-  onAnimationRequested,
+  onQueueImageEdit,
+  onQueueAddedScene,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -84,18 +89,11 @@ export default function EditScene({
 
   const [isImageEditModalOpen, setIsImageEditModalOpen] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [isAnimatingImage, setIsAnimatingImage] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>();
   const [isSavingImage, setIsSavingImage] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(
     imageUrl || null,
   );
-
-  const [initialImageEditTab, setInitialImageEditTab] = useState<
-    'edit' | 'animate'
-  >('edit');
-
-  // animationRequested is managed by parent via WS preview_completed toggle
 
   // Handlers extracted from inline props for ImageEditModal
   const handleGenerateImageFromModal = async (prompt: string) => {
@@ -137,52 +135,6 @@ export default function EditScene({
     }
   };
 
-  const handleAnimateImageFromModal = async (
-    prompt: string,
-    duration: number,
-  ) => {
-    setIsAnimatingImage(true);
-    onAnimationRequested && onAnimationRequested();
-    setIsLoadingVideoScenes(true);
-    try {
-      const response = await fetch('/api/animate-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          animationPrompt: prompt,
-          animationDuration: duration,
-          timestamp: queryParams.get('timestamp'),
-          sceneId: scene.id,
-          imageUrl: currentImageUrl || imageUrl,
-        }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Image animation started:', result);
-
-        setIsImageEditModalOpen(false);
-      } else {
-        const errorData = await response.json();
-        console.error('Image animation failed:', errorData);
-        showToasterMessage?.(
-          `Failed to animate image. Please try again with different prompt.`,
-          'error',
-        );
-      }
-    } catch (error) {
-      console.error('Error calling animate-image API:', error);
-      showToasterMessage?.(
-        'Failed to animate image. Please try again with different prompt.',
-        'error',
-      );
-    } finally {
-      setIsAnimatingImage(false);
-    }
-  };
-
   React.useEffect(() => {
     setCurrentImageUrl(imageUrl || null);
   }, [imageUrl]);
@@ -193,62 +145,72 @@ export default function EditScene({
   const isRegenerating = regeneratingSceneId === scene.id;
   const isCreatingScene = creatingSceneId === scene.id;
 
-  // Validation logic for Create Scene button
+  const MAX_NARRATION_WORDS = 60;
+
+  // Local draft state — typing only ever touches this. The shared
+  // `editedNarration` reducer value (read by onSaveEdit/handleCreateScene at
+  // save time) is only pushed once, on save, instead of on every keystroke —
+  // dispatching to a shared cross-scene reducer on every keystroke was
+  // expensive enough to blow React's nested-update budget under fast input.
+  const [localNarration, setLocalNarration] = useState(editedNarration);
+
+  React.useEffect(() => {
+    if (isEditing) {
+      setLocalNarration(editedNarration);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEditing, scene.id]);
+
+  const narrationWordCount = localNarration.trim()
+    ? localNarration.trim().split(/\s+/).length
+    : 0;
+  const isNarrationOverLimit = narrationWordCount > MAX_NARRATION_WORDS;
+
+  const handleNarrationChange = (value: string) => {
+    const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+    if (wordCount <= MAX_NARRATION_WORDS || value.length < localNarration.length) {
+      setLocalNarration(value);
+    }
+  };
+
+  // Validation logic for Create Scene button.
+  // totalScenesCount already includes this scene itself (it's counted as
+  // soon as the placeholder is added), so the limit check must be <=.
   const hasValidNarration =
     scene.narration && scene.narration.trim().length > 0;
   const hasValidImage = currentImageUrl || imageUrl;
-  const isUnderSceneLimit = totalScenesCount < 20;
-  const canCreateScene =
-    hasValidNarration && hasValidImage && isUnderSceneLimit;
+  const isUnderSceneLimit = totalScenesCount <= MAX_SCENES;
 
-  const handleCreateScene = async () => {
+  const handleCreateScene = async (
+    narration: string = scene.narration,
+    imageUrlOverride?: string,
+  ) => {
     try {
-      const currentTimestamp = timestamp || queryParams.get('timestamp');
-      if (!currentTimestamp) throw new Error('No timestamp found');
-      if (!currentImageUrl && !imageUrl)
+      const sceneImageUrl = imageUrlOverride || currentImageUrl || imageUrl;
+      if (!sceneImageUrl)
         throw new Error('No image available to create scene');
 
-      // Set the creating scene ID to show loading overlay
-      if (setCreatingSceneId) {
-        setCreatingSceneId(scene.id);
-      }
+      // Queue the new scene in memory; it is created on the backend when the
+      // user clicks "Apply changes".
+      onQueueAddedScene?.(
+        scene.id,
+        scene.scenePosition ?? 0,
+        narration,
+        sceneImageUrl,
+      );
 
-      const payload = {
-        imageUrl: currentImageUrl || imageUrl!,
-        sceneId: scene.id,
-        scenePosition: scene.scenePosition,
-        timestamp: currentTimestamp,
-        captionText: scene.narration,
-      };
-
-      const res = await fetch('/api/create-scene', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'Failed to create scene');
-      }
-
-      const data = await res.json();
-      console.log('✅ Scene creation requested:', data);
-      setIsLoadingVideoScenes(true);
-
-      // Note: Don't clear creatingSceneId here - it will be cleared by WebSocket 'preview_completed' message
-    } catch (e) {
-      console.error('❌ Error creating scene:', e);
       showToasterMessage?.(
-        `Failed to create scene: ${
+        'Scene queued — click "Apply changes" to save',
+        'success',
+      );
+    } catch (e) {
+      console.error('❌ Error queueing scene:', e);
+      showToasterMessage?.(
+        `Failed to queue scene: ${
           e instanceof Error ? e.message : 'Unknown error'
         }`,
         'error',
       );
-      // Clear creating scene ID on error
-      if (setCreatingSceneId) {
-        setCreatingSceneId(null);
-      }
     }
   };
 
@@ -264,57 +226,21 @@ export default function EditScene({
       return;
     }
 
-    setIsSavingImage(true);
-    try {
-      // Get timestamp from URL query params
-      const timestamp = queryParams.get('timestamp');
-      if (!timestamp) {
-        throw new Error('No timestamp found in URL');
-      }
+    // Show the new image locally right away
+    setCurrentImageUrl(generatedImageUrl);
 
-      console.log('🔍 Timestamp from URL:', timestamp);
-      console.log('🔍 Scene ID from scene object:', scene.id);
-
-      const requestPayload = {
-        timestamp,
-        sceneId: Number(scene.id),
-        generatedImageUrl,
-        duration: scene.duration,
-        inMemoryEditScene: scene.isUserAdded || false,
-      };
-
-      console.log('🚀 Sending request payload:', requestPayload);
-      console.log('🔍 Scene ID type:', typeof scene.id, 'Value:', scene.id);
-
-      const response = await fetch('/api/save-image', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestPayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save image');
-      }
-
-      const result = await response.json();
-      console.log('✅ Image saved successfully:', result);
-
-      setCurrentImageUrl(generatedImageUrl);
-      showToasterMessage?.('Image saved', 'success');
-    } catch (error) {
-      console.error('❌ Error saving image:', error);
-      showToasterMessage?.(
-        `Failed to save image: ${
-          error instanceof Error ? error.message : 'Unknown error'
-        }`,
-        'error',
-      );
-    } finally {
-      setIsSavingImage(false);
+    // For existing (original) scenes, queue an image replacement to apply later.
+    // For user-added scenes the image travels with the scene when it is created.
+    if (!scene.isUserAdded) {
+      onQueueImageEdit?.(Number(scene.id), generatedImageUrl);
+    } else if (hasValidNarration && isUnderSceneLimit) {
+      handleCreateScene(scene.narration, generatedImageUrl);
     }
+
+    showToasterMessage?.(
+      'Image updated — click "Apply changes" to save',
+      'success',
+    );
   };
 
   return (
@@ -356,14 +282,12 @@ export default function EditScene({
           }
         >
           {/* Loading Overlay */}
-          {(isRegenerating || (animationRequested && isLoadingVideoScenes)) && (
+          {isRegenerating && (
             <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center z-50">
               <div className="flex flex-col items-center space-y-3">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
                 <span className="text-white text-sm font-medium">
-                  {isRegenerating
-                    ? 'Regenerating Scene, Audio and Captions...'
-                    : 'Generating Animation...'}
+                  Regenerating Scene, Audio and Captions...
                 </span>
               </div>
             </div>
@@ -485,7 +409,7 @@ export default function EditScene({
                 e.stopPropagation();
                 onDeleteUserAddedScene(scene.id);
               }}
-              className="absolute top-2 right-2 z-10 text-red-500 hover:text-red-400 hover:bg-red-500/10 rounded-full p-1.5 transition-all duration-200"
+              className="absolute top-2 right-2 z-10 text-purple-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-full p-1.5 transition-all duration-200"
               title="Delete Scene"
             >
               <svg
@@ -514,11 +438,6 @@ export default function EditScene({
                 height: 'auto',
               }}
             >
-              {scene.animated && (
-                <div className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md bg-black/60">
-                  Animated
-                </div>
-              )}
               <img
                 src={
                   currentImageUrl ||
@@ -540,7 +459,6 @@ export default function EditScene({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setInitialImageEditTab('edit');
                       setIsImageEditModalOpen(true);
                     }}
                     className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
@@ -548,23 +466,6 @@ export default function EditScene({
                   >
                     <img src="/edit.svg" alt="Edit" className="w-4 h-4" />
                   </button>
-                  {!scene.isUserAdded && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setInitialImageEditTab('animate');
-                        setIsImageEditModalOpen(true);
-                      }}
-                      className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
-                      title="Animate"
-                    >
-                      <img
-                        src="/animate.svg"
-                        alt="Animate"
-                        className="w-4 h-4"
-                      />
-                    </button>
-                  )}
                 </div>
               </div>
             </div>
@@ -578,11 +479,6 @@ export default function EditScene({
                 border: '2px dashed #6B7280',
               }}
             >
-              {scene.animated && (
-                <div className="absolute bottom-1 right-1 text-white text-[10px] p-1.5 rounded-md bg-black/60">
-                  Animated
-                </div>
-              )}
               <div className="flex flex-col items-center space-y-2 text-gray-400">
                 <svg
                   className="w-8 h-8"
@@ -606,7 +502,6 @@ export default function EditScene({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setInitialImageEditTab('edit');
                       setIsImageEditModalOpen(true);
                     }}
                     className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
@@ -645,10 +540,21 @@ export default function EditScene({
                     style={{
                       padding: '20px 24px 24px 24px',
                     }}
-                    value={editedNarration}
-                    onChange={(e) => onEditedNarrationChange(e.target.value)}
+                    value={localNarration}
+                    onChange={(e) => handleNarrationChange(e.target.value)}
                     placeholder="Enter scene narration..."
                   />
+                  <div
+                    className={`absolute bottom-2 right-2 text-xs font-medium ${
+                      isNarrationOverLimit
+                        ? 'text-red-400'
+                        : narrationWordCount > MAX_NARRATION_WORDS * 0.8
+                        ? 'text-yellow-400'
+                        : 'text-gray-400'
+                    }`}
+                  >
+                    {narrationWordCount}/{MAX_NARRATION_WORDS}
+                  </div>
                 </div>
                 {/* Duration Badge - positioned below the textarea (only show for saved scenes) */}
                 {!scene.isUserAdded && (
@@ -673,9 +579,19 @@ export default function EditScene({
                 )}
                 <div className="flex justify-end space-x-3">
                   {scene.isUserAdded ? (
-                    /* OK button for user-added scenes */
+                    /* Save button for user-added scenes: commits narration and,
+                       once an image is also present, queues the scene for creation */
                     <button
-                      onClick={() => onSaveEdit(scene.id)}
+                      onClick={() => {
+                        onSaveEdit(scene.id, localNarration);
+                        if (
+                          localNarration.trim().length > 0 &&
+                          hasValidImage &&
+                          isUnderSceneLimit
+                        ) {
+                          handleCreateScene(localNarration);
+                        }
+                      }}
                       className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
                       style={{ backgroundColor: 'rgb(99, 102, 241)' }}
                       title="Save changes"
@@ -693,17 +609,18 @@ export default function EditScene({
                           d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      <span>Save</span>
+                      <span>Save Changes</span>
                     </button>
                   ) : (
-                    /* Generate Audio/Caption button for original scenes */
+                    /* Save narration edit for original scenes (applied in batch) */
                     <button
                       onClick={() =>
-                        onRegenerateAudio && onRegenerateAudio(scene.id)
+                        onRegenerateAudio &&
+                        onRegenerateAudio(scene.id, localNarration)
                       }
                       className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
                       style={{ backgroundColor: '#6366F1' }}
-                      title="Generate audio and captions"
+                      title="Save narration change"
                     >
                       <svg
                         className="w-4 h-4"
@@ -715,10 +632,10 @@ export default function EditScene({
                           strokeLinecap="round"
                           strokeLinejoin="round"
                           strokeWidth={2}
-                          d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                          d="M5 13l4 4L19 7"
                         />
                       </svg>
-                      <span>Regenerate</span>
+                      <span>Save Changes</span>
                     </button>
                   )}
                   <button
@@ -757,7 +674,7 @@ export default function EditScene({
                       fontSize: '16px',
                       fontWeight: 'inherit',
                     }}
-                    onDoubleClick={() => onEditScene(scene.id, scene.narration)}
+                    onClick={() => onEditScene(scene.id, scene.narration)}
                   >
                     <p
                       className="text-white text-sm leading-relaxed"
@@ -788,97 +705,29 @@ export default function EditScene({
                     </div>
                   </div>
                 )}
-                <div className="grid grid-cols-3 items-center">
-                  {/* Empty space for left alignment */}
-                  <div></div>
-
-                  {/* AI Animation Button - Center Aligned */}
-                  <div className="flex justify-center">
-                    {scene.isUserAdded ? (
-                      /* Create Scene Button for user-added scenes */
-                      <button
-                        onClick={handleCreateScene}
-                        disabled={isCreatingScene || !canCreateScene}
-                        className={`relative flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl text-white text-sm font-medium transition-all duration-300 overflow-hidden ${
-                          isCreatingScene || !canCreateScene
-                            ? 'bg-gray-500 cursor-not-allowed'
-                            : 'hover:brightness-95'
-                        }`}
-                        style={
-                          isCreatingScene || !canCreateScene
-                            ? undefined
-                            : { backgroundColor: 'rgb(99, 102, 241)' }
-                        }
-                        title={
-                          isCreatingScene
-                            ? 'Creating scene...'
-                            : !hasValidNarration
-                            ? 'Please add narration text'
-                            : !hasValidImage
-                            ? 'Please select an image'
-                            : !isUnderSceneLimit
-                            ? 'Maximum 20 scenes allowed'
-                            : 'Create scene with current image and narration'
-                        }
-                      >
-                        {isCreatingScene ? (
-                          <>
-                            <div
-                              className="animate-spin rounded-full h-4 w-4 border-2 border-t-transparent"
-                              style={{
-                                borderColor: 'rgb(99, 102, 241)',
-                                borderTopColor: 'transparent',
-                              }}
-                            ></div>
-                            <span>Creating...</span>
-                          </>
-                        ) : (
-                          <>
-                            <svg
-                              className="w-4 h-4"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M12 4v16m8-8H4"
-                              />
-                            </svg>
-                            <span>Create New Scene</span>
-                          </>
-                        )}
-                      </button>
-                    ) : null}
-                  </div>
-
-                  {/* Edit Button - Right Aligned */}
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => onEditScene(scene.id, scene.narration)}
-                      className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
-                      style={{
-                        boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
-                      }}
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => onEditScene(scene.id, scene.narration)}
+                    className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
+                    style={{
+                      boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
+                    }}
+                  >
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                        />
-                      </svg>
-                      <span>Edit</span>
-                    </button>
-                  </div>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                      />
+                    </svg>
+                    <span>Edit</span>
+                  </button>
                 </div>
               </div>
             )}
@@ -891,18 +740,13 @@ export default function EditScene({
           onClose={() => setIsImageEditModalOpen(false)}
           currentImageUrl={currentImageUrl}
           displayIndex={displayIndex}
-          initialTab={initialImageEditTab}
           onGenerateImage={handleGenerateImageFromModal}
-          onAnimateImage={handleAnimateImageFromModal}
           onSaveImage={handleSaveImage}
           isGeneratingImage={isGeneratingImage}
-          isAnimatingImage={isAnimatingImage}
           isSavingImage={isSavingImage}
           generatedImageUrl={generatedImageUrl}
           validationErrors={{ image: false }}
           onClearValidationError={() => {}}
-          showAnimateTab={!scene.isUserAdded}
-          showEditTab={!scene.isUserAdded}
         />
       </div>
     </>

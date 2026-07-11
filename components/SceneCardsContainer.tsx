@@ -2,6 +2,7 @@ import React from 'react';
 import EditScene, { Scene } from './EditScene';
 import EditSceneSkeleton from './EditSceneSkeleton';
 import AddSceneButton from './AddSceneButton';
+import { MAX_SCENES } from './useUserQuota';
 import { Manifest } from '@/app/types/manifest';
 
 interface SceneCardsContainerProps {
@@ -21,6 +22,7 @@ interface SceneCardsContainerProps {
   setVideoGenerationState: React.Dispatch<React.SetStateAction<any>>;
   handleSaveEdit: (
     sceneId: number,
+    narration: string,
     scenes: any[],
     onScenesUpdate: (updatedScenes: any[]) => void,
   ) => void;
@@ -46,6 +48,13 @@ interface SceneCardsContainerProps {
     message: string,
     type: 'success' | 'error' | 'info',
   ) => void;
+  onQueueImageEdit?: (sceneId: number, generatedImageUrl: string) => void;
+  onQueueAddedScene?: (
+    sceneId: number,
+    scenePosition: number,
+    captionText: string,
+    imageUrl: string,
+  ) => void;
 }
 
 export default function SceneCardsContainer({
@@ -64,7 +73,6 @@ export default function SceneCardsContainer({
   creatingSceneId,
   setCreatingSceneId,
   handleAddSceneCustom,
-  additionalScenes,
   setAdditionalScenes,
   handleDeleteScene,
   handleDeleteUserAddedScene,
@@ -72,17 +80,15 @@ export default function SceneCardsContainer({
   removedOriginalScenes,
   onRestoreOriginalScene,
   showToasterMessage,
+  onQueueImageEdit,
+  onQueueAddedScene,
 }: SceneCardsContainerProps) {
-  const [animatingSceneId, setAnimatingSceneId] = React.useState<number | null>(
-    null,
-  );
-
-  // Clear animating flag when preview completes
-  React.useEffect(() => {
-    if (!videoGenerationState.isLoadingVideoScenes) {
-      setAnimatingSceneId(null);
-    }
-  }, [videoGenerationState.isLoadingVideoScenes]);
+  const nonRemovedTotal = scenes.filter((s: any) => !s.removed).length;
+  const atSceneLimit = nonRemovedTotal >= MAX_SCENES;
+  const addSceneDisabled = atSceneLimit || deletingSceneId !== null;
+  const addSceneDisabledReason = atSceneLimit
+    ? `Maximum ${MAX_SCENES} scenes allowed`
+    : 'Cannot add a scene while a scene is being deleted';
 
   return (
     <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4 custom-scrollbar">
@@ -99,9 +105,8 @@ export default function SceneCardsContainer({
                 onAddScene={handleAddSceneCustom}
                 position={0}
                 isFirst={true}
-                disabled={
-                  additionalScenes.length > 0 || deletingSceneId !== null
-                }
+                disabled={addSceneDisabled}
+                disabledReason={addSceneDisabledReason}
               />
 
               {/* Scene Cards */}
@@ -153,39 +158,46 @@ export default function SceneCardsContainer({
                           isLoadingVideoScenes: value,
                         }))
                       }
-                      onSaveEdit={(sceneId) =>
-                        handleSaveEdit(sceneId, scenes, (updatedScenes) => {
-                          // Update the subtitleFiles in video generation state
-                          const updatedSubtitleFiles = updatedScenes.map(
-                            (scene: any, index: number) => {
-                              const fileName = `${videoGenerationState.currentTimestamp}.scene-${index}.subtitle.json`;
-                              return {
-                                [fileName]: scene.narration,
-                              };
-                            },
-                          );
+                      onSaveEdit={(sceneId, narration) =>
+                        handleSaveEdit(
+                          sceneId,
+                          narration ?? sceneState.editedNarration,
+                          scenes,
+                          (updatedScenes) => {
+                            // Update the subtitleFiles in video generation state
+                            const updatedSubtitleFiles = updatedScenes.map(
+                              (scene: any, index: number) => {
+                                const fileName = `${videoGenerationState.currentTimestamp}.scene-${index}.subtitle.json`;
+                                return {
+                                  [fileName]: scene.narration,
+                                };
+                              },
+                            );
 
-                          // Update the subtitleFiles in video generation state
-                          setVideoGenerationState((prev: any) => ({
-                            ...prev,
-                            subtitleFiles: updatedSubtitleFiles,
-                          }));
+                            // Update the subtitleFiles in video generation state
+                            setVideoGenerationState((prev: any) => ({
+                              ...prev,
+                              subtitleFiles: updatedSubtitleFiles,
+                            }));
 
-                          // Update additionalScenes state for user-added scenes
-                          setAdditionalScenes((prev) =>
-                            prev.map((item) =>
-                              item.scene.id === sceneId
-                                ? {
-                                    ...item,
-                                    scene: {
-                                      ...item.scene,
-                                      narration: sceneState.editedNarration,
-                                    },
-                                  }
-                                : item,
-                            ),
-                          );
-                        })
+                            // Update additionalScenes state for user-added scenes
+                            setAdditionalScenes((prev) =>
+                              prev.map((item) =>
+                                item.scene.id === sceneId
+                                  ? {
+                                      ...item,
+                                      scene: {
+                                        ...item.scene,
+                                        narration:
+                                          narration ??
+                                          sceneState.editedNarration,
+                                      },
+                                    }
+                                  : item,
+                              ),
+                            );
+                          },
+                        )
                       }
                       onCancelEdit={handleCancelEdit}
                       onEditedNarrationChange={(value) => {
@@ -199,8 +211,6 @@ export default function SceneCardsContainer({
                       imageUrl={imageUrl}
                       isSelected={sceneState.selectedSceneId === scene.id}
                       onSelect={handleSceneSelection}
-                      animationRequested={animatingSceneId === scene.id}
-                      onAnimationRequested={() => setAnimatingSceneId(scene.id)}
                       regeneratingSceneId={regeneratingSceneId}
                       creatingSceneId={creatingSceneId}
                       setCreatingSceneId={setCreatingSceneId}
@@ -209,11 +219,13 @@ export default function SceneCardsContainer({
                       onDeleteUserAddedScene={handleDeleteUserAddedScene}
                       onRestoreOriginalScene={onRestoreOriginalScene}
                       displayIndex={index}
-                      totalScenesCount={scenes.length}
+                      totalScenesCount={nonRemovedTotal}
                       isDisabled={
                         deletingSceneId === scene.id && !scene.isUserAdded
                       }
                       showToasterMessage={showToasterMessage}
+                      onQueueImageEdit={onQueueImageEdit}
+                      onQueueAddedScene={onQueueAddedScene}
                     />
 
                     {/* Add scene button after each scene (except the last one) */}
@@ -221,10 +233,8 @@ export default function SceneCardsContainer({
                       <AddSceneButton
                         onAddScene={handleAddSceneCustom}
                         position={index + 1}
-                        disabled={
-                          additionalScenes.length > 0 ||
-                          deletingSceneId !== null
-                        }
+                        disabled={addSceneDisabled}
+                        disabledReason={addSceneDisabledReason}
                       />
                     )}
                   </div>
@@ -236,9 +246,8 @@ export default function SceneCardsContainer({
                 onAddScene={handleAddSceneCustom}
                 position={scenes.length}
                 isLast={true}
-                disabled={
-                  additionalScenes.length > 0 || deletingSceneId !== null
-                }
+                disabled={addSceneDisabled}
+                disabledReason={addSceneDisabledReason}
               />
             </>
           )}

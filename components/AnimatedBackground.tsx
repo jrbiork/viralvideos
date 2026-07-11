@@ -1,9 +1,20 @@
-export default function AnimatedBackground() {
+interface AnimatedBackgroundProps {
+  // Pin the background to the viewport instead of stretching it over the
+  // full document height. Use this on long pages so the gradient/blobs stay
+  // anchored near the visible area instead of fading to flat below the fold.
+  fixed?: boolean;
+}
+
+export default function AnimatedBackground({
+  fixed = false,
+}: AnimatedBackgroundProps) {
   return (
     <>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 overflow-hidden"
+        className={`pointer-events-none ${
+          fixed ? 'fixed' : 'absolute'
+        } inset-0 -z-10 overflow-hidden`}
       >
         {/* Base animated gradient */}
         <div className="absolute inset-0 animate-gradient bg-[radial-gradient(60%_80%_at_20%_10%,rgba(106,77,224,0.20),transparent_70%),radial-gradient(50%_60%_at_80%_0%,rgba(13,139,216,0.20),transparent_60%),linear-gradient(180deg,#0B0B2A_0%,#0A0A1C_60%,#080812_100%)]" />
