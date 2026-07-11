@@ -18,7 +18,16 @@ export interface UserSubscription {
 export interface UserItem {
   userId: string;
   username: string;
+  email: string;
+  stripeCustomerId?: string;
+  stripeSubscriptionId?: string;
   subscription?: UserSubscription;
+  videosCreated?: number;
+  videosCreatedThisMonth?: number;
+  quotaPeriodStart?: string; // ISO month, e.g. "2026-07"
+  imagesGenerated?: number; // free-tier lifetime counter, via "Generate image" button
+  imagesGeneratedThisMonth?: number; // pro-tier monthly counter
+  imageQuotaPeriodStart?: string; // ISO month, e.g. "2026-07" — only used by the pro monthly counter
   [key: string]: any;
 }
 

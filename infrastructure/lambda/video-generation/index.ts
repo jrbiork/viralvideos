@@ -2,15 +2,12 @@ import { SQSEvent, SQSBatchResponse } from 'aws-lambda';
 
 import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 
-import { processSaveImage } from './processSaveImage';
-import { processAnimateImage } from './processAnimateImage';
 import {
   processVideoGeneration,
   VideoGenerationRequest,
 } from './processVideoGeneration';
 import { processVideoCombine } from './processVideoCombine';
-import { processCreateScene } from './processCreateScene';
-import { processRegenerateAudioScene } from './processRegenerateAudioScene';
+import { processBatchEdit } from './processBatchEdit';
 import { broadcastProgress } from '../utils/broadcastProgress';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
@@ -30,16 +27,10 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
       console.log('🔍 Request voice field:', request.voice);
 
       // Dispatch based on request type; default to generate video
-      if (request.type === 'save-image') {
-        await processSaveImage(request as any, record);
-      } else if (request.type === 'animate-image') {
-        await processAnimateImage(request as any, record);
-      } else if (request.type === 'combine-video') {
+      if (request.type === 'combine-video') {
         await processVideoCombine(request as any, record);
-      } else if (request.type === 'create-scene') {
-        await processCreateScene(request as any, record);
-      } else if (request.type === 'regenerate-scene') {
-        await processRegenerateAudioScene(request as any, record);
+      } else if (request.type === 'batch-edit') {
+        await processBatchEdit(request as any, record);
       } else {
         await processVideoGeneration(request, record);
       }

@@ -9,8 +9,6 @@ export async function broadcastProgress(
     | 'video_scene_created'
     | 'preview_completed'
     | 'video_completed'
-    | 'credit_updated'
-    | 'insufficient_credits'
     | 'error',
   userId: string,
   timestamp: string,

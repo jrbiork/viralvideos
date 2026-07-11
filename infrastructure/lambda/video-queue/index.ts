@@ -1,5 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { SQSClient, SendMessageCommand } from '@aws-sdk/client-sqs';
+import { checkAndConsumeVideoQuota } from '../utils/quota';
 
 // Import constants - using relative path from Lambda location
 const DEFAULT_VOICE = 'ash';
@@ -58,7 +59,25 @@ export const handler = async (
       };
     }
 
-    // Prepare message for SQS
+    // Enforce video quota (free: 3 lifetime, pro: 30/month)
+    const { allowed, quota } = await checkAndConsumeVideoQuota(userId);
+    if (!allowed) {
+      console.log(
+        `❌ Quota exceeded for user ${userId}: ${quota.used}/${quota.limit} (${quota.plan})`,
+      );
+      return {
+        statusCode: 403,
+        body: JSON.stringify({
+          error:
+            quota.plan === 'free'
+              ? `You've used all ${quota.limit} free videos. Upgrade to Pro to create up to 30 videos per month.`
+              : `You've reached your monthly limit of ${quota.limit} videos. Your quota resets next month.`,
+          quota,
+        }),
+      };
+    }
+
+    // Prepare message for SQS (scene count capped by plan)
     const messageBody = {
       type: 'generate-video' as const,
       prompt: request.prompt,
@@ -67,7 +86,7 @@ export const handler = async (
       language: request.language || DEFAULT_LANGUAGE,
       timestamp: request.timestamp || new Date().toISOString(),
       totalDuration: request.totalDuration || 30,
-      sceneCount: request.sceneCount || 3,
+      sceneCount: Math.min(request.sceneCount || 3, quota.maxScenes),
       step: 1,
       imageTemplate: request.imageTemplate,
     };
@@ -110,6 +129,7 @@ export const handler = async (
         messageId: sqsResponse.MessageId,
         message: 'Video generation request queued successfully',
         status: 'queued',
+        quota,
       }),
     };
   } catch (error) {

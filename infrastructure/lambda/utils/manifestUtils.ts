@@ -3,6 +3,7 @@ import { uploadJsonToS3, getObjectFromS3 } from './s3Uploader';
 import { Manifest, ManifestScene } from '../types/s3Types';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { listExistingSceneMp4Keys } from './videoEffects';
 
 const VIDEO_PARTS_BUCKET_NAME = process.env.VIDEO_PARTS_BUCKET_NAME || '';
 
@@ -181,6 +182,18 @@ export async function hydrateManifest(
   const bucketVideoName = process.env.VIDEO_BUCKET_NAME || '';
   const bucketName = VIDEO_PARTS_BUCKET_NAME;
 
+  // getSignedUrl never checks object existence — it's pure crypto-signing.
+  // A scene's files.mp4 key is written to the manifest as soon as the video
+  // is *planned* (createManifest/createManifestScene), long before the
+  // Ken-Burns effect actually uploads that object. Without this check, every
+  // manifest sent to the frontend before that upload finishes would carry a
+  // plausible-looking but 404 mp4 URL. List which mp4s truly exist once
+  // (single S3 call for all scenes) so we can omit signed URLs for the rest.
+  const existingMp4Keys = await listExistingSceneMp4Keys(
+    manifest.userId,
+    manifest.timestamp,
+  );
+
   for (const scene of manifest.scenes) {
     const files = scene.files;
 
@@ -199,13 +212,15 @@ export async function hydrateManifest(
             expiresIn,
           },
         ),
-        getSignedUrl(
-          s3,
-          new GetObjectCommand({ Bucket: bucketName, Key: files.mp4 }),
-          {
-            expiresIn,
-          },
-        ),
+        existingMp4Keys.has(files.mp4)
+          ? getSignedUrl(
+              s3,
+              new GetObjectCommand({ Bucket: bucketName, Key: files.mp4 }),
+              {
+                expiresIn,
+              },
+            )
+          : Promise.resolve(''),
         getSignedUrl(
           s3,
           new GetObjectCommand({

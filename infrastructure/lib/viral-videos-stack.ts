@@ -21,9 +21,9 @@ export class ViralVideosStack extends cdk.Stack {
     super(scope, id, props);
 
     // Get API keys with fallbacks
-    const runwayApiKey = process.env.RUNWAY_API_KEY || '';
     const openaiApiKey = process.env.OPENAI_API_KEY || '';
     const geminiApiKey = process.env.GEMINI_API_KEY || '';
+    const mockImageGeneration = process.env.MOCK_IMAGE_GENERATION || 'false';
 
     const websocketDomainName = process.env.WEBSOCKET_DOMAIN_NAME || '';
     const websocketEnv = process.env.WEBSOCKET_STAGE || '';
@@ -36,9 +36,6 @@ export class ViralVideosStack extends cdk.Stack {
     }
 
     // Validate API keys
-    if (!runwayApiKey) {
-      console.warn('⚠️  RUNWAY_API_KEY is not set. Video generation may fail.');
-    }
     if (!openaiApiKey) {
       console.warn('⚠️  OPENAI_API_KEY is not set. Video generation may fail.');
     }
@@ -199,9 +196,9 @@ export class ViralVideosStack extends cdk.Stack {
           VIDEO_BUCKET_NAME: videoBucket.bucketName,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
           USERS_TABLE_NAME: usersTable.tableName,
-          RUNWAY_API_KEY: runwayApiKey,
           OPENAI_API_KEY: openaiApiKey,
           GEMINI_API_KEY: geminiApiKey,
+          MOCK_IMAGE_GENERATION: mockImageGeneration,
           VIDEO_QUEUE_URL: videoQueue.queueUrl,
           PATH: '/opt/bin:/usr/local/bin:/usr/bin/:/bin',
           FONTCONFIG_PATH: '/opt/etc/fonts',
@@ -421,9 +418,10 @@ export class ViralVideosStack extends cdk.Stack {
           retention: logs.RetentionDays.ONE_WEEK,
         }),
         environment: {
-          RUNWAY_API_KEY: runwayApiKey,
           GEMINI_API_KEY: geminiApiKey,
+          MOCK_IMAGE_GENERATION: mockImageGeneration,
           VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+          USERS_TABLE_NAME: usersTable.tableName,
           WEBSOCKET_DOMAIN_NAME: websocketDomainName,
           WEBSOCKET_STAGE: websocketEnv,
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
@@ -431,49 +429,6 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    // Lambda function for animating an image into video
-    const animateImageLambda = new lambda.Function(this, 'AnimateImageLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(
-        path.join(__dirname, '../dist/animate-image'),
-      ),
-      role: lambdaRole,
-      timeout: cdk.Duration.minutes(5),
-      memorySize: 512,
-      logGroup: new logs.LogGroup(this, 'AnimateImageLambdaLogGroup', {
-        retention: logs.RetentionDays.ONE_WEEK,
-      }),
-      environment: {
-        RUNWAY_API_KEY: runwayApiKey,
-        GEMINI_API_KEY: geminiApiKey,
-        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
-        WEBSOCKET_DOMAIN_NAME: websocketDomainName,
-        WEBSOCKET_STAGE: websocketEnv,
-        WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
-        VIDEO_QUEUE_URL: videoQueue.queueUrl,
-      },
-    });
-
-    // Lambda function for saving images
-    const saveImageLambda = new lambda.Function(this, 'SaveImageLambda', {
-      runtime: lambda.Runtime.NODEJS_20_X,
-      handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../dist/save-image')),
-      role: lambdaRole,
-      timeout: cdk.Duration.minutes(2),
-      memorySize: 512,
-      logGroup: new logs.LogGroup(this, 'SaveImageLambdaLogGroup', {
-        retention: logs.RetentionDays.ONE_WEEK,
-      }),
-      environment: {
-        VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
-        WEBSOCKET_DOMAIN_NAME: websocketDomainName,
-        WEBSOCKET_STAGE: websocketEnv,
-        WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
-        VIDEO_QUEUE_URL: videoQueue.queueUrl,
-      },
-    });
 
     // API Gateway REST API
     const api = new apigateway.RestApi(this, 'VideoGenerationApi', {
@@ -765,18 +720,6 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
-    // Lambda integration for saving images
-    const saveImageIntegration = new apigateway.LambdaIntegration(
-      saveImageLambda,
-      {
-        requestTemplates: {
-          'application/json': JSON.stringify({
-            body: "$util.escapeJavaScript($input.json('$'))",
-          }),
-        },
-      },
-    );
-
     // Lambda integration for WebSocket broadcasting
     const websocketBroadcastIntegration = new apigateway.LambdaIntegration(
       websocketBroadcastLambda,
@@ -821,32 +764,6 @@ export class ViralVideosStack extends cdk.Stack {
 
     const generateImageResource = api.root.addResource('generate-image');
     generateImageResource.addMethod('POST', generateImageIntegration, {
-      authorizer: jwtAuthorizer,
-    });
-
-    // Lambda integration for animate-image
-    const animateImageIntegration = new apigateway.LambdaIntegration(
-      animateImageLambda,
-      {
-        requestTemplates: {
-          'application/json': JSON.stringify({
-            body: "$util.escapeJavaScript($input.json('$'))",
-            queryString: '$input.params().querystring',
-          }),
-        },
-      },
-    );
-
-    const animateImageResource = api.root.addResource('animate-image');
-    animateImageResource.addMethod('POST', animateImageIntegration, {
-      authorizer: jwtAuthorizer,
-      requestParameters: {
-        'method.request.querystring.timestamp': true,
-      },
-    });
-
-    const saveImageResource = api.root.addResource('save-image');
-    saveImageResource.addMethod('POST', saveImageIntegration, {
       authorizer: jwtAuthorizer,
     });
 

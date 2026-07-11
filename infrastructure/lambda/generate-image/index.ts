@@ -2,13 +2,11 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 
 import { generateNanoBananaImage } from '../utils/imageNanoBanana';
 
-import { CREDITS_COST } from '../utils/credits';
-
-import {
-  hasSufficientCreditsByUserId,
-  updateCreditBalanceByUserId,
-} from '../utils/credits';
 import { getManifest } from '../utils/manifestUtils';
+import {
+  checkAndConsumeImageGenQuota,
+  PRO_IMAGE_GEN_MONTHLY_LIMIT,
+} from '../utils/quota';
 
 interface RequestBody {
   imagePrompt: string;
@@ -37,6 +35,29 @@ export const handler = async (
       };
     }
 
+    // Mock generation just copies an existing S3 image (no Gemini cost), so
+    // it shouldn't burn the user's real image quota.
+    const isMockGeneration = process.env.MOCK_IMAGE_GENERATION === 'true';
+
+    const { allowed, used, limit, plan } = isMockGeneration
+      ? { allowed: true, used: 0, limit: 0, plan: 'free' as const }
+      : await checkAndConsumeImageGenQuota(userId);
+    if (!allowed) {
+      console.log(
+        `❌ Image quota exceeded for user ${userId}: ${used}/${limit} (${plan})`,
+      );
+      return {
+        statusCode: 403,
+        body: JSON.stringify({
+          error:
+            plan === 'free'
+              ? `You've used all ${limit} additional image generations included with your free plan. Upgrade to Pro for ${PRO_IMAGE_GEN_MONTHLY_LIMIT} image generations per month.`
+              : `You've reached this month's limit of ${limit} image generations. Your limit resets next month.`,
+          imageQuota: { used, limit, plan },
+        }),
+      };
+    }
+
     // get timestamp from query string
     const timestamp = event.queryStringParameters?.['timestamp'];
     if (!timestamp) {
@@ -54,23 +75,6 @@ export const handler = async (
         body: JSON.stringify({
           error: 'Image prompt is required',
         }),
-      };
-    }
-
-    // Check if user has sufficient credits
-    const { hasSufficientCredits, currentCredits } =
-      await hasSufficientCreditsByUserId(userId, CREDITS_COST.new_image);
-
-    console.log(
-      'hasCredits / current credits:',
-      hasSufficientCredits,
-      currentCredits,
-    );
-
-    if (!hasSufficientCredits) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Insufficient credits' }),
       };
     }
 
@@ -98,14 +102,6 @@ export const handler = async (
     );
 
     console.log('🎨 Image generated successfully:', imageUrl);
-
-    // Deduct credits
-    const newCurrentCredits = await updateCreditBalanceByUserId(
-      userId,
-      CREDITS_COST.new_image,
-    );
-
-    console.log('new credits after deduction:', newCurrentCredits);
 
     // Return success response
     return {

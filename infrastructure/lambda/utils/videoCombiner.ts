@@ -13,6 +13,27 @@ import { UserItem } from './user';
 
 const ffmpeg = require('fluent-ffmpeg');
 
+// --- Helpers for concat reliability ---
+function probeDuration(filePath: string): Promise<number> {
+  return new Promise((resolve) => {
+    ffmpeg.ffprobe(filePath, (err: Error | null, data: any) => {
+      if (err) return resolve(0);
+      const dur = Number(data?.format?.duration ?? 0);
+      resolve(Number.isFinite(dur) ? dur : 0);
+    });
+  });
+}
+
+function probeHasAudio(filePath: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    ffmpeg.ffprobe(filePath, (err: Error | null, data: any) => {
+      if (err) return resolve(false);
+      const streams = data?.streams || [];
+      resolve(streams.some((s: any) => s.codec_type === 'audio'));
+    });
+  });
+}
+
 // S3 file object interface
 interface S3FileObject {
   Key: string;
@@ -183,13 +204,32 @@ export async function combineVideoAndAudio(
 async function concatenateScenes(
   combinedScenePaths: string[],
 ): Promise<string> {
-  console.log('🎬 Concatenating all combined scenes...');
+  console.log('🎬 Concatenating all combined scenes (filter graph)…');
 
-  const fileListPath = path.join(os.tmpdir(), 'combined-scenes-filelist.txt');
-  const fileListContent = combinedScenePaths
-    .map((scenePath) => `file '${scenePath}'`)
-    .join('\n');
-  fs.writeFileSync(fileListPath, fileListContent);
+  if (!combinedScenePaths.length) {
+    throw new Error('No combined scene paths provided');
+  }
+  if (combinedScenePaths.length === 1) {
+    console.log('ℹ️ Only one scene — skipping concat.');
+    return combinedScenePaths[0];
+  }
+
+  // Probe durations and audio presence so we can create consistent streams
+  const [durations, audioFlags] = await Promise.all([
+    Promise.all(combinedScenePaths.map((p) => probeDuration(p))),
+    Promise.all(combinedScenePaths.map((p) => probeHasAudio(p))),
+  ]);
+
+  const totalDuration = durations.reduce((a, b) => a + b, 0);
+  console.log(
+    '⏱️ Concat inputs:',
+    combinedScenePaths.map((p, i) => ({
+      idx: i,
+      path: p,
+      duration: Number(durations[i].toFixed(3)),
+      hasAudio: audioFlags[i],
+    })),
+  );
 
   const finalOutputPath = path.join(os.tmpdir(), 'final-video.mp4');
 
@@ -197,12 +237,54 @@ async function concatenateScenes(
     const timeout = setTimeout(() => {
       console.error('❌ Timeout concatenating scenes after 10 minutes');
       reject(new Error('Timeout concatenating scenes'));
-    }, 10 * 60 * 1000); // 10 minute timeout
+    }, 10 * 60 * 1000);
 
-    ffmpeg()
-      .input(fileListPath)
-      .inputOptions(['-f', 'concat', '-safe', '0'])
+    const cmd = ffmpeg();
+    combinedScenePaths.forEach((p) => cmd.input(p));
+
+    // Build filter graph: for each input, reset PTS; ensure an audio stream exists by
+    // generating per-segment silent audio when missing; then concat decoded streams.
+    const vfChains: string[] = [];
+    const afChains: string[] = [];
+
+    for (let i = 0; i < combinedScenePaths.length; i++) {
+      vfChains.push(`[${i}:v:0]setpts=PTS-STARTPTS[v${i}]`);
+      if (audioFlags[i]) {
+        afChains.push(
+          `[${i}:a:0]asetpts=PTS-STARTPTS,aresample=async=1:first_pts=0[a${i}]`,
+        );
+      } else {
+        const d = Math.max(0, durations[i]);
+        afChains.push(
+          `anullsrc=r=48000:cl=stereo,atrim=0:${d.toFixed(
+            3,
+          )},asetpts=PTS-STARTPTS[a${i}]`,
+        );
+      }
+    }
+
+    const concatInputs = [] as string[];
+    for (let i = 0; i < combinedScenePaths.length; i++) {
+      concatInputs.push(`[v${i}][a${i}]`);
+    }
+
+    const filterGraph = [
+      ...vfChains,
+      ...afChains,
+      `${concatInputs.join('')}concat=n=${
+        combinedScenePaths.length
+      }:v=1:a=1[v][a]`,
+    ].join(';');
+
+    console.log('🧩 filter_complex:', filterGraph);
+
+    cmd
+      .complexFilter(filterGraph)
       .outputOptions([
+        '-map',
+        '[v]',
+        '-map',
+        '[a]',
         '-c:v',
         'libx264',
         '-preset',
@@ -214,21 +296,26 @@ async function concatenateScenes(
         '-c:a',
         'aac',
         '-b:a',
-        '128k',
+        '192k',
+        '-ar',
+        '48000',
+        '-movflags',
+        '+faststart',
+        '-vsync',
+        '2',
         '-threads',
         '0',
       ])
+      // Force output long enough to cover all segments (guard against stray timestamps)
+      .outputOptions(['-t', totalDuration.toFixed(3)])
       .output(finalOutputPath)
       .on('end', () => {
         clearTimeout(timeout);
         console.log('✅ All scenes concatenated successfully');
-
-        // Clean up temporary files
+        // Clean up temporary scene files
         combinedScenePaths.forEach((scenePath) => {
           if (fs.existsSync(scenePath)) fs.unlinkSync(scenePath);
         });
-        if (fs.existsSync(fileListPath)) fs.unlinkSync(fileListPath);
-
         resolve(finalOutputPath);
       })
       .on('error', (err: Error) => {

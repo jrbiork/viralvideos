@@ -1,6 +1,5 @@
 import { SQSRecord } from 'aws-lambda';
 import { SQSClient, DeleteMessageCommand } from '@aws-sdk/client-sqs';
-import { generateImage } from '../utils/image';
 import { generateNarration } from '../utils/audio';
 import { generateSubtitles } from '../utils/subtitles';
 import { addSceneIds } from '../utils/script';
@@ -25,13 +24,7 @@ import { getUser } from '../utils/user';
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export interface VideoGenerationRequest {
-  type?:
-    | 'generate-video'
-    | 'save-image'
-    | 'animate-image'
-    | 'combine-video'
-    | 'create-scene'
-    | 'regenerate-scene';
+  type?: 'generate-video' | 'combine-video' | 'batch-edit';
   prompt?: string;
   userId: string;
   timestamp: string;
@@ -121,12 +114,18 @@ export async function processVideoGeneration(
     console.log('🖼️ Received imageTemplate:', request.imageTemplate);
 
     // Step 2: Generate images for each scene in parallel
-    // Check if there are already images generated in the s3 bucket for the timestamp
-    let imageUrls = await getImageUrls(request.userId, timestamp);
+    const generateImagesStep = async () => {
+      // Check if there are already images generated in the s3 bucket for the timestamp
+      const imageUrls = await getImageUrls(request.userId, timestamp);
 
-    if (imageUrls.length > 0) {
-      console.log('🎥 Images already generated for the timestamp:', imageUrls);
-    } else {
+      if (imageUrls.length > 0) {
+        console.log(
+          '🎥 Images already generated for the timestamp:',
+          imageUrls,
+        );
+        return;
+      }
+
       const seed = Math.floor(Math.random() * 1000000);
 
       console.log('🎨 Generating images for each scene in parallel...');
@@ -185,39 +184,32 @@ export async function processVideoGeneration(
           `🎨 Successfully generated ${successful.length} out of ${results.length} images`,
         );
 
-        // if (generatedImageUrls.length === 0) {
-        //   console.log('❌ Error: No images were generated');
-        //   throw new Error('No images were generated');
-        // }
-
-        // // upload imageUrls to s3 using uploadImageToS3
-        // const uploadPromises = generatedImageUrls.map((imageUrl, i) =>
-        //   uploadImageToS3(imageUrl, request.userId, timestamp, scenes[i].id),
-        // );
-        // await Promise.all(imagePromises);
-
         console.log('🖼️ Images uploaded to S3');
       } catch (error) {
         console.error('❌ Failed to generate images:', error);
       }
-    }
+    };
 
-    // check if all together if .mp3, .subtitle.json, .ass files are already exists in the s3 bucket and return boolean
-    const audioCaptionFilesExist = await checkAudioCaptionExists(
-      request.userId,
-      timestamp,
-    );
-    if (audioCaptionFilesExist) {
-      console.log(
-        '🎥 Audio, subtitle, and ass files already generated for the timestamp:',
-        audioCaptionFilesExist,
+    // Step 3: Generate audio narration and subtitles for each scene
+    const generateAudioStep = async () => {
+      // check if all together if .mp3, .subtitle.json, .ass files are already exists in the s3 bucket and return boolean
+      const audioCaptionFilesExist = await checkAudioCaptionExists(
+        request.userId,
+        timestamp,
       );
-    } else {
+      if (audioCaptionFilesExist) {
+        console.log(
+          '🎥 Audio, subtitle, and ass files already generated for the timestamp:',
+          audioCaptionFilesExist,
+        );
+        return;
+      }
+
       console.log(
         '🎥 No existing audio, subtitle, and ass files found, generating new narration',
       );
 
-      // Step 3: Generate audio files with word-level timestamps
+      // Generate audio files with word-level timestamps
       const { subtitles } = await generateNarration(
         scenes,
         request.userId,
@@ -233,9 +225,14 @@ export async function processVideoGeneration(
         console.log('subtitles[i].duration:', subtitles[i].duration);
       });
 
-      // Step 4: Generate subtitle file
+      // Generate subtitle file
       await generateSubtitles(scenes, request.userId, timestamp, subtitles);
-    }
+    };
+
+    // Images and audio both depend only on the script, so run them concurrently.
+    // Image failures are swallowed inside generateImagesStep (as before);
+    // an audio failure must still fail the whole run.
+    await Promise.all([generateImagesStep(), generateAudioStep()]);
 
     console.log(
       '🎥 Scenes before creating manifest:',

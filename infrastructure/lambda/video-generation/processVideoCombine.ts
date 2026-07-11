@@ -51,7 +51,7 @@ export async function processVideoCombine(
     );
 
     //
-    await updateManifest(manifest, {
+    const updatedManifest = await updateManifest(manifest, {
       videoGenerated: true,
       sceneCount: manifest.scenes.filter(
         (scene: ManifestScene) => !removedScenes.includes(scene.id),
@@ -70,7 +70,7 @@ export async function processVideoCombine(
       generatedAt: Date.now().toString(),
     });
 
-    const hydratedManifest = await hydrateManifest(manifest);
+    const hydratedManifest = await hydrateManifest(updatedManifest);
 
     await broadcastProgress('video_completed', userId, timestamp, {
       manifest: {

@@ -160,7 +160,6 @@ async function handleCreateOrUpdateUser(
       username,
       email,
       lastLoginAt: now,
-      creditsAvailable: result.Attributes?.creditsAvailable,
     });
 
     return {
@@ -186,8 +185,11 @@ async function handleCreateOrUpdateUser(
         picture: picture,
         createdAt: now,
         lastLoginAt: now,
-        creditsAvailable: 10,
+        videosCreated: 0,
+        videosCreatedThisMonth: 0,
         lastPaymentAt: null,
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
         subscription: {
           mode: 'free',
           renewalDate: null,
@@ -206,7 +208,6 @@ async function handleCreateOrUpdateUser(
       picture,
       createdAt: now,
       lastLoginAt: now,
-      creditsAvailable: 10,
     });
 
     return {
@@ -224,7 +225,10 @@ async function handleCreateOrUpdateUser(
           picture: picture,
           createdAt: now,
           lastLoginAt: now,
-          creditsAvailable: 10,
+          videosCreated: 0,
+          videosCreatedThisMonth: 0,
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
           subscription: {
             mode: 'free',
             renewalDate: null,

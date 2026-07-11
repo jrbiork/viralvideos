@@ -52,13 +52,17 @@ function resolveFfmpegPath(): string {
   );
 }
 
-export async function getVideoEffectUrls(
+/**
+ * Lists which of a video's per-scene Ken-Burns mp4 objects actually exist in
+ * S3 today, keyed by full object Key (e.g. "userId/timestamp.scene-1.mp4").
+ * Single existence source of truth reused by getVideoEffectUrls and by
+ * hydrateManifest (manifestUtils.ts) so signed URLs are never handed out for
+ * scenes whose video hasn't been generated yet.
+ */
+export async function listExistingSceneMp4Keys(
   userId: string,
   timestamp: string,
-  scenes: Omit<Scene, 'description' | 'narration'>[],
-  user: UserItem | null,
-): Promise<Array<{ [key: string]: string }>> {
-  // Check if video effects already exist by listing S3 objects with prefix timestamp.scene- and suffix .mp4
+): Promise<Set<string>> {
   const s3Client = new S3Client({
     region: process.env.AWS_REGION || 'us-east-1',
   });
@@ -69,24 +73,41 @@ export async function getVideoEffectUrls(
 
   try {
     const listResult = await s3Client.send(listCommand);
-    const existingVideoFiles =
-      listResult.Contents?.filter((obj: any) => obj.Key?.endsWith('.mp4')) ||
-      [];
+    const keys = (listResult.Contents || [])
+      .map((obj) => obj.Key)
+      .filter((key): key is string => !!key && key.endsWith('.mp4'));
+    return new Set(keys);
+  } catch (error) {
+    console.error('Error listing existing scene mp4 keys:', error);
+    return new Set();
+  }
+}
 
-    if (existingVideoFiles.length > 0) {
+export async function getVideoEffectUrls(
+  userId: string,
+  timestamp: string,
+  scenes: Omit<Scene, 'description' | 'narration'>[],
+  user: UserItem | null,
+): Promise<Array<{ [key: string]: string }>> {
+  const s3Client = new S3Client({
+    region: process.env.AWS_REGION || 'us-east-1',
+  });
+
+  try {
+    const existingKeys = await listExistingSceneMp4Keys(userId, timestamp);
+
+    if (existingKeys.size > 0) {
       console.log(
         '🎥 Video effects already generated for the timestamp:',
-        existingVideoFiles.length,
+        existingKeys.size,
         'files found',
       );
 
       // Generate signed URLs for existing video files
-      const signedUrlPromises = existingVideoFiles.map(async (obj: any) => {
-        if (!obj.Key) return null;
-
+      const signedUrlPromises = Array.from(existingKeys).map(async (key) => {
         const getObjectCommand = new GetObjectCommand({
           Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: obj.Key,
+          Key: key,
         });
 
         const signedUrl = await getSignedUrl(s3Client, getObjectCommand, {
@@ -94,14 +115,12 @@ export async function getVideoEffectUrls(
         });
 
         // Extract filename without user prefix (e.g., "1004.scene-1.mp4")
-        const filename = obj.Key.replace(`${userId}/`, '');
+        const filename = key.replace(`${userId}/`, '');
 
         return { [filename]: signedUrl };
       });
 
-      return (await Promise.all(signedUrlPromises)).filter(
-        (urlObj: any): urlObj is { [key: string]: string } => urlObj !== null,
-      );
+      return await Promise.all(signedUrlPromises);
     } else {
       return await generateVideoEffects(scenes, userId, timestamp, user);
     }
@@ -126,41 +145,59 @@ export async function generateVideoEffects(
     const videoPromises = scenes.map(async (scene, i) => {
       console.log(`🎬 Processing scene ${i + 1}`);
 
-      try {
-        // Get the image URL for this scene
-        const imageKey = `${userId}/${timestamp}.scene-${scene.id}.png`;
-        const imageUrl = await getImageSignedUrl(imageKey);
+      // Get the image URL for this scene
+      const imageKey = `${userId}/${timestamp}.scene-${scene.id}.png`;
+      const imageUrl = await getImageSignedUrl(imageKey);
 
-        if (!imageUrl) {
-          console.error(`❌ No image found for scene ${scene.id}`);
-          return null;
-        }
-
-        // Generate video with blur in/out and camera movement
-        const videoSignedUrl = await generateSceneVideo(
-          imageUrl,
-          scene,
-          userId,
-          timestamp,
-          user,
-        );
-
-        // Extract filename without user prefix (e.g., "1004.scene-1.mp4")
-        const filename = `${timestamp}.scene-${scene.id}.mp4`;
-
-        console.log(`✅ Scene ${i + 1} video generated: ${filename}`);
-        return { [filename]: videoSignedUrl };
-      } catch (error) {
-        console.error(`❌ Failed to generate video for scene ${i + 1}:`, error);
-        throw new Error(
-          `Failed to generate video for scene ${i + 1}: ${error}`,
-        );
+      if (!imageUrl) {
+        throw new Error(`No image found for scene ${scene.id}`);
       }
+
+      // Generate video with blur in/out and camera movement
+      const videoSignedUrl = await generateSceneVideo(
+        imageUrl,
+        scene,
+        userId,
+        timestamp,
+        user,
+      );
+
+      // Extract filename without user prefix (e.g., "1004.scene-1.mp4")
+      const filename = `${timestamp}.scene-${scene.id}.mp4`;
+
+      console.log(`✅ Scene ${i + 1} video generated: ${filename}`);
+      return { [filename]: videoSignedUrl };
     });
 
-    const videoUrls = (await Promise.all(videoPromises)).filter(
-      (urlObj): urlObj is { [key: string]: string } => urlObj !== null,
-    );
+    const settled = await Promise.allSettled(videoPromises);
+
+    const failures = settled
+      .map((result, i) => ({ result, sceneId: scenes[i].id }))
+      .filter(
+        (
+          entry,
+        ): entry is {
+          result: PromiseRejectedResult;
+          sceneId: number;
+        } => entry.result.status === 'rejected',
+      );
+
+    if (failures.length > 0) {
+      const details = failures
+        .map(({ sceneId, result }) => `scene ${sceneId}: ${result.reason}`)
+        .join('; ');
+      console.error(`❌ Video effects failed for ${failures.length} scene(s): ${details}`);
+      throw new Error(
+        `Failed to generate video for ${failures.length} scene(s) — ${details}`,
+      );
+    }
+
+    const videoUrls = settled
+      .filter(
+        (result): result is PromiseFulfilledResult<{ [key: string]: string }> =>
+          result.status === 'fulfilled',
+      )
+      .map((result) => result.value);
 
     if (videoUrls.length === 0) {
       console.log('❌ Error: No videos were generated');

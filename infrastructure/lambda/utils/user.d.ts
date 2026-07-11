@@ -6,7 +6,16 @@ export interface UserSubscription {
 export interface UserItem {
     userId: string;
     username: string;
+    email: string;
+    stripeCustomerId?: string;
+    stripeSubscriptionId?: string;
     subscription?: UserSubscription;
+    videosCreated?: number;
+    videosCreatedThisMonth?: number;
+    quotaPeriodStart?: string;
+    imagesGenerated?: number;
+    imagesGeneratedToday?: number;
+    imageQuotaPeriodStart?: string;
     [key: string]: any;
 }
 /**

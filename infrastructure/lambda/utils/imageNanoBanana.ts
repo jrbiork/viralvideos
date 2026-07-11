@@ -3,6 +3,8 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
+  CopyObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
@@ -15,6 +17,74 @@ export interface Scene {
   id: number;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function mockGenerateImage(
+  scenePosition: number,
+  userId: string,
+  timestamp: string,
+  signedUrl?: boolean,
+): Promise<string | null> {
+  const delayMs = 2000 + Math.random() * 3000;
+  console.log(
+    `🎭 MOCK - simulating image generation for scene ${scenePosition} (${Math.round(
+      delayMs,
+    )}ms delay)`,
+  );
+  await sleep(delayMs);
+
+  const listResponse = await s3.send(
+    new ListObjectsV2Command({
+      Bucket: process.env.VIDEO_PARTS_BUCKET_NAME!,
+    }),
+  );
+
+  const candidates = (listResponse.Contents || [])
+    .filter((obj) => obj.Key?.endsWith('.png'))
+    .sort(
+      (a, b) =>
+        (b.LastModified?.getTime() || 0) - (a.LastModified?.getTime() || 0),
+    )
+    .slice(0, 20);
+
+  if (candidates.length === 0) {
+    throw new Error(
+      'MOCK_IMAGE_GENERATION is enabled but no existing .png images were found in the bucket to reuse',
+    );
+  }
+
+  const sourceKey =
+    candidates[Math.floor(Math.random() * candidates.length)].Key!;
+  const destKey = `${userId}/${timestamp}.scene-${scenePosition}.png`;
+
+  console.log(`🎭 MOCK - reusing existing image ${sourceKey} for scene ${scenePosition}`);
+
+  await s3.send(
+    new CopyObjectCommand({
+      Bucket: process.env.VIDEO_PARTS_BUCKET_NAME!,
+      CopySource: `${process.env.VIDEO_PARTS_BUCKET_NAME}/${sourceKey}`,
+      Key: destKey,
+    }),
+  );
+
+  if (signedUrl) {
+    const presignedUrl = await getSignedUrl(
+      s3,
+      new GetObjectCommand({
+        Bucket: process.env.VIDEO_PARTS_BUCKET_NAME!,
+        Key: destKey,
+      }),
+      { expiresIn: 36000 },
+    );
+    console.log('🎭 MOCK - returning presigned URL:', presignedUrl);
+    return presignedUrl;
+  }
+
+  return '';
+}
+
 export async function generateNanoBananaImage(
   description: string,
   scenePosition: number,
@@ -23,6 +93,10 @@ export async function generateNanoBananaImage(
   seed: number,
   signedUrl?: boolean,
 ): Promise<string | null> {
+  if (process.env.MOCK_IMAGE_GENERATION === 'true') {
+    return await mockGenerateImage(scenePosition, userId, timestamp, signedUrl);
+  }
+
   try {
     // Initialize Google GenAI
     const genAI = new GoogleGenAI({
@@ -55,9 +129,11 @@ export async function generateNanoBananaImage(
           }/${maxRetries} for scene ${scenePosition}`,
         );
 
+        // TODO: imagen-4.0-fast-generate-001 (and the rest of the Imagen 4 family)
+        // is deprecated and shuts down 2026-08-17 — migrate before then.
         response = (await Promise.race([
           genAI.models.generateImages({
-            model: 'imagen-4.0-generate-001',
+            model: 'imagen-4.0-fast-generate-001',
             prompt: description,
             config: {
               numberOfImages: 1,
