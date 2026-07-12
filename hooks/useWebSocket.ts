@@ -260,8 +260,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   const connect = useCallback(async () => {
     if (!user) return;
     // if user changed, force disconnect to refresh token
-    if (currentUserId !== user.userId) {
-      currentUserId = user.userId;
+    if (currentUserId !== user.id) {
+      currentUserId = user.id;
       singletonDisconnect();
     }
     await singletonConnect(
@@ -280,7 +280,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}) {
   }, []);
 
   const ping = useCallback(() => {
-    sendMessage({ action: 'ping' });
+    sendMessage({
+      action: 'ping',
+      data: { userId: currentUserId || '', timestamp: new Date().toISOString() },
+    });
   }, [sendMessage]);
 
   useEffect(() => {

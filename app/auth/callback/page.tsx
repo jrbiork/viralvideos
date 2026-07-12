@@ -1,10 +1,41 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { Suspense, useEffect, useState, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '../../../components/AuthContext';
 
+function AuthCallbackFallback() {
+  return (
+    <div
+      className="min-h-screen flex items-center justify-center"
+      style={{ backgroundColor: 'rgba(9,5,38,255)' }}
+    >
+      <div className="bg-white/10 backdrop-blur-sm rounded-lg p-8 max-w-md w-full mx-4">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+          </div>
+          <h2 className="text-2xl font-bold text-white mb-4">
+            Completing Sign In
+          </h2>
+          <p className="text-gray-300">
+            Please wait while we complete your authentication...
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AuthCallback() {
+  return (
+    <Suspense fallback={<AuthCallbackFallback />}>
+      <AuthCallbackContent />
+    </Suspense>
+  );
+}
+
+function AuthCallbackContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { handleAuthCallback } = useAuth();
