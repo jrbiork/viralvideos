@@ -173,6 +173,13 @@ export default function EditScene({
     }
   };
 
+  // "Save Changes" should only appear once the user has actually edited
+  // something — otherwise saving would be a no-op.
+  const hasNarrationChanged =
+    localNarration.trim() !== (scene.narration || '').trim();
+  const hasImageChanged = currentImageUrl !== (imageUrl || null);
+  const hasUnsavedChanges = hasNarrationChanged || hasImageChanged;
+
   // Validation logic for Create Scene button.
   // totalScenesCount already includes this scene itself (it's counted as
   // soon as the placeholder is added), so the limit check must be <=.
@@ -578,66 +585,67 @@ export default function EditScene({
                   </div>
                 )}
                 <div className="flex justify-end space-x-3">
-                  {scene.isUserAdded ? (
-                    /* Save button for user-added scenes: commits narration and,
+                  {hasUnsavedChanges &&
+                    (scene.isUserAdded ? (
+                      /* Save button for user-added scenes: commits narration and,
                        once an image is also present, queues the scene for creation */
-                    <button
-                      onClick={() => {
-                        onSaveEdit(scene.id, localNarration);
-                        if (
-                          localNarration.trim().length > 0 &&
-                          hasValidImage &&
-                          isUnderSceneLimit
-                        ) {
-                          handleCreateScene(localNarration);
+                      <button
+                        onClick={() => {
+                          onSaveEdit(scene.id, localNarration);
+                          if (
+                            localNarration.trim().length > 0 &&
+                            hasValidImage &&
+                            isUnderSceneLimit
+                          ) {
+                            handleCreateScene(localNarration);
+                          }
+                        }}
+                        className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
+                        style={{ backgroundColor: 'rgb(99, 102, 241)' }}
+                        title="Save changes"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span>Save Changes</span>
+                      </button>
+                    ) : (
+                      /* Save narration edit for original scenes (applied in batch) */
+                      <button
+                        onClick={() =>
+                          onRegenerateAudio &&
+                          onRegenerateAudio(scene.id, localNarration)
                         }
-                      }}
-                      className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
-                      style={{ backgroundColor: 'rgb(99, 102, 241)' }}
-                      title="Save changes"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                        className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
+                        style={{ backgroundColor: '#6366F1' }}
+                        title="Save narration change"
                       >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span>Save Changes</span>
-                    </button>
-                  ) : (
-                    /* Save narration edit for original scenes (applied in batch) */
-                    <button
-                      onClick={() =>
-                        onRegenerateAudio &&
-                        onRegenerateAudio(scene.id, localNarration)
-                      }
-                      className="flex items-center justify-center gap-2 px-3 py-2 text-white rounded-lg text-sm font-medium transition-colors hover:brightness-95"
-                      style={{ backgroundColor: '#6366F1' }}
-                      title="Save narration change"
-                    >
-                      <svg
-                        className="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M5 13l4 4L19 7"
-                        />
-                      </svg>
-                      <span>Save Changes</span>
-                    </button>
-                  )}
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M5 13l4 4L19 7"
+                          />
+                        </svg>
+                        <span>Save Changes</span>
+                      </button>
+                    ))}
                   <button
                     onClick={onCancelEdit}
                     className="flex items-center justify-center gap-2.5 h-10 px-6 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:text-white hover:bg-[#5B5BFF] text-sm font-medium transition-all duration-300"
