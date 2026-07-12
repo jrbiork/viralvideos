@@ -178,10 +178,8 @@ export default function SettingsPage() {
 
   if (loading || userDataLoading) {
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ top: '64px', left: '250px', right: '0px', bottom: '0px' }}
-      >
+      <MainLayout>
+        <div className="w-full min-h-[60vh] flex items-center justify-center">
         <div className="text-center animate-fade-in-up">
           <div className="relative mb-6 flex justify-center">
             <div className="relative w-16 h-16">
@@ -196,16 +194,15 @@ export default function SettingsPage() {
             Fetching your account information...
           </p>
         </div>
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   if (!isAuthenticated) {
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ top: '64px', left: '250px', right: '0px', bottom: '0px' }}
-      >
+      <MainLayout>
+        <div className="w-full min-h-[60vh] flex items-center justify-center">
         <div className="text-center animate-fade-in-up">
           <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg
@@ -229,16 +226,15 @@ export default function SettingsPage() {
             Please sign in to access your settings.
           </p>
         </div>
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 
   if (error) {
     return (
-      <div
-        className="fixed inset-0 flex items-center justify-center"
-        style={{ top: '64px', left: '250px', right: '0px', bottom: '0px' }}
-      >
+      <MainLayout>
+        <div className="w-full min-h-[60vh] flex items-center justify-center">
         <div className="text-center animate-fade-in-up">
           <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
             <svg
@@ -266,7 +262,8 @@ export default function SettingsPage() {
             Try Again
           </button>
         </div>
-      </div>
+        </div>
+      </MainLayout>
     );
   }
 

@@ -45,10 +45,7 @@ export default function Sidebar() {
           ))}
 
           {/* Separator */}
-          <div
-            className="border-t border-slate-700"
-            style={{ margin: '50px 0' }}
-          ></div>
+          <div className="border-t border-slate-700 my-6 lg:my-[50px]"></div>
 
           {navigationItems.slice(2).map((item) => (
             <button

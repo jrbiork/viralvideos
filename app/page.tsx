@@ -8,6 +8,7 @@ import AnimatedBackground from '../components/AnimatedBackground';
 import ScrollPathEffect from '../components/ScrollPathEffect';
 import { useAuth } from '../components/AuthContext';
 import UserDropdown from '../components/UserDropdown';
+import MobileNav from '../components/MobileNav';
 
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
@@ -102,7 +103,7 @@ export default function Home() {
             </div>
             <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
-          <div className="flex items-center space-x-4">
+          <MobileNav>
             <button
               onClick={() => router.push('/pricing')}
               className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
@@ -122,7 +123,7 @@ export default function Home() {
                   onClick={() => router.push('/signin')}
                   className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
                 >
-                  Get 3 Free Videos
+                  Create your first video for free
                 </button>
               </>
             ) : (
@@ -136,7 +137,7 @@ export default function Home() {
                 <UserDropdown className="w-auto" />
               </>
             )}
-          </div>
+          </MobileNav>
         </nav>
       </div>
 
@@ -144,8 +145,7 @@ export default function Home() {
       <div className="container mx-auto px-6 py-20">
         <div className="relative z-10 text-center">
           <h1
-            className="font-bold text-white mb-6"
-            style={{ fontSize: '5.61rem' }}
+            className="font-bold text-white mb-6 text-4xl sm:text-5xl md:text-6xl lg:text-[5.61rem]"
           >
             Idea to{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-500">
@@ -164,13 +164,7 @@ export default function Home() {
               onClick={() => router.push('/signin')}
               className="px-8 py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
             >
-              Get 3 Free Videos
-            </button>
-            <button
-              className="px-8 py-3 text-white rounded-lg hover:bg-white/10 transition-colors font-semibold border"
-              style={{ borderColor: '#5b5bff' }}
-            >
-              Watch Demo
+              Create your first video for free
             </button>
           </div>
 
@@ -210,18 +204,15 @@ export default function Home() {
 
           {/* Video Examples Section */}
           <div
-            className="relative h-96 max-w-4xl mx-auto flex items-center justify-center"
+            className="relative flex flex-col md:flex-row md:h-96 max-w-4xl mx-auto items-center justify-center gap-6 md:gap-0 md:pt-[15rem] md:pb-[16rem]"
             style={{
               marginTop: '2rem',
-              paddingTop: '15rem',
-              paddingBottom: '16rem',
             }}
           >
             {/* Card 1 - Story time */}
             <div
-              className="absolute w-[115.2%] max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
+              className="relative md:absolute w-full max-w-[280px] md:w-[115.2%] md:max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105 md:translate-x-[-400px]"
               style={{
-                transform: 'rotate(0deg) translateX(-400px)',
                 zIndex: 3,
                 boxShadow:
                   'rgba(0, 0, 0, 0.1) 0px 4px 6px, rgba(0, 0, 0, 0.08) 0px 1px 3px',
@@ -249,9 +240,8 @@ export default function Home() {
 
             {/* Card 2 - Explainer */}
             <div
-              className="absolute w-[115.2%] max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
+              className="relative md:absolute w-full max-w-[280px] md:w-[115.2%] md:max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
               style={{
-                transform: 'rotate(0deg) translateX(0px)',
                 zIndex: 2,
                 boxShadow:
                   'rgba(0, 0, 0, 0.1) 0px 4px 6px, rgba(0, 0, 0, 0.08) 0px 1px 3px',
@@ -279,9 +269,8 @@ export default function Home() {
 
             {/* Card 3 - Lesson */}
             <div
-              className="absolute w-[115.2%] max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105"
+              className="relative md:absolute w-full max-w-[280px] md:w-[115.2%] md:max-w-[317px] aspect-[9/16] transition-all duration-300 hover:z-50 hover:scale-105 md:translate-x-[400px]"
               style={{
-                transform: 'rotate(0deg) translateX(400px)',
                 zIndex: 1,
                 boxShadow:
                   'rgba(0, 0, 0, 0.1) 0px 4px 6px, rgba(0, 0, 0, 0.08) 0px 1px 3px',

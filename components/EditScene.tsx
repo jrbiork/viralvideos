@@ -275,12 +275,11 @@ export default function EditScene({
 
         {/* Scene Card */}
         <div
-          className={`bg-slate-800/50 border rounded-xl p-2 flex space-x-3 transition-all duration-200 mr-4 relative ${
+          className={`bg-slate-800/50 border rounded-xl flex flex-col sm:flex-row gap-3 p-4 sm:p-8 transition-all duration-200 mr-4 relative ${
             isSelected
               ? 'border-[#7552F2] shadow-lg'
               : 'border-slate-700/50 hover:border-slate-600'
           } ${isDisabled ? 'opacity-50 pointer-events-none' : ''}`}
-          style={{ padding: '2rem' }}
           onClick={() =>
             !isDisabled &&
             !(scene.removed && !scene.isUserAdded) &&
@@ -438,13 +437,7 @@ export default function EditScene({
           {/* Scene Image */}
           {currentImageUrl ||
           (scene.isUserAdded && scene.placeholderImageUrl) ? (
-            <div
-              className="flex-shrink-0 rounded-xl overflow-hidden relative group"
-              style={{
-                width: '7.0rem', // Reduced by 15% more from 8.23rem
-                height: 'auto',
-              }}
-            >
+            <div className="flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl overflow-hidden relative group">
               <img
                 src={
                   currentImageUrl ||
@@ -478,9 +471,8 @@ export default function EditScene({
             </div>
           ) : scene.isUserAdded ? (
             <div
-              className="flex-shrink-0 rounded-xl flex items-center justify-center relative group"
+              className="flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl flex items-center justify-center relative group"
               style={{
-                width: '7.0rem', // Reduced by 15% more from 8.23rem
                 height: '12.43rem', // Reduced by 15% more from 14.62rem
                 backgroundColor: '#374151',
                 border: '2px dashed #6B7280',
@@ -521,9 +513,8 @@ export default function EditScene({
             </div>
           ) : (
             <div
-              className="flex-shrink-0 rounded-xl flex items-center justify-center"
+              className="flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl flex items-center justify-center"
               style={{
-                width: '7.0rem', // Reduced by 15% more from 8.23rem
                 height: '12.43rem', // Reduced by 15% more from 14.62rem
                 backgroundColor: '#374151',
               }}

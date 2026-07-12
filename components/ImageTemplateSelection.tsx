@@ -79,7 +79,7 @@ export default function ImageTemplateSelection({
   if (!isLoaded) {
     return (
       <div className="w-full flex items-center gap-3">
-        <span className="shrink-0 text-sm font-medium text-gray-300">
+        <span className="w-24 shrink-0 text-sm font-medium text-gray-300">
           Image Style
         </span>
         <div className="flex-1 bg-slate-800/50 rounded-lg border border-slate-700 h-[44px] flex items-center justify-center">
@@ -91,7 +91,7 @@ export default function ImageTemplateSelection({
 
   return (
     <div ref={containerRef} className="w-full flex items-center gap-3">
-      <label className="shrink-0 text-sm font-medium text-gray-300">
+      <label className="w-24 shrink-0 text-sm font-medium text-gray-300">
         Image Style
       </label>
 
@@ -217,7 +217,7 @@ export default function ImageTemplateSelection({
           previewPosition &&
           createPortal(
             <div
-              className="fixed z-50 w-48 rounded-xl overflow-hidden border-2 border-purple-400/60 shadow-2xl pointer-events-none"
+              className="hidden sm:block fixed z-50 w-48 rounded-xl overflow-hidden border-2 border-purple-400/60 shadow-2xl pointer-events-none"
               style={{
                 top: previewPosition.top,
                 left: previewPosition.left,

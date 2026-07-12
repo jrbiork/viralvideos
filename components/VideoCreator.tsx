@@ -171,7 +171,7 @@ export default function VideoCreator({
         {/* Script Section */}
         <div className="mb-3 px-2.5">
           <div className="mb-4">
-            <div className="flex items-start justify-between gap-4 mb-2">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
               {/* Header */}
               <div>
                 <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
@@ -185,7 +185,7 @@ export default function VideoCreator({
               <button
                 onClick={onMagicScript || handleMagicScript}
                 disabled={isGeneratingScript || internalIsGeneratingScript}
-                className={`mt-8 h-10 px-3 text-xs sm:text-sm font-semibold inline-flex items-center space-x-2 border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
+                className={`mt-8 h-10 px-3 text-xs sm:text-sm font-semibold inline-flex items-center space-x-2 whitespace-nowrap border rounded-[12px] text-white bg-transparent transition-colors transition-shadow transform duration-200 hover:bg-[#5B5BFF1F] hover:border-[#5B5BFF] hover:shadow-[0_6px_20px_0_rgba(100,0,160,0.55)] hover:-translate-y-[1px] disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none`}
                 style={{
                   borderColor: '#5B5BFF',
                   borderWidth: '1.5px',
@@ -278,10 +278,7 @@ export default function VideoCreator({
 
         {/* Sticky Footer Buttons */}
         <div className="sticky bottom-0 bg-gradient-to-t from-[#090526] via-[#090526] to-transparent pt-4 pb-2 px-2.5">
-          <div
-            className="flex items-center justify-end"
-            style={{ gap: '5rem' }}
-          >
+          <div className="flex items-center justify-end gap-4 sm:gap-[5rem]">
             <button
               onClick={() => {
                 if (onGenerateVideoFromFooter) {

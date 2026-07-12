@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import { useAuth } from '../../components/AuthContext';
 import UserDropdown from '../../components/UserDropdown';
+import MobileNav from '../../components/MobileNav';
 
 export default function Pricing() {
   const router = useRouter();
@@ -192,7 +193,7 @@ export default function Pricing() {
             </div>
             <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
-          <div className="flex items-center space-x-4">
+          <MobileNav>
             {!isAuthenticated ? (
               <>
                 <button
@@ -220,7 +221,7 @@ export default function Pricing() {
                 <UserDropdown className="w-auto" />
               </>
             )}
-          </div>
+          </MobileNav>
         </nav>
       </div>
 

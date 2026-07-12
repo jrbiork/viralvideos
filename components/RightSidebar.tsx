@@ -61,18 +61,36 @@ export default function RightSidebar({
       {currentStep === 1 &&
         !generationState.generatedVideoUrl &&
         !generationState.selectedGalleryVideo && (
-          <div className="flex justify-center">
-            <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden">
-              <video
-                className="w-full h-full object-contain"
-                controls
-                autoPlay
-                muted
-                loop
-                src={exampleVideoUrl}
-              />
+          <details className="group">
+            <summary className="flex items-center justify-center gap-2 cursor-pointer select-none list-none text-sm font-medium text-gray-300 hover:text-white py-2">
+              <span>See an example</span>
+              <svg
+                className="w-4 h-4 transition-transform duration-200 group-open:rotate-180"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </summary>
+            <div className="flex justify-center mt-2">
+              <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden">
+                <video
+                  className="w-full h-full object-contain"
+                  controls
+                  muted
+                  loop
+                  preload="none"
+                  src={exampleVideoUrl}
+                />
+              </div>
             </div>
-          </div>
+          </details>
         )}
 
       {currentStep === 2 && !videoPreviewReady && (
@@ -233,7 +251,7 @@ export default function RightSidebar({
 
       {generationState.generatedVideoUrl && (
         <video
-          className="w-[180%] h-[101.25%] rounded-xl shadow-lg group -ml-[40%]"
+          className="w-full h-full sm:w-[180%] sm:h-[101.25%] rounded-xl shadow-lg group ml-0 sm:-ml-[40%]"
           controls
           src={generationState.generatedVideoUrl}
         />
@@ -242,7 +260,7 @@ export default function RightSidebar({
       {generationState.selectedGalleryVideo &&
         !generationState.generatedVideoUrl && (
           <video
-            className="w-[180%] h-[101.25%] rounded-xl shadow-lg group -ml-[40%]"
+            className="w-full h-full sm:w-[180%] sm:h-[101.25%] rounded-xl shadow-lg group ml-0 sm:-ml-[40%]"
             controls
             src={generationState.selectedGalleryVideo.url}
           />

@@ -1025,7 +1025,7 @@ export default function GeneratePage() {
 
               {/* Right Side: Final Video Player */}
               {!isVideoGenerating && (
-                <div className="flex-[1] order-1 md:order-2 overflow-hidden mx-4 my-6 md:mx-[100px] md:my-[80px]">
+                <div className="flex-[1] order-1 md:order-2 md:overflow-hidden mx-4 my-6 md:mx-[100px] md:my-[80px]">
                   <div className="h-full p-4">
                     {videoCompletionData?.finalVideoUrl ? (
                       <VideoPreview

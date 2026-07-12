@@ -106,9 +106,9 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Left Section - Sign Up Form */}
-      <div className="w-1/2 flex items-center justify-center p-12">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
         <div className="max-w-md w-full">
           {/* Header/Logo */}
           <div className="flex items-center space-x-2 mb-8">
@@ -310,8 +310,8 @@ export default function SignUp() {
         </div>
       </div>
 
-      {/* Right Section - Video Examples */}
-      <div className="w-1/2 flex items-center justify-center p-12 relative">
+      {/* Right Section - Video Examples (desktop only; decorative) */}
+      <div className="hidden lg:flex lg:w-1/2 items-center justify-center p-12 relative">
         <AnimatedBackground />
         {/* Video Cards Container */}
         <div

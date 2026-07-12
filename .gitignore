@@ -93,3 +93,5 @@ dist/
 build/
 
 undefined
+.vercel
+.env*

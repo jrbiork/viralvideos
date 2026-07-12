@@ -5,9 +5,11 @@ import { useRouter } from 'next/navigation';
 import AnimatedBackground from '../../components/AnimatedBackground';
 import { useAuth } from '../../components/AuthContext';
 import UserDropdown from '../../components/UserDropdown';
+import MobileNav from '../../components/MobileNav';
 
 export default function Contact() {
   const router = useRouter();
+  const { isAuthenticated } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -81,27 +83,41 @@ export default function Contact() {
             </div>
             <span className="text-white text-xl font-bold">StoryReel</span>
           </div>
-          <div className="flex items-center space-x-4">
+          <MobileNav>
             <button
               onClick={() => router.push('/pricing')}
               className="px-4 py-2 text-white rounded-lg hover:bg-white/10 transition-colors"
             >
               Pricing
             </button>
-            <button
-              onClick={() => router.push('/signin')}
-              className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border"
-              style={{ borderColor: '#5b5bff' }}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => router.push('/signin')}
-              className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
-            >
-              Get 3 Free Videos
-            </button>
-          </div>
+            {!isAuthenticated ? (
+              <>
+                <button
+                  onClick={() => router.push('/signin')}
+                  className="px-6 py-2 text-white rounded-lg hover:bg-white/10 transition-colors border"
+                  style={{ borderColor: '#5b5bff' }}
+                >
+                  Sign In
+                </button>
+                <button
+                  onClick={() => router.push('/signin')}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
+                >
+                  Get 3 Free Videos
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => router.push('/create')}
+                  className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
+                >
+                  Dashboard
+                </button>
+                <UserDropdown className="w-auto" />
+              </>
+            )}
+          </MobileNav>
         </nav>
       </div>
 

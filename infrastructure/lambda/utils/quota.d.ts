@@ -5,7 +5,7 @@ export declare const FREE_MAX_SCENES = 6;
 export declare const PRO_MONTHLY_VIDEO_LIMIT = 15;
 export declare const PRO_MAX_SCENES = 6;
 export declare const FREE_IMAGE_GEN_LIMIT = 3;
-export declare const PRO_IMAGE_GEN_DAILY_LIMIT = 15;
+export declare const PRO_IMAGE_GEN_MONTHLY_LIMIT = 30;
 export type Plan = 'free' | 'pro';
 export interface VideoQuota {
     plan: Plan;
@@ -30,7 +30,7 @@ export declare function checkAndConsumeVideoQuota(userId: string): Promise<{
 /**
  * Check whether the user may generate another image via the "Generate image"
  * button and, if so, consume one unit. Free is a lifetime cap; pro is a
- * daily cap that resets at midnight UTC.
+ * monthly cap that resets with the billing-period counter.
  */
 export declare function checkAndConsumeImageGenQuota(userId: string): Promise<{
     allowed: boolean;

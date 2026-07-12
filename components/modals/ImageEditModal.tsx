@@ -106,7 +106,7 @@ export default function ImageEditModal({
         </div>
 
         {/* Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 items-start overflow-y-auto max-h-[calc(65vh-56px)]">
           {/* Left: Current Image */}
           <div className="lg:col-span-1 flex flex-col items-center">
             <h3 className="text-white font-semibold mb-4">Current Image</h3>
@@ -158,11 +158,11 @@ export default function ImageEditModal({
 
               {/* Action Buttons */}
               {hasGeneratedImage && generatedImageUrl && (
-              <div className="mt-4 flex items-center gap-6">
+              <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6">
                 <button
                   onClick={handleTryAnother}
                   disabled={isGeneratingImage}
-                  className="flex items-center gap-2 text-[#A5A6F6] hover:text-[#A5A6F6]/80 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed min-w-[200px]"
+                  className="flex items-center justify-center sm:justify-start gap-2 text-[#A5A6F6] hover:text-[#A5A6F6]/80 transition-colors text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed min-w-0 sm:min-w-[200px]"
                 >
                   {isGeneratingImage ? (
                     <>
@@ -203,7 +203,7 @@ export default function ImageEditModal({
 
                 <button
                   onClick={handleDiscard}
-                  className="py-2 px-4 text-white transition-all duration-200 text-xs font-bold hover:bg-[#5B5BFF]/30 hover:scale-105 ml-4"
+                  className="py-2 px-4 text-white transition-all duration-200 text-xs font-bold hover:bg-[#5B5BFF]/30 hover:scale-105"
                   style={{
                     borderRadius: '12px',
                     border: '1.5px solid #5B5BFF',

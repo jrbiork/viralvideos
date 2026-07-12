@@ -253,23 +253,31 @@ async function generateSceneVideo(
       user?.subscription?.status === 'cancelled' ||
       user?.subscription?.status === 'expired'
     ) {
-      const watermarkKey = 'watermark.png';
-      const watermarkUrl = await getSignedUrl(
-        s3,
-        new GetObjectCommand({
-          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
-          Key: watermarkKey,
-        }),
-      );
+      try {
+        const watermarkKey = 'watermark.png';
+        const watermarkUrl = await getSignedUrl(
+          s3,
+          new GetObjectCommand({
+            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+            Key: watermarkKey,
+          }),
+        );
 
-      const watermarkResponse = await axios.get(watermarkUrl, {
-        responseType: 'arraybuffer',
-      });
-      const watermarkBuffer = Buffer.from(watermarkResponse.data);
+        const watermarkResponse = await axios.get(watermarkUrl, {
+          responseType: 'arraybuffer',
+        });
+        const watermarkBuffer = Buffer.from(watermarkResponse.data);
 
-      // Write watermark to temp file
-      watermarkPath = path.join(tempDir, `watermark-${scene.id}.png`);
-      fs.writeFileSync(watermarkPath, watermarkBuffer);
+        // Write watermark to temp file
+        watermarkPath = path.join(tempDir, `watermark-${scene.id}.png`);
+        fs.writeFileSync(watermarkPath, watermarkBuffer);
+      } catch (watermarkError) {
+        console.error(
+          '⚠️ Failed to fetch watermark, continuing without it:',
+          watermarkError,
+        );
+        watermarkPath = '';
+      }
     }
 
     // Write image to temp file

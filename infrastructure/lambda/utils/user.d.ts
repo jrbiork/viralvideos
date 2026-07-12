@@ -14,7 +14,7 @@ export interface UserItem {
     videosCreatedThisMonth?: number;
     quotaPeriodStart?: string;
     imagesGenerated?: number;
-    imagesGeneratedToday?: number;
+    imagesGeneratedThisMonth?: number;
     imageQuotaPeriodStart?: string;
     [key: string]: any;
 }
