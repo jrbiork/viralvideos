@@ -34,9 +34,6 @@ import { MAX_SCENES } from '@/components/useUserQuota';
 
 import { Manifest } from '../types/manifest';
 
-const HARDCODED_VIDEO_PROMPT =
-  'Bitcoin is a decentralized digital currency created in 2009. It operates on a blockchain technology without a central authority, making transactions secure and transparent. Examples of its use include online purchases, investment, and remittances.';
-
 export default function GeneratePage() {
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedVoice, setSelectedVoiceState] = useState(DEFAULT_VOICE); // Track voice selection
@@ -66,7 +63,7 @@ export default function GeneratePage() {
     }
     setIsVoiceLoaded(true);
   }, []);
-  const [script, setScript] = useState(HARDCODED_VIDEO_PROMPT);
+  const [script, setScript] = useState('');
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [selectedDuration, setSelectedDuration] = useState<'30s' | '60s'>(
     '30s',
@@ -1028,10 +1025,7 @@ export default function GeneratePage() {
 
               {/* Right Side: Final Video Player */}
               {!isVideoGenerating && (
-                <div
-                  className="flex-[1] order-1 md:order-2 overflow-hidden"
-                  style={{ margin: '80px 100px' }}
-                >
+                <div className="flex-[1] order-1 md:order-2 overflow-hidden mx-4 my-6 md:mx-[100px] md:my-[80px]">
                   <div className="h-full p-4">
                     {videoCompletionData?.finalVideoUrl ? (
                       <VideoPreview
