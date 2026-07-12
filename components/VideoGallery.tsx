@@ -399,7 +399,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
         {/* Main Gallery */}
         <div className="w-full flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
-            <div className="flex flex-wrap gap-7 pb-4 w-full p-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-7 pb-4 w-full p-4 sm:p-8">
               {videos
                 .sort(
                   (a, b) =>
@@ -409,10 +409,10 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                 .map((video) => (
                   <div
                     key={video.timestamp}
-                    className="relative w-[247px] h-[382px] glass-effect rounded-xl p-4 transition-all duration-300 hover:transform hover:scale-105 hover:bg-slate-700/50"
+                    className="relative w-full glass-effect rounded-xl p-4 transition-all duration-300 hover:transform hover:scale-105 hover:bg-slate-700/50"
                   >
                     <div
-                      className="relative mb-4 h-72 overflow-hidden rounded-xl cursor-pointer"
+                      className="relative mb-4 aspect-[9/16] overflow-hidden rounded-xl cursor-pointer"
                       onClick={() => handleThumbnailClick(video)}
                     >
                       {video.thumbnailUrl ? (
@@ -443,7 +443,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                       {/* Not Finished Tag - Bottom Right */}
                       {!video.finalVideoUrl && !video.videoGenerated && (
                         <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
-                          Not finished yet
+                          Draft
                         </div>
                       )}
 
