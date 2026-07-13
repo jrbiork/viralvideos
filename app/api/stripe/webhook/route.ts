@@ -179,25 +179,39 @@ export async function POST(request: NextRequest) {
           subscriptionId,
         });
 
-        // Get subscription details to find the renewal date
+        // Get subscription details to find the renewal date. Stripe
+        // redelivers this event on retries (and can redeliver successfully
+        // processed events too), so derive state from the subscription's
+        // *current* status rather than assuming it's still active — the
+        // subscription may have since been cancelled.
         const subscription = await stripe.subscriptions.retrieve(
           subscriptionId,
         );
-        const renewalDate = new Date(
-          subscription.current_period_end * 1000,
-        ).toISOString();
+        const periodEnd =
+          (subscription.items.data[0] as any)?.current_period_end ??
+          subscription.current_period_end;
+        const renewalDate = new Date(periodEnd * 1000).toISOString();
+
+        const isStillActive =
+          subscription.status === 'active' ||
+          subscription.status === 'trialing';
 
         // Update user with Stripe IDs and subscription info
         await updateUserSubscription(metadata.userId, metadata.username, {
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
           subscriptionMode: 'pro',
-          subscriptionStatus: 'active',
+          subscriptionStatus: isStillActive ? 'active' : 'cancelled',
           renewalDate,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
         });
 
-        // Start the monthly video quota fresh
-        await resetMonthlyQuota(metadata.userId, metadata.username);
+        // Start the monthly video quota fresh, but only if the
+        // subscription is genuinely active right now (skip on a stale
+        // redelivery of an event for a subscription that's since ended).
+        if (isStillActive) {
+          await resetMonthlyQuota(metadata.userId, metadata.username);
+        }
 
         console.log(`User ${metadata.userId} upgraded to pro`);
 
