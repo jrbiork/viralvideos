@@ -16,6 +16,7 @@ interface UserSettings {
     mode: 'free' | 'pro' | 'starter' | 'creator' | 'influencer';
     renewalDate?: string | null;
     status: 'active' | 'cancelled' | 'expired';
+    cancelAtPeriodEnd?: boolean;
   };
 }
 
@@ -24,15 +25,10 @@ export default function SettingsPage() {
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [imageError, setImageError] = useState(false);
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
-  const {
-    userData,
-    loading: userDataLoading,
-    refresh: refreshUserData,
-  } = useUserDataCache();
+  const { userData, loading: userDataLoading } = useUserDataCache();
   const {
     quota,
     imageQuota,
@@ -70,6 +66,7 @@ export default function SettingsPage() {
             mode: 'free',
             renewalDate: undefined,
             status: 'active',
+            cancelAtPeriodEnd: false,
           },
         };
 
@@ -122,42 +119,9 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCancelSubscription = async () => {
-    if (
-      !confirm(
-        'Are you sure you want to cancel your subscription? You will keep Pro access until the end of your current billing period.',
-      )
-    ) {
-      return;
-    }
-
-    try {
-      setIsCancelling(true);
-      const response = await fetch('/api/stripe/manage-subscription', {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error('Failed to cancel subscription:', data.error);
-        alert('Failed to cancel subscription. Please try again.');
-        return;
-      }
-
-      // Refresh user data
-      await refreshUserData();
-      await fetchUserSettings();
-    } catch (error) {
-      console.error('Error cancelling subscription:', error);
-      alert('Failed to cancel subscription. Please try again.');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
-
   const isPro = quota.plan === 'pro';
   const status = userSettings?.subscription.status;
+  const cancelAtPeriodEnd = userSettings?.subscription.cancelAtPeriodEnd;
   const renewalDate = userSettings?.subscription.renewalDate;
   const formattedRenewalDate = renewalDate
     ? new Date(renewalDate).toLocaleDateString('en-US', {
@@ -339,7 +303,7 @@ export default function SettingsPage() {
                 </div>
 
                 {/* Billing status line */}
-                {isPro && status === 'cancelled' && formattedRenewalDate && (
+                {isPro && cancelAtPeriodEnd && formattedRenewalDate && (
                   <p className="text-sm text-yellow-400 mb-4">
                     Cancelled — Pro access ends on {formattedRenewalDate}
                   </p>
@@ -350,11 +314,14 @@ export default function SettingsPage() {
                     method to keep Pro access.
                   </p>
                 )}
-                {isPro && status === 'active' && formattedRenewalDate && (
-                  <p className="text-sm text-slate-400 mb-4">
-                    Renews on {formattedRenewalDate}
-                  </p>
-                )}
+                {isPro &&
+                  status === 'active' &&
+                  !cancelAtPeriodEnd &&
+                  formattedRenewalDate && (
+                    <p className="text-sm text-slate-400 mb-4">
+                      Next charge on {formattedRenewalDate}
+                    </p>
+                  )}
                 {!isPro && (
                   <p className="text-sm text-slate-400 mb-4">
                     Upgrade for more videos and higher scene limits.
@@ -417,15 +384,6 @@ export default function SettingsPage() {
                     >
                       {isOpeningPortal ? 'Opening…' : 'Manage Billing'}
                     </button>
-                    {status === 'active' && (
-                      <button
-                        onClick={handleCancelSubscription}
-                        disabled={isCancelling}
-                        className="flex-1 px-4 py-2.5 border border-red-500/40 text-red-400 hover:bg-red-500/10 disabled:opacity-60 disabled:cursor-not-allowed rounded-lg font-medium transition-colors duration-200"
-                      >
-                        {isCancelling ? 'Cancelling…' : 'Cancel Subscription'}
-                      </button>
-                    )}
                   </div>
                 )}
               </section>

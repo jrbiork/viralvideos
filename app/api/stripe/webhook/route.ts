@@ -49,6 +49,7 @@ async function updateUserSubscription(
     subscriptionMode?: string;
     subscriptionStatus?: string;
     renewalDate?: string | null;
+    cancelAtPeriodEnd?: boolean;
   },
 ) {
   // Build update expression dynamically
@@ -67,11 +68,13 @@ async function updateUserSubscription(
       updates.stripeSubscriptionId;
   }
 
-  if (
+  const hasSubscriptionUpdates =
     updates.subscriptionMode ||
     updates.subscriptionStatus ||
-    updates.renewalDate
-  ) {
+    updates.renewalDate !== undefined ||
+    updates.cancelAtPeriodEnd !== undefined;
+
+  if (hasSubscriptionUpdates) {
     // Update subscription object
     const subscriptionUpdates: string[] = [];
 
@@ -90,17 +93,21 @@ async function updateUserSubscription(
       expressionAttributeValues[':renewalDate'] = updates.renewalDate;
     }
 
+    if (updates.cancelAtPeriodEnd !== undefined) {
+      subscriptionUpdates.push(
+        '#subscription.cancelAtPeriodEnd = :cancelAtPeriodEnd',
+      );
+      expressionAttributeValues[':cancelAtPeriodEnd'] =
+        updates.cancelAtPeriodEnd;
+    }
+
     parts.push(` ${subscriptionUpdates.join(', ')}`);
   }
 
   updateExpression += parts.join(',');
 
   const expressionAttributeNames: any = {};
-  if (
-    updates.subscriptionMode ||
-    updates.subscriptionStatus ||
-    updates.renewalDate
-  ) {
+  if (hasSubscriptionUpdates) {
     expressionAttributeNames['#subscription'] = 'subscription';
     if (updates.subscriptionMode) {
       expressionAttributeNames['#mode'] = 'mode';
@@ -247,12 +254,12 @@ export async function POST(request: NextRequest) {
           break;
         }
 
-        // Determine status
+        // Determine status. Note: cancel_at_period_end just means the
+        // subscription won't renew — the user keeps pro access (status
+        // stays 'active') until Stripe actually ends it, which fires
+        // customer.subscription.deleted.
         let status: 'active' | 'cancelled' | 'expired' = 'active';
-        if (
-          subscription.status === 'canceled' ||
-          subscription.cancel_at_period_end
-        ) {
+        if (subscription.status === 'canceled') {
           status = 'cancelled';
         } else if (
           subscription.status === 'past_due' ||
@@ -272,6 +279,7 @@ export async function POST(request: NextRequest) {
         await updateUserSubscription(metadata.userId, metadata.username, {
           subscriptionStatus: status,
           renewalDate,
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
         });
 
         console.log(
@@ -293,6 +301,7 @@ export async function POST(request: NextRequest) {
         await updateUserSubscription(metadata.userId, metadata.username, {
           subscriptionStatus: 'cancelled',
           renewalDate: null,
+          cancelAtPeriodEnd: false,
         });
 
         console.log(`Subscription cancelled for user ${metadata.userId}`);
