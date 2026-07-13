@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 
 import MainLayout from '@/components/MainLayout';
 import ProgressSteps from '@/components/ProgressSteps';
@@ -35,7 +36,9 @@ import { MAX_SCENES } from '@/components/useUserQuota';
 import { Manifest } from '../types/manifest';
 
 export default function GeneratePage() {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState(1);
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [selectedVoice, setSelectedVoiceState] = useState(DEFAULT_VOICE); // Track voice selection
   const [isVoiceLoaded, setIsVoiceLoaded] = useState(false);
 
@@ -527,6 +530,8 @@ export default function GeneratePage() {
     videoGenerationState,
     setVideoGenerationState,
     setRemovedOriginalScenes,
+    setIsVideoGenerating,
+    setVideoCompletionData,
     onInitialStep: (s) => {
       // If user lands directly on step 2 or 3, disable first transition
       if (s >= 2) setDisableInitialTransition(true);
@@ -566,6 +571,8 @@ export default function GeneratePage() {
         }));
       },
       voice,
+      undefined,
+      () => setShowQuotaModal(true),
     );
   };
 
@@ -659,6 +666,10 @@ export default function GeneratePage() {
       ...prev,
       isLoadingVideoScenes: true,
     }));
+    showToasterMessage(
+      "This might take a couple of minutes. You can come back later or check your Videos gallery — we'll notify you once it's done.",
+      'info',
+    );
 
     try {
       const response = await fetch('/api/apply-edits', {
@@ -733,6 +744,10 @@ export default function GeneratePage() {
       // Enable transitions before changing step
       setDisableInitialTransition(false);
       setCurrentStep(3);
+      showToasterMessage(
+        "This might take a couple of minutes. You can come back later or check your Videos gallery — we'll notify you once it's done.",
+        'info',
+      );
 
       // Update URL to reflect step 3, preserving timestamp
       try {
@@ -1131,6 +1146,40 @@ export default function GeneratePage() {
               }}
             >
               Apply Changes
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Shown when a free user who already used their free video tries to
+          generate another one */}
+      <Modal
+        isOpen={showQuotaModal}
+        onClose={() => setShowQuotaModal(false)}
+        title="You've used your free video"
+      >
+        <div className="space-y-4">
+          <p className="text-gray-300 text-sm">
+            Free plan includes 1 video. Upgrade to Pro to create up to 15
+            videos a month.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onClick={() => setShowQuotaModal(false)}
+              className="flex-1 px-4 py-3 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:bg-[#5B5BFF] font-medium transition-all duration-300"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => router.push('/pricing')}
+              className="flex-1 px-4 py-3 text-white rounded-xl font-medium transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
+              style={{
+                background:
+                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+              }}
+            >
+              Upgrade to Pro
             </button>
           </div>
         </div>

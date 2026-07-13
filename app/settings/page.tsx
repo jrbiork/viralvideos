@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '../../components/MainLayout';
-import { useAuth } from '../../components/AuthContext';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
 import { useUserDataCache } from '../../hooks/useUserDataCache';
 import { useUserQuota } from '../../components/useUserQuota';
@@ -22,7 +21,6 @@ interface UserSettings {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { logout } = useAuth();
   const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -430,16 +428,6 @@ export default function SettingsPage() {
                     )}
                   </div>
                 )}
-              </section>
-
-              {/* Account Actions */}
-              <section className="flex justify-end">
-                <button
-                  onClick={logout}
-                  className="px-4 py-2 text-sm text-slate-400 hover:text-white transition-colors duration-200"
-                >
-                  Sign Out
-                </button>
               </section>
             </div>
           )}

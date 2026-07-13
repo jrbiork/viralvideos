@@ -125,13 +125,13 @@ export default function Pricing() {
       name: 'Free',
       price: '$0',
       period: '',
-      quota: '3 story videos',
+      quota: '1 video',
       features: [
-        'Up to 5 scenes per video',
-        'AI script, voiceover and visuals',
-        'Unlimited scene editing',
-        'No watermark',
+        'Up to 6 scenes per video',
+        'Auto-generated subtitles',
+        'Auto-generated audio',
         'Vertical format for any platform',
+        'Download and share to any platform',
       ],
       popular: false,
       buttonText: 'Get Started',
@@ -139,16 +139,18 @@ export default function Pricing() {
     },
     {
       name: 'Pro',
-      price: '$9',
+      price: '$9.90',
       period: '/month',
-      quota: '30 story videos per month',
+      quota: '15 videos per month',
       features: [
-        'Up to 6 scenes per video',
-        'AI script, voiceover and visuals',
-        'Unlimited scene editing',
-        'Background music',
+        'Up to 30 additional scenes',
+        'Auto-generated subtitles',
+        'Access to all image templates',
+        'Access to all AI voices',
+        'High resolution video',
         'No watermark',
         'Vertical format for any platform',
+        'Download and share to any platform',
       ],
       popular: true,
       buttonText: 'Subscribe',
@@ -207,7 +209,7 @@ export default function Pricing() {
                   onClick={() => router.push('/signin')}
                   className="px-6 py-2 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all"
                 >
-                  Get 3 Free Videos
+                  Get 1 Free Video
                 </button>
               </>
             ) : (
@@ -235,8 +237,8 @@ export default function Pricing() {
             </span>
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Choose the perfect plan for your video creation needs. Start with 3
-            free videos, no credit card required.
+            Choose the perfect plan for your video creation needs. Start with 1
+            free video, no credit card required.
           </p>
         </div>
 
@@ -340,7 +342,7 @@ export default function Pricing() {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`relative rounded-2xl p-8 transition-all duration-300 hover:scale-105 ${
+              className={`relative rounded-2xl p-8 transition-all duration-300 hover:scale-105 flex flex-col h-full ${
                 plan.popular
                   ? 'bg-gradient-to-br from-purple-500/20 to-blue-500/20 border-2 border-purple-400/50'
                   : 'bg-gray-800/50 border border-gray-700/50'
@@ -391,7 +393,7 @@ export default function Pricing() {
 
               <button
                 onClick={plan.buttonAction}
-                className="w-full py-3 px-6 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-purple-400 to-blue-500 text-white hover:from-purple-500 hover:to-blue-600"
+                className="w-full py-3 px-6 rounded-lg font-semibold transition-all duration-200 bg-gradient-to-r from-purple-400 to-blue-500 text-white hover:from-purple-500 hover:to-blue-600 mt-auto"
               >
                 {plan.buttonText}
               </button>
@@ -411,9 +413,9 @@ export default function Pricing() {
                 How many videos can I create?
               </h3>
               <p className="text-gray-300">
-                Free accounts include 3 story videos with up to 5 scenes each.
-                Pro accounts can create 30 videos every month with up to 6
-                scenes each. Editing scenes is always free and unlimited.
+                Free accounts include 1 story video with up to 6 scenes.
+                Pro accounts can create 15 videos every month, each starting
+                with 3 scenes and up to 30 additional scenes.
               </p>
             </div>
 
@@ -432,7 +434,7 @@ export default function Pricing() {
                 Does my monthly quota roll over?
               </h3>
               <p className="text-gray-300">
-                No — the Pro quota resets to 30 videos at the start of each
+                No — the Pro quota resets to 15 videos at the start of each
                 billing period.
               </p>
             </div>
@@ -464,7 +466,7 @@ export default function Pricing() {
                 onClick={() => router.push('/signin')}
                 className="px-8 py-3 bg-gradient-to-r from-purple-400 to-blue-500 text-white rounded-lg hover:from-purple-500 hover:to-blue-600 transition-all font-semibold"
               >
-                Get 3 Free Videos
+                Get 1 Free Video
               </button>
               <button
                 onClick={() => router.push('/')}

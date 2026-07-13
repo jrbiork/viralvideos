@@ -15,6 +15,8 @@ interface Params {
     }>
   >;
   setRemovedOriginalScenes: (s: Set<number>) => void;
+  setIsVideoGenerating?: (v: boolean) => void;
+  setVideoCompletionData?: (m: Manifest | null) => void;
   onInitialStep?: (step: number) => void;
 }
 
@@ -23,6 +25,8 @@ export function useCreateUrlParams({
   videoGenerationState,
   setVideoGenerationState,
   setRemovedOriginalScenes,
+  setIsVideoGenerating,
+  setVideoCompletionData,
   onInitialStep,
 }: Params) {
   const processedRef = useRef(false);
@@ -48,6 +52,34 @@ export function useCreateUrlParams({
         timestampFromUrl &&
         timestampFromUrl !== videoGenerationState.currentTimestamp
       ) {
+        if (stepFromUrl === '3') {
+          // Landing directly on the export step (fresh load, refresh, or
+          // navigating back later) has no live WebSocket session to report
+          // completion, so hydrate from the persisted manifest instead.
+          setVideoGenerationState((prev) => ({
+            ...prev,
+            currentTimestamp: timestampFromUrl,
+          }));
+
+          const previewResponse = await fetch(
+            `/api/fetch-preview?timestamp=${timestampFromUrl}`,
+            {
+              method: 'GET',
+            },
+          );
+          const response = await previewResponse.json();
+          const manifest = response.manifest;
+
+          if (manifest?.finalVideoUrl) {
+            setIsVideoGenerating && setIsVideoGenerating(false);
+            setVideoCompletionData && setVideoCompletionData(manifest);
+          } else {
+            // Video hasn't finished yet — show the generating state rather
+            // than the empty "0 seconds / 0 scenes" placeholder.
+            setIsVideoGenerating && setIsVideoGenerating(true);
+          }
+        }
+
         if (stepFromUrl === '2') {
           setVideoGenerationState((prev) => ({
             ...prev,

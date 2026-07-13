@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from './AuthContext';
+import { useUserQuota } from './useUserQuota';
 
 interface UserDropdownProps {
   className?: string;
@@ -11,6 +12,7 @@ interface UserDropdownProps {
 export default function UserDropdown({ className = '' }: UserDropdownProps) {
   const router = useRouter();
   const { user, isAuthenticated, logout, isLoading } = useAuth();
+  const { quota } = useUserQuota();
   const [showDropdown, setShowDropdown] = useState(false);
   const [imageError, setImageError] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -118,25 +120,27 @@ export default function UserDropdown({ className = '' }: UserDropdownProps) {
       >
         {/* Menu Options */}
         <div className="py-2">
-          <button
-            onClick={() => router.push('/pricing')}
-            className="w-full px-4 py-3 text-left text-gray-300 hover:bg-slate-800 hover:text-white transition-colors duration-200 flex items-center space-x-3"
-          >
-            <svg
-              className="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+          {quota.plan !== 'pro' && (
+            <button
+              onClick={() => router.push('/pricing')}
+              className="w-full px-4 py-3 text-left text-gray-300 hover:bg-slate-800 hover:text-white transition-colors duration-200 flex items-center space-x-3"
             >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
-              />
-            </svg>
-            <span>Upgrade Plan</span>
-          </button>
+              <svg
+                className="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"
+                />
+              </svg>
+              <span>Upgrade Plan</span>
+            </button>
+          )}
           <button
             onClick={logout}
             className="w-full px-4 py-3 text-left text-gray-300 hover:bg-slate-800 hover:text-white transition-colors duration-200 flex items-center space-x-3"

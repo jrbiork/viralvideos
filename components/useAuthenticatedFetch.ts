@@ -36,9 +36,11 @@ export function useAuthenticatedFetch() {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
+      const error = new Error(
         errorData.error || `HTTP error! status: ${response.status}`,
-      );
+      ) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
     }
 
     return response.json();

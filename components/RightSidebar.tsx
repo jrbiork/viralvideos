@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import VideoSkeleton from './VideoSkeleton';
 import { isManifestFullyReady } from '@/lib/manifest-helpers';
 
@@ -56,12 +56,23 @@ export default function RightSidebar({
     (videoGenerationState.manifest as any) || undefined,
   );
 
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(min-width: 768px)');
+    setIsDesktop(mediaQuery.matches);
+    const handleChange = (event: MediaQueryListEvent) =>
+      setIsDesktop(event.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   return (
     <div className="sticky">
       {currentStep === 1 &&
         !generationState.generatedVideoUrl &&
         !generationState.selectedGalleryVideo && (
-          <details className="group">
+          <details className="group" open={isDesktop}>
             <summary className="flex items-center justify-center gap-2 cursor-pointer select-none list-none text-sm font-medium text-gray-300 hover:text-white py-2">
               <span>See an example</span>
               <svg

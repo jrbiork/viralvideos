@@ -77,6 +77,7 @@ export function useVideoGeneration() {
     onSuccess?: (timestamp: string) => void,
     voice?: string,
     language?: string,
+    onQuotaExceeded?: () => void,
   ) => {
     if (!isAuthenticated) return;
 
@@ -129,6 +130,7 @@ export function useVideoGeneration() {
       }
     } catch (error) {
       console.error('Error queuing video generation:', error);
+      const status = (error as { status?: number } | undefined)?.status;
       const message =
         error instanceof Error && error.message
           ? error.message
@@ -138,7 +140,11 @@ export function useVideoGeneration() {
         type: 'SET_STATUS_MESSAGE',
         payload: message,
       });
-      alert(message);
+      if (status === 403 && onQuotaExceeded) {
+        onQuotaExceeded();
+      } else {
+        alert(message);
+      }
     } finally {
       dispatch({ type: 'SET_GENERATING', payload: false });
     }
