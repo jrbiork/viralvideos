@@ -243,6 +243,7 @@ export default function Pricing() {
         </div>
 
         {/* Promotional Banner */}
+        {/*
         {showPromotion && (
           <div className="relative rounded-2xl p-8 transition-all duration-300 hover:scale-105 bg-gradient-to-br from-purple-500/20 to-blue-500/20 border-2 border-purple-400/50 mb-16 max-w-6xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-center">
@@ -326,6 +327,7 @@ export default function Pricing() {
             </div>
           </div>
         )}
+        */}
 
         {/* Toast Notification */}
         {showToast && (

@@ -107,9 +107,9 @@ export default function SettingsPage() {
         return;
       }
 
-      // Redirect to Stripe Billing Portal
+      // Open Stripe Billing Portal in a new tab
       if (data.url) {
-        window.location.href = data.url;
+        window.open(data.url, '_blank', 'noopener,noreferrer');
       }
     } catch (error) {
       console.error('Error opening subscription management:', error);
