@@ -8,6 +8,7 @@ import {
 } from './processVideoGeneration';
 import { processVideoCombine } from './processVideoCombine';
 import { processBatchEdit } from './processBatchEdit';
+import { processAnimateScene } from './processAnimateScene';
 import { broadcastProgress } from '../utils/broadcastProgress';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
@@ -31,6 +32,8 @@ async function handleSQSEvent(event: SQSEvent): Promise<SQSBatchResponse> {
         await processVideoCombine(request as any, record);
       } else if (request.type === 'batch-edit') {
         await processBatchEdit(request as any, record);
+      } else if (request.type === 'animate-scene') {
+        await processAnimateScene(request as any, record);
       } else {
         await processVideoGeneration(request, record);
       }

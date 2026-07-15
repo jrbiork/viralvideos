@@ -23,6 +23,7 @@ export class ViralVideosStack extends cdk.Stack {
     // Get API keys with fallbacks
     const openaiApiKey = process.env.OPENAI_API_KEY || '';
     const geminiApiKey = process.env.GEMINI_API_KEY || '';
+    const runwayApiKey = process.env.RUNWAY_API_KEY || '';
     const mockImageGeneration = process.env.MOCK_IMAGE_GENERATION || 'false';
 
     const websocketDomainName = process.env.WEBSOCKET_DOMAIN_NAME || '';
@@ -41,6 +42,9 @@ export class ViralVideosStack extends cdk.Stack {
     }
     if (!geminiApiKey) {
       console.warn('⚠️  GEMINI_API_KEY is not set. Image generation may fail.');
+    }
+    if (!runwayApiKey) {
+      console.warn('⚠️  RUNWAY_API_KEY is not set. Scene animation may fail.');
     }
 
     // S3 Bucket for storing videos and assets
@@ -198,6 +202,7 @@ export class ViralVideosStack extends cdk.Stack {
           USERS_TABLE_NAME: usersTable.tableName,
           OPENAI_API_KEY: openaiApiKey,
           GEMINI_API_KEY: geminiApiKey,
+          RUNWAY_API_KEY: runwayApiKey,
           MOCK_IMAGE_GENERATION: mockImageGeneration,
           VIDEO_QUEUE_URL: videoQueue.queueUrl,
           PATH: '/opt/bin:/usr/local/bin:/usr/bin/:/bin',
@@ -397,6 +402,36 @@ export class ViralVideosStack extends cdk.Stack {
           WEBSOCKET_DOMAIN_NAME: websocketDomainName,
           WEBSOCKET_STAGE: websocketEnv,
           WEBSOCKET_CONNECTIONS_TABLE_NAME: websocketConnectionsTable.tableName,
+        },
+      },
+    );
+
+    // Lambda function that validates + quotas a scene animation request and
+    // enqueues the actual Runway work to the video-generation SQS queue —
+    // Runway calls routinely exceed API Gateway's hard 29s integration
+    // timeout, so the real animation happens asynchronously in
+    // VideoGenerationLambda (processAnimateScene) and the frontend is
+    // notified via the existing WebSocket broadcast channel.
+    const animateSceneLambda = new lambda.Function(
+      this,
+      'AnimateSceneLambda',
+      {
+        runtime: lambda.Runtime.NODEJS_20_X,
+        handler: 'index.handler',
+        code: lambda.Code.fromAsset(
+          path.join(__dirname, '../dist/animate-scene'),
+        ),
+        role: lambdaRole,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 256,
+        logGroup: new logs.LogGroup(this, 'AnimateSceneLambdaLogGroup', {
+          retention: logs.RetentionDays.ONE_WEEK,
+        }),
+        environment: {
+          MOCK_IMAGE_GENERATION: mockImageGeneration,
+          VIDEO_PARTS_BUCKET_NAME: videoPartsBucket.bucketName,
+          USERS_TABLE_NAME: usersTable.tableName,
+          VIDEO_QUEUE_URL: videoQueue.queueUrl,
         },
       },
     );
@@ -720,6 +755,18 @@ export class ViralVideosStack extends cdk.Stack {
       },
     );
 
+    // Lambda integration for animating scenes via Runway
+    const animateSceneIntegration = new apigateway.LambdaIntegration(
+      animateSceneLambda,
+      {
+        requestTemplates: {
+          'application/json': JSON.stringify({
+            body: "$util.escapeJavaScript($input.json('$'))",
+          }),
+        },
+      },
+    );
+
     // Lambda integration for WebSocket broadcasting
     const websocketBroadcastIntegration = new apigateway.LambdaIntegration(
       websocketBroadcastLambda,
@@ -764,6 +811,11 @@ export class ViralVideosStack extends cdk.Stack {
 
     const generateImageResource = api.root.addResource('generate-image');
     generateImageResource.addMethod('POST', generateImageIntegration, {
+      authorizer: jwtAuthorizer,
+    });
+
+    const animateSceneResource = api.root.addResource('animate-scene');
+    animateSceneResource.addMethod('POST', animateSceneIntegration, {
       authorizer: jwtAuthorizer,
     });
 

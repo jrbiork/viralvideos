@@ -14,6 +14,7 @@ export interface ManifestScene {
   scenePosition: number;
   removed: boolean;
   animated: boolean;
+  animationPrompt?: string;
   files: ManifestFile;
 }
 

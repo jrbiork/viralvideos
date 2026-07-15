@@ -94,8 +94,19 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
     console.error('Error creating portal session:', error);
+    // The stored customer can point at a Stripe customer that no longer
+    // exists (e.g. stale test data) — the portal can't manage a
+    // subscription it can't find, so surface an actionable message instead
+    // of the raw Stripe error.
+    const isMissingCustomer =
+      error?.code === 'resource_missing' && error?.param === 'customer';
     return NextResponse.json(
-      { error: error.message || 'Failed to create portal session' },
+      {
+        error: isMissingCustomer
+          ? 'Your billing record is out of sync. Please resubscribe from the pricing page to fix it.'
+          : error.message || 'Failed to create portal session',
+        code: isMissingCustomer ? 'customer_not_found' : undefined,
+      },
       { status: 500 },
     );
   }

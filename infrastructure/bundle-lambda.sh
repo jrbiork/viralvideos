@@ -14,6 +14,11 @@ npx esbuild lambda/video-generation/index.ts \
 echo "📦 Copying node_modules for video-generation lambda..."
 cp -r lambda/node_modules dist/video-generation/
 
+# Copy the captured mock Runway clip used by processAnimateScene's mock path
+echo "📦 Copying assets for video-generation lambda..."
+mkdir -p dist/video-generation/assets
+cp lambda/assets/mock-animation.mp4 dist/video-generation/assets/
+
 # Note: generate-audio-subtitle functionality is part of video-generation lambda
 
 # Bundle generate-image lambda
@@ -25,6 +30,14 @@ npx esbuild lambda/generate-image/index.ts \
 # Copy node_modules for generate-image lambda
 echo "📦 Copying node_modules for generate-image lambda..."
 cp -r lambda/node_modules dist/generate-image/
+
+# Bundle animate-scene lambda (only validates + enqueues to SQS; the actual
+# Runway call runs in video-generation's processAnimateScene, so no extra
+# node_modules copy is needed here)
+echo "📦 Bundling animate-scene lambda..."
+npx esbuild lambda/animate-scene/index.ts \
+  $ESBUILD_FLAGS \
+  --outfile=dist/animate-scene/index.js
 
 # Bundle video-queue lambda
 echo "📦 Bundling video-queue lambda..."

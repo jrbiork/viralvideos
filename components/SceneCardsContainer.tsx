@@ -2,7 +2,7 @@ import React from 'react';
 import EditScene, { Scene } from './EditScene';
 import EditSceneSkeleton from './EditSceneSkeleton';
 import AddSceneButton from './AddSceneButton';
-import { MAX_SCENES } from './useUserQuota';
+import { AnimationQuota } from './useUserQuota';
 import { Manifest } from '@/app/types/manifest';
 
 interface SceneCardsContainerProps {
@@ -55,6 +55,21 @@ interface SceneCardsContainerProps {
     captionText: string,
     imageUrl: string,
   ) => void;
+  onQueueAnimationEdit?: (
+    sceneId: number,
+    animatedVideoUrl: string,
+    animationPrompt: string,
+  ) => void;
+  animationQuota?: AnimationQuota;
+  maxScenes: number;
+  animatingSceneId?: number | null;
+  animationResults?: Record<number, { videoUrl: string; prompt: string }>;
+  onStartAnimation?: (sceneId: number) => void;
+  pendingAnimationEdits?: {
+    sceneId: number;
+    animatedVideoUrl: string;
+    animationPrompt: string;
+  }[];
 }
 
 export default function SceneCardsContainer({
@@ -82,12 +97,19 @@ export default function SceneCardsContainer({
   showToasterMessage,
   onQueueImageEdit,
   onQueueAddedScene,
+  onQueueAnimationEdit,
+  animationQuota,
+  maxScenes,
+  animatingSceneId,
+  animationResults,
+  onStartAnimation,
+  pendingAnimationEdits,
 }: SceneCardsContainerProps) {
   const nonRemovedTotal = scenes.filter((s: any) => !s.removed).length;
-  const atSceneLimit = nonRemovedTotal >= MAX_SCENES;
+  const atSceneLimit = nonRemovedTotal >= maxScenes;
   const addSceneDisabled = atSceneLimit || deletingSceneId !== null;
   const addSceneDisabledReason = atSceneLimit
-    ? `Maximum ${MAX_SCENES} scenes allowed`
+    ? `Maximum ${maxScenes} scenes allowed`
     : 'Cannot add a scene while a scene is being deleted';
 
   return (
@@ -114,27 +136,27 @@ export default function SceneCardsContainer({
                 // Get the image URL for this scene (only for original scenes)
                 // Use the hydrated image URLs directly from the manifest
                 let imageUrl = undefined;
+                let manifestScene: any = undefined;
                 if (
                   !scene.isUserAdded &&
                   videoGenerationState.manifest?.scenes
                 ) {
                   // Find the manifest scene by matching the scene ID
                   // Extract the scene ID from the manifest file names to match with scene.id
-                  const manifestScene =
-                    videoGenerationState.manifest.scenes.find(
-                      (manifestScene) => {
-                        // Extract the scene ID from the manifest file names
-                        const manifestSceneId = manifestScene.files?.mp3
-                          ? parseInt(
-                              manifestScene.files.mp3.match(
-                                /scene-(\d+)\./,
-                              )?.[1] || manifestScene.scenePosition.toString(),
-                            )
-                          : manifestScene.scenePosition;
+                  manifestScene = videoGenerationState.manifest.scenes.find(
+                    (manifestScene) => {
+                      // Extract the scene ID from the manifest file names
+                      const manifestSceneId = manifestScene.files?.mp3
+                        ? parseInt(
+                            manifestScene.files.mp3.match(
+                              /scene-(\d+)\./,
+                            )?.[1] || manifestScene.scenePosition.toString(),
+                          )
+                        : manifestScene.scenePosition;
 
-                        return manifestSceneId === scene.id;
-                      },
-                    );
+                      return manifestSceneId === scene.id;
+                    },
+                  );
 
                   // Use the hydrated image URL directly from the manifest
                   // The hydrateManifest function sets both png and jpg to the same signed URL
@@ -142,10 +164,37 @@ export default function SceneCardsContainer({
                     manifestScene?.files?.png || manifestScene?.files?.jpg;
                 }
 
+                // A "Use this animation" click is only queued client-side
+                // until "Apply changes" persists it to the manifest — check
+                // that queue first so the thumbnail updates immediately
+                // instead of waiting on an apply round-trip.
+                const pendingAnimation = pendingAnimationEdits?.find(
+                  (edit) => edit.sceneId === scene.id,
+                );
+
+                const isAnimated = Boolean(
+                  pendingAnimation || manifestScene?.animated,
+                );
+
+                // For animated scenes, the thumbnail should show the actual
+                // Runway clip (not just the static source image) so the card
+                // visually reflects the animation.
+                const sceneVideoUrl = isAnimated
+                  ? pendingAnimation?.animatedVideoUrl ||
+                    manifestScene?.files?.mp4
+                  : undefined;
+
                 return (
                   <div key={scene.id}>
                     <EditScene
-                      scene={scene}
+                      scene={{
+                        ...scene,
+                        animated: isAnimated,
+                        duration: isAnimated ? 5 : scene.duration,
+                        animationPrompt:
+                          pendingAnimation?.animationPrompt ||
+                          manifestScene?.animationPrompt,
+                      }}
                       editingScene={sceneState.editingScene}
                       editedNarration={sceneState.editedNarration}
                       onEditScene={handleEditSceneWithSubtitle}
@@ -209,6 +258,7 @@ export default function SceneCardsContainer({
                       }}
                       onRegenerateAudio={handleRegenerateAudio}
                       imageUrl={imageUrl}
+                      sceneVideoUrl={sceneVideoUrl}
                       isSelected={sceneState.selectedSceneId === scene.id}
                       onSelect={handleSceneSelection}
                       regeneratingSceneId={regeneratingSceneId}
@@ -226,6 +276,12 @@ export default function SceneCardsContainer({
                       showToasterMessage={showToasterMessage}
                       onQueueImageEdit={onQueueImageEdit}
                       onQueueAddedScene={onQueueAddedScene}
+                      onQueueAnimationEdit={onQueueAnimationEdit}
+                      animationQuota={animationQuota}
+                      maxScenes={maxScenes}
+                      isAnimating={animatingSceneId === scene.id}
+                      animationResult={animationResults?.[scene.id]}
+                      onStartAnimation={onStartAnimation}
                     />
 
                     {/* Add scene button after each scene (except the last one) */}

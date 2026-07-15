@@ -7,6 +7,7 @@ export type WebSocketAction =
   | 'video_scene_created'
   | 'preview_completed'
   | 'video_completed'
+  | 'scene_animated'
   | 'ping'
   | 'error';
 
@@ -17,5 +18,8 @@ export interface WebSocketMessage {
     timestamp: string;
     message?: string;
     manifest?: Manifest;
+    sceneId?: number;
+    videoUrl?: string;
+    animationPrompt?: string;
   };
 }

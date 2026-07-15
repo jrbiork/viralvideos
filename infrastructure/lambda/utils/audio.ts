@@ -1,11 +1,15 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
 
 import OpenAI from 'openai';
 
 import { Scene } from './script';
+import { resolveFfmpegPath } from './ffmpeg';
 
 const s3 = new S3Client({ region: process.env.AWS_REGION });
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+const execFileAsync = promisify(execFile);
 
 export interface SubtitleWord {
   word: string;
@@ -117,9 +121,6 @@ export async function generateNarration(
       //   }),
       // );
 
-      // Clean up temporary file
-      fs.unlinkSync(tempAudioPath);
-
       const subtitleData: SubtitleData = {
         scenePosition: scene.id,
         words: [],
@@ -152,6 +153,54 @@ export async function generateNarration(
           end: (index + 1) * timePerWord,
         }));
       }
+
+      // Animated scenes have a fixed-length Runway video — if the TTS
+      // narration came out longer than that, hard-trim the audio (the
+      // "Speak clearly and keep duration..." instruction above is only a
+      // soft hint to the TTS model, not an enforced cap) and drop any
+      // subtitle words that fall past the cut.
+      if (
+        scene.hardCapSeconds !== undefined &&
+        (subtitleData.duration || 0) > scene.hardCapSeconds
+      ) {
+        const cap = scene.hardCapSeconds;
+        console.log(
+          `✂️ Scene ${i}: narration (${subtitleData.duration}s) exceeds the ${cap}s animated-scene cap, trimming audio`,
+        );
+
+        const trimmedAudioPath = path.join(
+          os.tmpdir(),
+          `scene-${i}-${timestamp}-trimmed.mp3`,
+        );
+        const ffmpegPath = resolveFfmpegPath();
+        await execFileAsync(ffmpegPath, [
+          '-i',
+          tempAudioPath,
+          '-t',
+          cap.toString(),
+          '-y',
+          trimmedAudioPath,
+        ]);
+
+        const trimmedAudioBuffer = fs.readFileSync(trimmedAudioPath);
+        await s3.send(
+          new PutObjectCommand({
+            Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+            Key: audioKey,
+            Body: trimmedAudioBuffer,
+            ContentType: 'audio/mpeg',
+          }),
+        );
+        fs.unlinkSync(trimmedAudioPath);
+
+        subtitleData.words = subtitleData.words.filter(
+          (word) => word.start < cap,
+        );
+        subtitleData.duration = cap;
+      }
+
+      // Clean up temporary file
+      fs.unlinkSync(tempAudioPath);
 
       // Save complete subtitle data to S3 (including fullText)
       const subtitleKey = `${userId}/${timestamp}.scene-${scene.id}.subtitle.json`;

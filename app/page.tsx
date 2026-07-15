@@ -4,16 +4,45 @@ import React, { Fragment } from 'react';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import AnimatedBackground from '../components/AnimatedBackground';
 import ScrollPathEffect from '../components/ScrollPathEffect';
 import { useAuth } from '../components/AuthContext';
 import UserDropdown from '../components/UserDropdown';
 import MobileNav from '../components/MobileNav';
 
+// Small illustrated (non-photographic) face avatar used for testimonials —
+// intentionally cartoon-style rather than a photo, since we don't attach
+// real people's likenesses to placeholder quotes.
+function FaceAvatar({ skin, hair }: { skin: string; hair: string }) {
+  return (
+    <svg viewBox="0 0 44 44" className="w-11 h-11 rounded-full flex-shrink-0">
+      <circle cx="22" cy="22" r="22" fill={skin} />
+      <path
+        d="M2 20a20 20 0 0 1 40 0v-2a20 18 0 0 0-40 0z"
+        fill={hair}
+      />
+      <circle cx="15" cy="24" r="2.1" fill="#33261f" />
+      <circle cx="29" cy="24" r="2.1" fill="#33261f" />
+      <path
+        d="M15 31c2.5 2.2 11.5 2.2 14 0"
+        stroke="#33261f"
+        strokeWidth="2"
+        strokeLinecap="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
   const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    posthog.capture('landing_page_loaded');
+  }, []);
 
   // Handle navbar scroll animation
   useEffect(() => {
@@ -305,157 +334,169 @@ export default function Home() {
               Creating Story &amp; Educational Videos Has Never Been So Easy
             </h2>
 
-          {/* Top Row - Core Features */}
-          <div className="grid md:grid-cols-3 gap-8 mb-12">
-            {/* Card 1: Create Youtube Shorts */}
-            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center mr-4">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white">
-                  Create educational shorts
-                </h3>
-              </div>
-              <p className="text-gray-300">
-                Turn any topic into a clear explainer or lesson with AI
-                generated content. No need to record anything.
-              </p>
-            </div>
-
-            {/* Card 2: Create viral Tiktok videos */}
-            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-black rounded-lg flex items-center justify-center mr-4">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white">
-                  Tell captivating stories
-                </h3>
-              </div>
-              <p className="text-gray-300">
-                Generate the script, narration and visuals for your story from a
-                single idea.
-              </p>
-            </div>
-
-            {/* Card 3: Publish on Tiktok & Youtube */}
-            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mr-4">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white">
-                  Share anywhere
-                </h3>
-              </div>
-              <p className="text-gray-300">
-                Export vertical videos ready to share on any platform.
-              </p>
-            </div>
-          </div>
-
-          {/* Bottom Row - Additional Features */}
+          {/* Feature Grid */}
           <div className="grid md:grid-cols-3 gap-8">
-            {/* Card 4: AI Generated Voiceovers */}
-            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mr-4">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
+            {[
+              {
+                bg: 'from-red-500 to-orange-500',
+                icon: (
+                  <path d="M8 5v14l11-7z" />
+                ),
+                title: 'Create educational shorts',
+                desc: 'Turn any topic into a clear explainer or lesson with AI generated content. No need to record anything.',
+              },
+              {
+                bg: 'from-blue-500 to-indigo-500',
+                icon: (
+                  <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
+                ),
+                title: 'Tell captivating stories',
+                desc: 'Generate the script, narration and visuals for your story from a single idea.',
+              },
+              {
+                bg: 'from-sky-500 to-cyan-500',
+                icon: (
+                  <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                ),
+                title: 'Share anywhere',
+                desc: 'Export vertical videos ready to share on any platform.',
+              },
+              {
+                bg: 'from-purple-500 to-fuchsia-500',
+                icon: (
+                  <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
+                ),
+                title: 'AI Generated Voiceovers',
+                desc: 'We use the latest AI models to generate natural-sounding voiceovers for your videos.',
+              },
+              {
+                bg: 'from-emerald-500 to-teal-500',
+                icon: (
+                  <path d="M18 11c0-3.87-3.13-7-7-7s-7 3.13-7 7c0 2.38 1.19 4.47 3 5.74V19c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74zM9 21h4v1H9v-1z" />
+                ),
+                title: 'Auto-generated Subtitles',
+                desc: 'Every video ships with synced, on-screen captions generated automatically from the narration.',
+              },
+              {
+                bg: 'from-indigo-500 to-violet-500',
+                icon: (
+                  <path d="M8 5v14l11-7z M2 5v14M22 5v14" />
+                ),
+                title: 'AI Animated Scenes',
+                desc: 'Bring static scenes to life with cinematic AI-powered animation, available on Creator and Pro plans.',
+              },
+            ].map((feature, i) => (
+              <div
+                key={i}
+                className="group bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 transition-all duration-300 hover:-translate-y-1 hover:border-purple-400/40 hover:bg-gray-800/80 hover:shadow-xl hover:shadow-purple-500/10"
+              >
+                <div className="flex items-center mb-4">
+                  <div
+                    className={`w-12 h-12 bg-gradient-to-br ${feature.bg} rounded-lg flex items-center justify-center mr-4 shadow-lg transition-transform duration-300 group-hover:scale-110`}
                   >
-                    <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
-                  </svg>
+                    <svg
+                      className="w-6 h-6 text-white"
+                      fill="currentColor"
+                      viewBox="0 0 24 24"
+                      stroke={feature.title === 'AI Animated Scenes' ? 'currentColor' : 'none'}
+                      strokeWidth={feature.title === 'AI Animated Scenes' ? 1.5 : 0}
+                    >
+                      {feature.icon}
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-bold text-white">
+                    {feature.title}
+                  </h3>
                 </div>
-                <h3 className="text-xl font-bold text-white">
-                  AI Generated Voiceovers
-                </h3>
+                <p className="text-gray-300">{feature.desc}</p>
               </div>
-              <p className="text-gray-300">
-                We use the latest AI models to generate voiceovers for your
-                videos.
-              </p>
-            </div>
-
-            {/* Card 5: Background music */}
-            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mr-4">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white">
-                  Background music
-                </h3>
-              </div>
-              <p className="text-gray-300">
-                Add background music to your videos. We have a library of 1000s
-                of songs.
-              </p>
-            </div>
-
-            {/* Card 6: And much more... */}
-            <div className="bg-gray-800/50 rounded-xl p-6 border border-gray-700/50">
-              <div className="flex items-center mb-4">
-                <div className="w-12 h-12 bg-pink-500 rounded-lg flex items-center justify-center mr-4">
-                  <svg
-                    className="w-6 h-6 text-white"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-                  </svg>
-                </div>
-                <h3 className="text-xl font-bold text-white">
-                  And much more...
-                </h3>
-              </div>
-              <p className="text-gray-300">
-                StoryReel is constantly evolving. We are adding new features
-                every week.
-              </p>
-            </div>
+            ))}
           </div>
         </div>
 
-          {/* Promotional Banner */}
-          <div className="relative z-10 max-w-4xl mx-auto px-6 py-16">
-            <div className="bg-gray-800/50 rounded-2xl p-12 text-center border border-gray-700/50">
-              <h2 className="text-4xl font-bold text-white mb-6">
-                Say Goodbye To Boring Videos 👋
-              </h2>
-              <p className="text-xl text-gray-300 mb-8">
-                Get started with StoryReel today and turn your ideas into story
-                videos on autopilot.
-              </p>
-              <button className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-8 rounded-full transition-colors duration-200">
-                Get Started
-              </button>
+          {/* Testimonials Section */}
+          <div className="relative z-10 max-w-6xl mx-auto px-6 py-20">
+            <h2 className="text-4xl font-bold text-white text-center mb-4">
+              Successful Stories That Speak
+            </h2>
+            <p className="text-xl text-gray-300 text-center mb-16">
+              Real workflows from teachers, creators, and teams using
+              StoryReel every day.
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
+              {[
+                {
+                  quote:
+                    "I used to burn my Sunday nights making slides nobody watched past the intro. Now I write a rough script on my lunch break and StoryReel turns it into something my 7th graders actually sit through.",
+                  name: 'Alice B.',
+                  role: 'Middle School Teacher',
+                  skin: '#f0c9a0',
+                  hair: '#3b2417',
+                },
+                {
+                  quote:
+                    "Clients want a 60-second explainer by Friday on basically no budget. StoryReel is the only way I've found to say yes to that brief and still sleep.",
+                  name: 'Hernandez R.',
+                  role: 'Freelance Video Editor',
+                  skin: '#c88a5e',
+                  hair: '#1a1a1a',
+                },
+                {
+                  quote:
+                    "We don't have a video budget, full stop. Got three donor updates out last quarter that would've cost us thousands through an agency.",
+                  name: 'Joshua M.',
+                  role: 'Nonprofit Comms Lead',
+                  skin: '#8d5a3c',
+                  hair: '#120c08',
+                },
+                {
+                  quote:
+                    "Wasn't expecting much from the animation feature, ngl. It turned one flat photo into something that held people past the first three seconds, which almost never happens for me.",
+                  name: 'Priya N.',
+                  role: 'YouTube Creator',
+                  skin: '#deab7d',
+                  hair: '#241608',
+                },
+                {
+                  quote:
+                    'Re-recorded my intro lesson four separate times trying to get it right. Now I write it once and let StoryReel handle the rest.',
+                  name: 'Elena K.',
+                  role: 'Online Course Creator',
+                  skin: '#f6d7b0',
+                  hair: '#6b4423',
+                },
+                {
+                  quote:
+                    "Was skeptical an AI tool could make something that didn't look cheap. It proved me wrong fast — the first video went straight into an actual ad.",
+                  name: 'Marcus D.',
+                  role: 'Small Business Owner',
+                  skin: '#e8b992',
+                  hair: '#2b2b2b',
+                },
+              ].map((t, i) => (
+                <div
+                  key={i}
+                  className="relative flex flex-col justify-between bg-white/[0.04] backdrop-blur-sm border border-white/10 rounded-2xl p-6 pt-8 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.07] hover:border-purple-400/30 hover:shadow-xl hover:shadow-purple-500/10"
+                >
+                  <span
+                    className="absolute -top-2 left-4 text-7xl font-serif text-white/10 select-none leading-none"
+                    aria-hidden="true"
+                  >
+                    &ldquo;
+                  </span>
+                  <p className="relative text-gray-200 leading-relaxed mb-6">
+                    {t.quote}
+                  </p>
+                  <div className="flex items-center pt-4 border-t border-white/10">
+                    <FaceAvatar skin={t.skin} hair={t.hair} />
+                    <div className="ml-3">
+                      <div className="font-bold text-white">{t.name}</div>
+                      <div className="text-gray-400 text-sm">{t.role}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </div>

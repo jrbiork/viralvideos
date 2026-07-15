@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import posthog from 'posthog-js';
 import VideoGallery, {
   VideoGalleryHandle,
 } from '../../components/VideoGallery';
@@ -15,6 +16,10 @@ export default function VideosPage() {
   const { showToasterMessage, ToasterComponent } = useToaster();
 
   useEffect(() => {
+    posthog.capture('videos_page_loaded');
+  }, []);
+
+  useEffect(() => {
     // Subscribe to WebSocket messages
     const unsubscribe = subscribe(
       'videos-page',
@@ -23,6 +28,7 @@ export default function VideosPage() {
 
         // Handle video_completed message
         if (message.action === 'video_completed') {
+          posthog.capture('video_completed');
           showToasterMessage('Video generated successfully!', 'success');
 
           // Add the video directly from the manifest without a full refresh

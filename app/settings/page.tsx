@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import MainLayout from '../../components/MainLayout';
 import { useAuthenticatedFetch } from '../../components/useAuthenticatedFetch';
@@ -13,7 +13,7 @@ interface UserSettings {
   name: string;
   picture?: string;
   subscription: {
-    mode: 'free' | 'pro' | 'starter' | 'creator' | 'influencer';
+    mode: 'free' | 'creator' | 'pro' | 'starter' | 'influencer';
     renewalDate?: string | null;
     status: 'active' | 'cancelled' | 'expired';
     cancelAtPeriodEnd?: boolean;
@@ -22,65 +22,79 @@ interface UserSettings {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const [userSettings, setUserSettings] = useState<UserSettings | null>(null);
-  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isOpeningPortal, setIsOpeningPortal] = useState(false);
   const [imageError, setImageError] = useState(false);
   const { authenticatedFetch, isAuthenticated } = useAuthenticatedFetch();
-  const { userData, loading: userDataLoading } = useUserDataCache();
+  const {
+    userData,
+    loading: userDataLoading,
+    refresh: refreshUserData,
+  } = useUserDataCache();
   const {
     quota,
     imageQuota,
+    animationQuota,
     loading: quotaLoading,
   } = useUserQuota();
 
+  // Billing/subscription status must always be current — bypass
+  // useUserDataCache's in-memory cache (which persists across client-side
+  // navigations for up to 6h) so a plan cancelled in another tab or via the
+  // Stripe portal shows up immediately, not just after a hard reload.
   useEffect(() => {
     if (isAuthenticated) {
-      fetchUserSettings();
+      refreshUserData();
     }
-  }, [isAuthenticated, userData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
-  const fetchUserSettings = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Use cached user data if available, otherwise fetch from session
-      let userInfo;
-      if (userData) {
-        userInfo = userData.user;
-      } else {
-        const sessionResponse = await fetch('/api/auth/session');
-        const sessionData = await sessionResponse.json();
-        userInfo = sessionData.user;
-      }
-
-      if (userInfo) {
-        const settings: UserSettings = {
-          id: userInfo.id || userInfo.userId,
-          email: userInfo.email,
-          name: userInfo.name,
-          picture: userInfo.picture,
-          subscription: userInfo.subscription || {
-            mode: 'free',
-            renewalDate: undefined,
-            status: 'active',
-            cancelAtPeriodEnd: false,
-          },
-        };
-
-        setUserSettings(settings);
-      } else {
+  // Fallback for the rare case useUserDataCache never resolves — guarded so
+  // it can only fill in for a still-missing userData, never race ahead of it
+  // and clobber fresher data with a stale session-cookie snapshot (that was
+  // the previous bug: this used to run unconditionally on mount, and if it
+  // resolved after the real userData fetch, it silently overwrote correct
+  // subscription state with stale data).
+  const [sessionFallbackUser, setSessionFallbackUser] = useState<any>(null);
+  useEffect(() => {
+    if (!isAuthenticated || userData || userDataLoading) return;
+    let cancelled = false;
+    fetch('/api/auth/session')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled) setSessionFallbackUser(d.user || null);
+      })
+      .catch((err) => {
+        console.error('Error fetching session fallback:', err);
         setError('Failed to load user settings');
-      }
-    } catch (error) {
-      console.error('Error fetching user settings:', error);
-      setError('Failed to load user settings');
-    } finally {
-      setLoading(false);
-    }
-  };
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, userData, userDataLoading]);
+
+  // Derived, not fetched — userData always wins once it's available, so
+  // there's no async ordering for a slower response to race against.
+  const userSettings: UserSettings | null = useMemo(() => {
+    const userInfo = userData?.user || sessionFallbackUser;
+    if (!userInfo) return null;
+
+    return {
+      id: userInfo.id || userInfo.userId,
+      email: userInfo.email,
+      name: userInfo.name,
+      picture: userInfo.picture,
+      subscription: userInfo.subscription || {
+        mode: 'free',
+        renewalDate: undefined,
+        status: 'active',
+        cancelAtPeriodEnd: false,
+      },
+    };
+  }, [userData, sessionFallbackUser]);
+
+  const loading =
+    isAuthenticated && !userSettings && (userDataLoading || !sessionFallbackUser);
 
   // Absolute-ify relative picture URLs, same convention as UserDropdown
   const getPictureUrl = (url: string | undefined) => {
@@ -119,7 +133,8 @@ export default function SettingsPage() {
     }
   };
 
-  const isPro = quota.plan === 'pro';
+  const plan = quota.plan;
+  const isPaid = plan !== 'free';
   const status = userSettings?.subscription.status;
   const cancelAtPeriodEnd = userSettings?.subscription.cancelAtPeriodEnd;
   const renewalDate = userSettings?.subscription.renewalDate;
@@ -136,6 +151,12 @@ export default function SettingsPage() {
     : 0;
   const imageUsagePercent = imageQuota.limit
     ? Math.min(100, Math.round((imageQuota.used / imageQuota.limit) * 100))
+    : 0;
+  const animationUsagePercent = animationQuota.limit
+    ? Math.min(
+        100,
+        Math.round((animationQuota.used / animationQuota.limit) * 100),
+      )
     : 0;
 
   if (loading || userDataLoading) {
@@ -218,7 +239,10 @@ export default function SettingsPage() {
           </h3>
           <p className="text-gray-500 text-lg mb-4">{error}</p>
           <button
-            onClick={fetchUserSettings}
+            onClick={() => {
+              setError(null);
+              refreshUserData();
+            }}
             className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 transform hover:scale-105"
           >
             Try Again
@@ -284,37 +308,43 @@ export default function SettingsPage() {
                   </h2>
                   <span
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-                      isPro
+                      plan === 'pro'
                         ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-blue-300 ring-1 ring-inset ring-blue-500/30'
-                        : 'bg-slate-700/60 text-slate-300 ring-1 ring-inset ring-slate-600/50'
+                        : plan === 'creator'
+                          ? 'bg-gradient-to-r from-amber-500/20 to-pink-500/20 text-amber-300 ring-1 ring-inset ring-amber-500/30'
+                          : 'bg-slate-700/60 text-slate-300 ring-1 ring-inset ring-slate-600/50'
                     }`}
                   >
-                    {isPro ? 'Pro Plan' : 'Free Plan'}
+                    {plan === 'pro'
+                      ? 'Pro Plan'
+                      : plan === 'creator'
+                        ? 'Creator Plan'
+                        : 'Free Plan'}
                   </span>
                 </div>
 
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-2xl font-bold text-white">
-                    {isPro ? '$9.00' : '$0'}
+                    {plan === 'pro' ? '$19.90' : plan === 'creator' ? '$12.00' : '$0'}
                   </span>
-                  {isPro && (
+                  {isPaid && (
                     <span className="text-slate-400 text-sm">/ month</span>
                   )}
                 </div>
 
                 {/* Billing status line */}
-                {isPro && cancelAtPeriodEnd && formattedRenewalDate && (
+                {isPaid && cancelAtPeriodEnd && formattedRenewalDate && (
                   <p className="text-sm text-yellow-400 mb-4">
-                    Cancelled — Pro access ends on {formattedRenewalDate}
+                    Cancelled — access ends on {formattedRenewalDate}
                   </p>
                 )}
-                {isPro && status === 'expired' && (
+                {isPaid && status === 'expired' && (
                   <p className="text-sm text-red-400 mb-4">
                     There's a problem with your payment. Update your payment
-                    method to keep Pro access.
+                    method to keep your plan.
                   </p>
                 )}
-                {isPro &&
+                {isPaid &&
                   status === 'active' &&
                   !cancelAtPeriodEnd &&
                   formattedRenewalDate && (
@@ -322,7 +352,7 @@ export default function SettingsPage() {
                       Next charge on {formattedRenewalDate}
                     </p>
                   )}
-                {!isPro && (
+                {!isPaid && (
                   <p className="text-sm text-slate-400 mb-4">
                     Upgrade for more videos and higher scene limits.
                   </p>
@@ -332,7 +362,7 @@ export default function SettingsPage() {
                 <div className="mb-5">
                   <div className="flex items-center justify-between text-sm mb-1.5">
                     <span className="text-slate-400">
-                      {isPro ? 'Videos generated' : 'Videos'}
+                      {isPaid ? 'Videos generated' : 'Videos'}
                     </span>
                     <span className="text-slate-300 font-medium">
                       {quotaLoading ? '—' : `${quota.used} / ${quota.limit}`}
@@ -349,7 +379,7 @@ export default function SettingsPage() {
                 <div className="mb-5">
                   <div className="flex items-center justify-between text-sm mb-1.5">
                     <span className="text-slate-400">
-                      {isPro ? 'Extra image regenerations' : 'Images'}
+                      {isPaid ? 'Extra image regenerations' : 'Images'}
                     </span>
                     <span className="text-slate-300 font-medium">
                       {quotaLoading
@@ -367,13 +397,36 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
+                {isPaid && (
+                  <div className="mb-5">
+                    <div className="flex items-center justify-between text-sm mb-1.5">
+                      <span className="text-slate-400">
+                        AI animated scenes
+                      </span>
+                      <span className="text-slate-300 font-medium">
+                        {quotaLoading
+                          ? '—'
+                          : `${animationQuota.used} / ${animationQuota.limit}`}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-slate-700/60 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300"
+                        style={{
+                          width: `${quotaLoading ? 0 : animationUsagePercent}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Actions */}
-                {!isPro ? (
+                {!isPaid ? (
                   <button
                     onClick={() => router.push('/pricing')}
                     className="w-full px-4 py-2.5 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg font-medium transition-all duration-200"
                   >
-                    Upgrade to Pro
+                    Change Plan
                   </button>
                 ) : (
                   <div className="flex flex-col sm:flex-row gap-3">
@@ -383,6 +436,12 @@ export default function SettingsPage() {
                       className="flex-1 px-4 py-2.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors duration-200"
                     >
                       {isOpeningPortal ? 'Opening…' : 'Manage Billing'}
+                    </button>
+                    <button
+                      onClick={() => router.push('/pricing')}
+                      className="flex-1 px-4 py-2.5 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg font-medium transition-all duration-200"
+                    >
+                      Change Plan
                     </button>
                   </div>
                 )}

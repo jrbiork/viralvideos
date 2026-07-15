@@ -8,6 +8,7 @@ import {
   ReactNode,
   useRef,
 } from 'react';
+import posthog from 'posthog-js';
 
 interface User {
   id: string;
@@ -89,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (data.user) {
         authCache.set(data.user);
+        posthog.identify(data.user.id, { email: data.user.email });
         return data.user;
       }
 
@@ -385,6 +387,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       // Cache the user data and update state
       authCache.set(sessionData.user);
+      posthog.identify(sessionData.user.id, { email: sessionData.user.email });
+      posthog.capture('logged_in', { method: 'google' });
       setUser(sessionData.user);
 
       // Clear the state parameter from memory
@@ -404,6 +408,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
+    posthog.capture('signed_out');
+
     try {
       // Clear the Cognito token cookie
       await fetch('/api/auth/session', {

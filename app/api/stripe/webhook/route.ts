@@ -3,8 +3,10 @@ import Stripe from 'stripe';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   DynamoDBDocumentClient,
+  GetCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
+import { planFromPriceId } from '@/lib/stripe-config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
@@ -196,11 +198,17 @@ export async function POST(request: NextRequest) {
           subscription.status === 'active' ||
           subscription.status === 'trialing';
 
+        const priceId = subscription.items.data[0]?.price?.id;
+        const resolvedPlan =
+          (priceId && planFromPriceId(priceId)) ||
+          (metadata.planName as 'creator' | 'pro' | undefined) ||
+          'pro';
+
         // Update user with Stripe IDs and subscription info
         await updateUserSubscription(metadata.userId, metadata.username, {
           stripeCustomerId: customerId,
           stripeSubscriptionId: subscriptionId,
-          subscriptionMode: 'pro',
+          subscriptionMode: resolvedPlan,
           subscriptionStatus: isStillActive ? 'active' : 'cancelled',
           renewalDate,
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
@@ -213,7 +221,7 @@ export async function POST(request: NextRequest) {
           await resetMonthlyQuota(metadata.userId, metadata.username);
         }
 
-        console.log(`User ${metadata.userId} upgraded to pro`);
+        console.log(`User ${metadata.userId} upgraded to ${resolvedPlan}`);
 
         break;
       }
@@ -290,11 +298,35 @@ export async function POST(request: NextRequest) {
           subscription.current_period_end;
         const renewalDate = new Date(periodEnd * 1000).toISOString();
 
+        // A customer-portal plan switch (Creator<->Pro) changes the price on
+        // the same subscription without a new checkout.session.completed —
+        // resolve the plan here too, and reset quota counters immediately if
+        // it changed, so the new caps apply right away instead of at the
+        // next renewal.
+        const priceId = subscription.items.data[0]?.price?.id;
+        const resolvedPlan = priceId ? planFromPriceId(priceId) : null;
+
+        let planChanged = false;
+        if (resolvedPlan) {
+          const existing = await docClient.send(
+            new GetCommand({
+              TableName: USERS_TABLE_NAME,
+              Key: { userId: metadata.userId, username: metadata.username },
+            }),
+          );
+          planChanged = existing.Item?.subscription?.mode !== resolvedPlan;
+        }
+
         await updateUserSubscription(metadata.userId, metadata.username, {
           subscriptionStatus: status,
           renewalDate,
           cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          ...(resolvedPlan ? { subscriptionMode: resolvedPlan } : {}),
         });
+
+        if (planChanged) {
+          await resetMonthlyQuota(metadata.userId, metadata.username);
+        }
 
         console.log(
           `Updated subscription status for user ${metadata.userId}: ${status}`,

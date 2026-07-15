@@ -96,7 +96,8 @@ export default function RightSidebar({
                   controls
                   muted
                   loop
-                  preload="none"
+                  autoPlay={isDesktop}
+                  preload={isDesktop ? 'auto' : 'none'}
                   src={exampleVideoUrl}
                 />
               </div>

@@ -19,3 +19,5 @@ export declare function getVideoEffectUrls(userId: string, timestamp: string, sc
 export declare function generateVideoEffects(scenes: Omit<Scene, 'description' | 'narration'>[], userId: string, timestamp: string, user: UserItem | null): Promise<Array<{
     [key: string]: string;
 }>>;
+export declare function getImageSignedUrl(imageKey: string): Promise<string | null>;
+export declare function generateSceneVideo(imageUrl: string, scene: Omit<Scene, 'description' | 'narration'>, userId: string, timestamp: string, user: UserItem | null): Promise<string>;

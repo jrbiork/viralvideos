@@ -203,7 +203,7 @@ export default function VoiceSelection({
 
   return (
     <div ref={containerRef} className="w-full flex items-center gap-3">
-      <label className="w-24 shrink-0 text-sm font-medium text-gray-300">
+      <label className="w-24 shrink-0 text-sm font-medium text-gray-300 text-right">
         Voice
       </label>
 

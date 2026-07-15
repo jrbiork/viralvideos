@@ -11,6 +11,7 @@ import * as path from 'path';
 import { promisify } from 'util';
 import { exec, execFile } from 'child_process';
 import { UserItem } from './user';
+import { resolveFfmpegPath } from './ffmpeg';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -21,35 +22,6 @@ export interface Scene {
   duration: number;
   narration: string;
   id: number;
-}
-
-function isExecutable(p: string): boolean {
-  try {
-    fs.accessSync(p, fs.constants.X_OK);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function resolveFfmpegPath(): string {
-  const candidates = [
-    process.env.FFMPEG_PATH,
-    '/opt/bin/ffmpeg',
-    '/opt/ffmpeg',
-    '/usr/bin/ffmpeg',
-    '/usr/local/bin/ffmpeg',
-  ].filter(Boolean) as string[];
-
-  for (const p of candidates) {
-    if (fs.existsSync(p) && isExecutable(p)) return p;
-  }
-
-  throw new Error(
-    'FFmpeg binary not found. Expected at one of: ' +
-      candidates.join(', ') +
-      '. Ensure your Lambda layer provides ffmpeg (common path: /opt/bin/ffmpeg) or set FFMPEG_PATH.',
-  );
 }
 
 /**
@@ -212,7 +184,9 @@ export async function generateVideoEffects(
   }
 }
 
-async function getImageSignedUrl(imageKey: string): Promise<string | null> {
+export async function getImageSignedUrl(
+  imageKey: string,
+): Promise<string | null> {
   try {
     const command = new GetObjectCommand({
       Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
@@ -226,7 +200,7 @@ async function getImageSignedUrl(imageKey: string): Promise<string | null> {
   }
 }
 
-async function generateSceneVideo(
+export async function generateSceneVideo(
   imageUrl: string,
   scene: Omit<Scene, 'description' | 'narration'>,
   userId: string,

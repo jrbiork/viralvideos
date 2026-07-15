@@ -10,16 +10,34 @@ const docClient = DynamoDBDocumentClient.from(client);
 
 const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'viral-videos-users';
 
-export const FREE_VIDEO_LIMIT = 1;
-export const MAX_SCENES = 6;
-export const FREE_MAX_SCENES = MAX_SCENES;
-export const PRO_MONTHLY_VIDEO_LIMIT = 15;
-export const PRO_MAX_SCENES = MAX_SCENES;
+export type Plan = 'free' | 'creator' | 'pro';
 
-export const FREE_IMAGE_GEN_LIMIT = 3; // lifetime, via the "Generate image" button
-export const PRO_IMAGE_GEN_MONTHLY_LIMIT = 30;
+interface PlanLimits {
+  videoLimit: number; // free = lifetime cap, creator/pro = monthly cap
+  maxScenes: number;
+  imageGenLimit: number; // free = lifetime cap, creator/pro = monthly cap
+  animationLimit: number; // 0 for free (animations always rejected)
+}
 
-export type Plan = 'free' | 'pro';
+const PLAN_LIMITS: Record<Plan, PlanLimits> = {
+  free: { videoLimit: 1, maxScenes: 3, imageGenLimit: 3, animationLimit: 0 },
+  creator: { videoLimit: 10, maxScenes: 4, imageGenLimit: 20, animationLimit: 3 },
+  pro: { videoLimit: 20, maxScenes: 6, imageGenLimit: 40, animationLimit: 10 },
+};
+
+export const FREE_VIDEO_LIMIT = PLAN_LIMITS.free.videoLimit;
+export const FREE_MAX_SCENES = PLAN_LIMITS.free.maxScenes;
+export const CREATOR_MONTHLY_VIDEO_LIMIT = PLAN_LIMITS.creator.videoLimit;
+export const CREATOR_MAX_SCENES = PLAN_LIMITS.creator.maxScenes;
+export const PRO_MONTHLY_VIDEO_LIMIT = PLAN_LIMITS.pro.videoLimit;
+export const PRO_MAX_SCENES = PLAN_LIMITS.pro.maxScenes;
+
+export const FREE_IMAGE_GEN_LIMIT = PLAN_LIMITS.free.imageGenLimit; // lifetime, via the "Generate image" button
+export const CREATOR_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.creator.imageGenLimit;
+export const PRO_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.pro.imageGenLimit;
+
+export const CREATOR_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.creator.animationLimit; // via the "Animate scene" button
+export const PRO_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.pro.animationLimit;
 
 export interface VideoQuota {
   plan: Plan;
@@ -29,45 +47,55 @@ export interface VideoQuota {
   maxScenes: number;
 }
 
-// Any active paid subscription counts as pro (legacy modes starter/creator/influencer included)
+// Legacy subscription modes (starter/influencer) collapse into pro.
 export function getPlan(user: UserItem | null): Plan {
-  if (
-    user?.subscription &&
-    user.subscription.mode !== 'free' &&
-    user.subscription.status === 'active'
-  ) {
-    return 'pro';
+  if (!user?.subscription || user.subscription.status !== 'active') {
+    return 'free';
   }
-  return 'free';
+  if (user.subscription.mode === 'creator') {
+    return 'creator';
+  }
+  if (user.subscription.mode === 'free') {
+    return 'free';
+  }
+  return 'pro';
 }
 
 function currentMonth(): string {
   return new Date().toISOString().slice(0, 7); // e.g. "2026-07"
 }
 
+export async function getMaxScenesForUser(userId: string): Promise<number> {
+  const user = await getUser(userId);
+  return PLAN_LIMITS[getPlan(user)].maxScenes;
+}
+
 function quotaFromUser(user: UserItem | null): VideoQuota {
   const plan = getPlan(user);
-  if (plan === 'pro') {
-    // Monthly counter only valid for the current period
-    const used =
-      user?.quotaPeriodStart === currentMonth()
-        ? user?.videosCreatedThisMonth || 0
-        : 0;
+  const limits = PLAN_LIMITS[plan];
+
+  if (plan === 'free') {
+    const used = user?.videosCreated || 0;
     return {
       plan,
       used,
-      limit: PRO_MONTHLY_VIDEO_LIMIT,
-      remaining: Math.max(0, PRO_MONTHLY_VIDEO_LIMIT - used),
-      maxScenes: PRO_MAX_SCENES,
+      limit: limits.videoLimit,
+      remaining: Math.max(0, limits.videoLimit - used),
+      maxScenes: limits.maxScenes,
     };
   }
-  const used = user?.videosCreated || 0;
+
+  // Monthly counter only valid for the current period
+  const used =
+    user?.quotaPeriodStart === currentMonth()
+      ? user?.videosCreatedThisMonth || 0
+      : 0;
   return {
     plan,
     used,
-    limit: FREE_VIDEO_LIMIT,
-    remaining: Math.max(0, FREE_VIDEO_LIMIT - used),
-    maxScenes: FREE_MAX_SCENES,
+    limit: limits.videoLimit,
+    remaining: Math.max(0, limits.videoLimit - used),
+    maxScenes: limits.maxScenes,
   };
 }
 
@@ -179,15 +207,15 @@ export async function checkAndConsumeImageGenQuota(
     return { allowed: true, used: used + 1, limit, plan };
   }
 
-  // Pro: monthly cap
+  // Creator/pro: monthly cap
   const month = currentMonth();
   const used =
     user.imageQuotaPeriodStart === month ? user.imagesGeneratedThisMonth || 0 : 0;
-  const limit = PRO_IMAGE_GEN_MONTHLY_LIMIT;
+  const limit = PLAN_LIMITS[plan].imageGenLimit;
 
   if (used >= limit) {
     console.log(
-      `Image quota exhausted for user ${userId}: ${used}/${limit} (pro, ${month})`,
+      `Image quota exhausted for user ${userId}: ${used}/${limit} (${plan}, ${month})`,
     );
     return { allowed: false, used, limit, plan };
   }
@@ -198,6 +226,65 @@ export async function checkAndConsumeImageGenQuota(
       Key: { userId: user.userId, username: user.username },
       UpdateExpression:
         'SET imagesGeneratedThisMonth = :newUsed, imageQuotaPeriodStart = :month',
+      ExpressionAttributeValues: { ':newUsed': used + 1, ':month': month },
+    }),
+  );
+
+  return { allowed: true, used: used + 1, limit, plan };
+}
+
+/**
+ * Check whether the user may animate another scene via Runway and, if so,
+ * consume one unit. Free plan is always rejected (animationLimit is 0).
+ * Monthly cap resets with the same lazy billing-period pattern as
+ * image/video quotas.
+ */
+export async function checkAndConsumeAnimationQuota(
+  userId: string,
+): Promise<{ allowed: boolean; used: number; limit: number; plan: Plan }> {
+  const user = await getUser(userId);
+
+  if (!user) {
+    console.error(
+      `Animation quota check failed: user not found for userId ${userId}`,
+    );
+    return {
+      allowed: false,
+      used: 0,
+      limit: PLAN_LIMITS.free.animationLimit,
+      plan: 'free',
+    };
+  }
+
+  const plan = getPlan(user);
+  const limit = PLAN_LIMITS[plan].animationLimit;
+
+  if (plan === 'free') {
+    console.log(
+      `Animation quota rejected for user ${userId}: scene animation requires Creator or Pro`,
+    );
+    return { allowed: false, used: 0, limit, plan };
+  }
+
+  const month = currentMonth();
+  const used =
+    user.animationQuotaPeriodStart === month
+      ? user.animationsGeneratedThisMonth || 0
+      : 0;
+
+  if (used >= limit) {
+    console.log(
+      `Animation quota exhausted for user ${userId}: ${used}/${limit} (${plan}, ${month})`,
+    );
+    return { allowed: false, used, limit, plan };
+  }
+
+  await docClient.send(
+    new UpdateCommand({
+      TableName: USERS_TABLE_NAME,
+      Key: { userId: user.userId, username: user.username },
+      UpdateExpression:
+        'SET animationsGeneratedThisMonth = :newUsed, animationQuotaPeriodStart = :month',
       ExpressionAttributeValues: { ':newUsed': used + 1, ':month': month },
     }),
   );

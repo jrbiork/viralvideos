@@ -3,10 +3,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { generateNanoBananaImage } from '../utils/imageNanoBanana';
 
 import { getManifest } from '../utils/manifestUtils';
-import {
-  checkAndConsumeImageGenQuota,
-  PRO_IMAGE_GEN_MONTHLY_LIMIT,
-} from '../utils/quota';
+import { checkAndConsumeImageGenQuota } from '../utils/quota';
 
 interface RequestBody {
   imagePrompt: string;
@@ -51,7 +48,7 @@ export const handler = async (
         body: JSON.stringify({
           error:
             plan === 'free'
-              ? `You've used all ${limit} additional image generations included with your free plan. Upgrade to Pro for ${PRO_IMAGE_GEN_MONTHLY_LIMIT} image generations per month.`
+              ? `You've used all ${limit} additional image generations included with your free plan. Upgrade to Creator or Pro for more image generations every month.`
               : `You've reached this month's limit of ${limit} image generations. Your limit resets next month.`,
           imageQuota: { used, limit, plan },
         }),

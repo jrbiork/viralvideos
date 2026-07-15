@@ -17,6 +17,7 @@ export default function Contact() {
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -33,21 +34,35 @@ export default function Contact() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setSubmitError('');
 
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-    // Reset form
-    setFormData({
-      name: '',
-      email: '',
-      subject: '',
-      message: '',
-    });
-    setIsSubmitting(false);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to send message');
+      }
 
-    // Show success message (you can implement a toast notification here)
-    alert("Thank you for your message! We'll get back to you soon.");
+      setFormData({
+        name: '',
+        email: '',
+        subject: '',
+        message: '',
+      });
+
+      alert("Thank you for your message! We'll get back to you soon.");
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error ? error.message : 'Failed to send message',
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -176,7 +191,6 @@ export default function Contact() {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="your.email@example.com"
                 />
@@ -194,7 +208,6 @@ export default function Contact() {
                   name="subject"
                   value={formData.subject}
                   onChange={handleInputChange}
-                  required
                   className="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
                   <option value="">Select a subject</option>
@@ -224,6 +237,10 @@ export default function Contact() {
                   placeholder="Tell us how we can help you..."
                 />
               </div>
+
+              {submitError && (
+                <p className="text-red-400 text-sm">{submitError}</p>
+              )}
 
               <button
                 type="submit"

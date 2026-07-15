@@ -24,7 +24,7 @@ import { getUser } from '../utils/user';
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export interface VideoGenerationRequest {
-  type?: 'generate-video' | 'combine-video' | 'batch-edit';
+  type?: 'generate-video' | 'combine-video' | 'batch-edit' | 'animate-scene';
   prompt?: string;
   userId: string;
   timestamp: string;

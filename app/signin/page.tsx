@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { useAuth } from '../../components/AuthContext';
 import AnimatedBackground from '../../components/AnimatedBackground';
 
@@ -24,6 +25,7 @@ export default function SignIn() {
   const handleGoogleSignIn = async () => {
     try {
       setError('');
+      posthog.capture('google_signin_clicked');
       login('Google');
     } catch (error) {
       console.error('Sign in failed:', error);
@@ -48,6 +50,7 @@ export default function SignIn() {
       }
       // Ensure React auth state is updated based on the cookie (no localStorage used)
       await refreshAuth();
+      posthog.capture('logged_in', { method: 'email' });
       router.push('/create');
     } catch (error) {
       console.error('Sign in failed:', error);

@@ -1,5 +1,5 @@
 export interface UserSubscription {
-    mode: 'free' | 'starter' | 'creator' | 'influencer';
+    mode: 'free' | 'creator' | 'pro' | 'starter' | 'influencer';
     renewalDate: string | null;
     status: 'active' | 'cancelled' | 'expired';
 }
@@ -16,6 +16,8 @@ export interface UserItem {
     imagesGenerated?: number;
     imagesGeneratedThisMonth?: number;
     imageQuotaPeriodStart?: string;
+    animationsGeneratedThisMonth?: number;
+    animationQuotaPeriodStart?: string;
     [key: string]: any;
 }
 /**

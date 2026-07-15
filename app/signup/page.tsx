@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 import { useAuth } from '../../components/AuthContext';
 import AnimatedBackground from '../../components/AnimatedBackground';
 
@@ -26,6 +27,7 @@ export default function SignUp() {
 
   const handleGoogleSignUp = async () => {
     try {
+      posthog.capture('google_signup_clicked');
       login('Google');
     } catch (error) {
       console.error('Sign up failed:', error);
@@ -81,6 +83,7 @@ export default function SignUp() {
       if (data?.user) {
         // Cookie set; refresh React auth state from server session
         await refreshAuth();
+        posthog.capture('signed_up', { method: 'email' });
         router.push('/create');
         return;
       }
@@ -96,6 +99,7 @@ export default function SignUp() {
         return;
       }
       await refreshAuth();
+      posthog.capture('signed_up', { method: 'email' });
       router.push('/create');
     } catch (error) {
       console.error('Confirm failed:', error);

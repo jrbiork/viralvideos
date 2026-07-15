@@ -31,12 +31,14 @@ export async function POST(request: NextRequest) {
     const imageEdits = edits?.imageEdits || [];
     const addedScenes = edits?.addedScenes || [];
     const removedSceneIds = edits?.removedSceneIds || [];
+    const animationEdits = edits?.animationEdits || [];
 
     if (
       narrationEdits.length === 0 &&
       imageEdits.length === 0 &&
       addedScenes.length === 0 &&
-      removedSceneIds.length === 0
+      removedSceneIds.length === 0 &&
+      animationEdits.length === 0
     ) {
       return NextResponse.json(
         { error: 'No edits to apply' },
@@ -61,7 +63,13 @@ export async function POST(request: NextRequest) {
       type: 'batch-edit' as const,
       userId,
       timestamp,
-      edits: { narrationEdits, imageEdits, addedScenes, removedSceneIds },
+      edits: {
+        narrationEdits,
+        imageEdits,
+        addedScenes,
+        removedSceneIds,
+        animationEdits,
+      },
     };
 
     const command = new SendMessageCommand({

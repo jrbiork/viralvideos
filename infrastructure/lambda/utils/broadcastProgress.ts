@@ -9,6 +9,7 @@ export async function broadcastProgress(
     | 'video_scene_created'
     | 'preview_completed'
     | 'video_completed'
+    | 'scene_animated'
     | 'error',
   userId: string,
   timestamp: string,

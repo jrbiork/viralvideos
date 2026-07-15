@@ -14,6 +14,8 @@ interface UserData {
     imagesGenerated?: number;
     imagesGeneratedThisMonth?: number;
     imageQuotaPeriodStart?: string;
+    animationsGeneratedThisMonth?: number;
+    animationQuotaPeriodStart?: string;
     username: string;
     createdAt: string;
     lastLoginAt: string;

@@ -20,6 +20,11 @@ export interface BatchEditRequest {
             imageUrl: string;
         }[];
         removedSceneIds: number[];
+        animationEdits?: {
+            sceneId: number;
+            animatedVideoUrl: string;
+            animationPrompt: string;
+        }[];
     };
 }
 /**

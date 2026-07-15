@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import posthog from 'posthog-js';
 
 import MainLayout from '@/components/MainLayout';
 import ProgressSteps from '@/components/ProgressSteps';
@@ -31,7 +32,7 @@ import { useWebSocketHandlers } from '@/hooks/useWebSocketHandlers';
 import VideoPreview from '@/components/VideoPreview';
 import Modal from '@/components/Modal';
 import { useUserDataCache } from '@/hooks/useUserDataCache';
-import { MAX_SCENES } from '@/components/useUserQuota';
+import { useUserQuota } from '@/components/useUserQuota';
 
 import { Manifest } from '../types/manifest';
 
@@ -44,6 +45,7 @@ export default function GeneratePage() {
 
   // User data and subscription information
   const { userData } = useUserDataCache();
+  const { quota, animationQuota } = useUserQuota();
 
   // Get user subscription data from backend
   const userSubscription = useMemo(() => {
@@ -145,7 +147,17 @@ export default function GeneratePage() {
       captionText: string;
       imageUrl: string;
     }[];
-  }>({ narrationEdits: [], imageEdits: [], addedScenes: [] });
+    animationEdits: {
+      sceneId: number;
+      animatedVideoUrl: string;
+      animationPrompt: string;
+    }[];
+  }>({
+    narrationEdits: [],
+    imageEdits: [],
+    addedScenes: [],
+    animationEdits: [],
+  });
   const [isApplyingEdits, setIsApplyingEdits] = useState(false);
   const [showPendingChangesModal, setShowPendingChangesModal] =
     useState(false);
@@ -179,6 +191,7 @@ export default function GeneratePage() {
     pendingEdits.narrationEdits.length +
     pendingEdits.imageEdits.length +
     pendingEdits.addedScenes.length +
+    pendingEdits.animationEdits.length +
     pendingRemovedSceneIds.length;
 
   // Record a replaced image for an existing scene (original scenes only)
@@ -194,6 +207,39 @@ export default function GeneratePage() {
     },
     [],
   );
+
+  // Record a Runway-animated scene to be applied on the next Apply
+  const handleQueueAnimationEdit = useCallback(
+    (sceneId: number, animatedVideoUrl: string, animationPrompt: string) => {
+      setPendingEdits((prev) => ({
+        ...prev,
+        animationEdits: [
+          ...prev.animationEdits.filter((e) => e.sceneId !== sceneId),
+          { sceneId, animatedVideoUrl, animationPrompt },
+        ],
+      }));
+    },
+    [],
+  );
+
+  // Runway animation runs asynchronously (routinely exceeds API Gateway's
+  // 29s limit) — track which scene is mid-animation and store completed
+  // results, both fed by the 'scene_animated' WebSocket broadcast below.
+  const [animatingSceneId, setAnimatingSceneId] = useState<number | null>(
+    null,
+  );
+  const [animationResults, setAnimationResults] = useState<
+    Record<number, { videoUrl: string; prompt: string }>
+  >({});
+
+  const handleStartAnimation = useCallback((sceneId: number) => {
+    setAnimatingSceneId(sceneId);
+    setAnimationResults((prev) => {
+      const next = { ...prev };
+      delete next[sceneId];
+      return next;
+    });
+  }, []);
 
   // Record a new user-added scene to be created on the next Apply
   const handleQueueAddedScene = useCallback(
@@ -223,8 +269,8 @@ export default function GeneratePage() {
     ).length;
     const resultingTotal =
       currentNonRemovedOriginal + additionalScenes.length + 1;
-    if (resultingTotal > MAX_SCENES) {
-      showToasterMessage(`Maximum ${MAX_SCENES} scenes allowed`, 'error');
+    if (resultingTotal > quota.maxScenes) {
+      showToasterMessage(`Maximum ${quota.maxScenes} scenes allowed`, 'error');
       return;
     }
 
@@ -348,6 +394,7 @@ export default function GeneratePage() {
         narrationEdits: [],
         imageEdits: [],
         addedScenes: [],
+        animationEdits: [],
       });
       setRemovedOriginalScenes(new Set());
       setIsApplyingEdits(false);
@@ -356,6 +403,27 @@ export default function GeneratePage() {
 
     return unsubscribe;
   }, [isApplyingEdits, subscribe, pendingEdits.addedScenes, showToasterMessage]);
+
+  // Pick up the Runway animation result once it completes in the background
+  // (the global handler already toasts on 'error'; this just clears the
+  // per-scene spinner so it doesn't hang forever on failure).
+  useEffect(() => {
+    const unsubscribe = subscribe('create-page-animate', (message) => {
+      if (message.action === 'scene_animated') {
+        const { sceneId, videoUrl, animationPrompt } = message.data;
+        if (sceneId === undefined || !videoUrl) return;
+        setAnimationResults((prev) => ({
+          ...prev,
+          [sceneId]: { videoUrl, prompt: animationPrompt ?? '' },
+        }));
+        setAnimatingSceneId((current) => (current === sceneId ? null : current));
+      } else if (message.action === 'error') {
+        setAnimatingSceneId(null);
+      }
+    });
+
+    return unsubscribe;
+  }, [subscribe]);
 
   // Helper functions to extract data from manifest
   const getMediaFiles = useCallback(
@@ -492,6 +560,11 @@ export default function GeneratePage() {
     return allScenes;
   }, [originalScenes, additionalScenes]);
 
+  // Generate Video should be blocked when every scene has been removed —
+  // there would be nothing left to combine into a video.
+  const allScenesDisabled =
+    scenes.length > 0 && scenes.every((s: Scene) => s.removed);
+
   // Auto-select first scene when script data is loaded
   useEffect(() => {
     if (scenes.length > 0 && !sceneState.selectedSceneId) {
@@ -556,11 +629,14 @@ export default function GeneratePage() {
       (template) => template.id === selectedTemplate,
     );
 
+    posthog.capture('generate_preview_clicked', { duration });
+
     await generateVideo(
       script,
       selectedTemplateData?.description || '',
       duration,
       (timestamp) => {
+        posthog.capture('scenes_generated', { duration });
         // Enable transitions before changing step
         setDisableInitialTransition(false);
         setCurrentStep(2);
@@ -682,6 +758,7 @@ export default function GeneratePage() {
             imageEdits: pendingEdits.imageEdits,
             addedScenes: pendingEdits.addedScenes,
             removedSceneIds: pendingRemovedSceneIds,
+            animationEdits: pendingEdits.animationEdits,
           },
         }),
       });
@@ -736,6 +813,8 @@ export default function GeneratePage() {
       console.error('No timestamp available');
       return;
     }
+
+    posthog.capture('generate_video_clicked');
 
     try {
       // Set generating state and navigate to step 3
@@ -801,18 +880,6 @@ export default function GeneratePage() {
     handleApplyEdits();
   };
 
-  const handleDiscardPendingAndGenerate = () => {
-    setPendingEdits({ narrationEdits: [], imageEdits: [], addedScenes: [] });
-    setRemovedOriginalScenes((prev) => {
-      const next = new Set(prev);
-      pendingRemovedSceneIds.forEach((id) => next.delete(id));
-      return next;
-    });
-    setAdditionalScenes([]);
-    setShowPendingChangesModal(false);
-    handleCombineVideo();
-  };
-
   // Right sidebar content
   const rightSidebarContent = (
     <RightSidebar
@@ -863,18 +930,22 @@ export default function GeneratePage() {
               onClick={handleGenerateVideoClick}
               disabled={
                 !isManifestFullyReady(videoGenerationState.manifest) ||
-                isApplyingEdits
+                isApplyingEdits ||
+                allScenesDisabled
               }
               title={
                 isApplyingEdits
                   ? 'Waiting for pending changes to finish applying...'
+                  : allScenesDisabled
+                  ? 'All scenes are disabled. Restore at least one scene to generate a video.'
                   : !isManifestFullyReady(videoGenerationState.manifest)
                   ? 'Waiting for all scenes to finish generating...'
                   : undefined
               }
               className={`h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 ${
                 isManifestFullyReady(videoGenerationState.manifest) &&
-                !isApplyingEdits
+                !isApplyingEdits &&
+                !allScenesDisabled
                   ? 'hover:-translate-y-[1px] hover:brightness-95'
                   : 'opacity-50 cursor-not-allowed'
               }`}
@@ -995,9 +1066,9 @@ export default function GeneratePage() {
                 const currentActiveTotal = scenes.filter(
                   (s) => !s.removed,
                 ).length;
-                if (currentActiveTotal + 1 > MAX_SCENES) {
+                if (currentActiveTotal + 1 > quota.maxScenes) {
                   showToasterMessage(
-                    `You're at the ${MAX_SCENES}-scene limit. Remove a scene before restoring this one.`,
+                    `You're at the ${quota.maxScenes}-scene limit. Remove a scene before restoring this one.`,
                     'error',
                   );
                   return;
@@ -1014,6 +1085,13 @@ export default function GeneratePage() {
               removedOriginalScenes={removedOriginalScenes}
               onQueueImageEdit={handleQueueImageEdit}
               onQueueAddedScene={handleQueueAddedScene}
+              onQueueAnimationEdit={handleQueueAnimationEdit}
+              animationQuota={animationQuota}
+              maxScenes={quota.maxScenes}
+              animatingSceneId={animatingSceneId}
+              animationResults={animationResults}
+              onStartAnimation={handleStartAnimation}
+              pendingAnimationEdits={pendingEdits.animationEdits}
             />
           </div>
 
@@ -1115,13 +1193,13 @@ export default function GeneratePage() {
         isOpen={showPendingChangesModal}
         onClose={() => setShowPendingChangesModal(false)}
         title="You have unsaved changes"
+        maxWidth="max-w-xl"
       >
         <div className="space-y-4">
           <p className="text-gray-300 text-sm">
             You have {pendingEditsCount} pending change
             {pendingEditsCount === 1 ? '' : 's'} that haven't been applied
-            yet. Apply them before generating, or discard them and generate
-            with the current scenes.
+            yet. Apply them before generating.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
@@ -1129,12 +1207,6 @@ export default function GeneratePage() {
               className="flex-1 px-4 py-3 rounded-xl border-[1.5px] border-[#5B5BFF] text-white hover:bg-[#5B5BFF] font-medium transition-all duration-300"
             >
               Cancel
-            </button>
-            <button
-              onClick={handleDiscardPendingAndGenerate}
-              className="flex-1 px-4 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-medium transition-colors duration-200"
-            >
-              Discard &amp; Generate
             </button>
             <button
               onClick={handleApplyChangesFromModal}
@@ -1160,8 +1232,8 @@ export default function GeneratePage() {
       >
         <div className="space-y-4">
           <p className="text-gray-300 text-sm">
-            Free plan includes 1 video. Upgrade to Pro to create up to 15
-            videos a month.
+            Free plan includes {quota.limit} video. Upgrade to Creator or Pro
+            for more videos every month.
           </p>
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button

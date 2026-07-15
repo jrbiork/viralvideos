@@ -1,4 +1,4 @@
-import { Scene } from '../video-generation/narration';
+import { Scene } from './script';
 import { Manifest, ManifestScene } from '../types/s3Types';
 export declare function createManifest(userId: string, timestamp: string, scenes: Scene[], totalDuration: number, voiceToneInstruction: string, voice: string, language: string, template: string): Promise<string>;
 export declare function getManifest(userId: string, timestamp: string): Promise<Manifest | null>;

@@ -1,4 +1,4 @@
-import { Scene } from '../video-generation/narration';
+import { Scene } from './script';
 import { uploadJsonToS3, getObjectFromS3 } from './s3Uploader';
 import { Manifest, ManifestScene } from '../types/s3Types';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -153,6 +153,7 @@ export function createManifestScene(
     removed: false,
     id: scene.id,
     animated: scene.animated || false,
+    animationPrompt: scene.animationPrompt,
     files: {
       mp3: `${userId}/${timestamp}.scene-${scene.id}.mp3`,
       mp4: `${userId}/${timestamp}.scene-${scene.id}.mp4`,
@@ -273,6 +274,7 @@ export async function hydrateManifest(
       id: scene.id,
       removed: scene.removed || false,
       animated: scene.animated || false,
+      animationPrompt: scene.animationPrompt,
       files: {
         mp3: audioUrl,
         mp4: videoUrl,

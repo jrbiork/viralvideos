@@ -1,0 +1,40 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.processAnimateScene = processAnimateScene;
+const client_sqs_1 = require("@aws-sdk/client-sqs");
+const manifestUtils_1 = require("../utils/manifestUtils");
+const videoEffects_1 = require("../utils/videoEffects");
+const runwayAnimate_1 = require("../utils/runwayAnimate");
+const broadcastProgress_1 = require("../utils/broadcastProgress");
+const sqs = new client_sqs_1.SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
+async function processAnimateScene(request, record) {
+    const { userId, timestamp, sceneId, animationPrompt } = request;
+    try {
+        console.log('processAnimateScene:', JSON.stringify(request, null, 2));
+        const manifest = await (0, manifestUtils_1.getManifest)(userId, timestamp);
+        const scene = manifest?.scenes.find((s) => s.id === sceneId);
+        const imageKey = scene?.files.png || scene?.files.jpg;
+        const imageUrl = imageKey ? await (0, videoEffects_1.getImageSignedUrl)(imageKey) : null;
+        if (!imageUrl) {
+            throw new Error('Scene has no generated image to animate');
+        }
+        const videoUrl = await (0, runwayAnimate_1.animateSceneImage)(imageUrl, animationPrompt, sceneId, userId, timestamp);
+        await (0, broadcastProgress_1.broadcastProgress)('scene_animated', userId, timestamp, { sceneId, videoUrl, animationPrompt }, 'Scene animated');
+        console.log(`✅ Scene ${sceneId} animated:`, videoUrl);
+        if (record && process.env.VIDEO_QUEUE_URL) {
+            await sqs.send(new client_sqs_1.DeleteMessageCommand({
+                QueueUrl: process.env.VIDEO_QUEUE_URL,
+                ReceiptHandle: record.receiptHandle,
+            }));
+        }
+        return { message: 'Scene animated successfully' };
+    }
+    catch (error) {
+        console.error(`❌ Error animating scene ${sceneId}:`, error);
+        // The caller (index.ts) broadcasts the 'error' WS event and deletes the
+        // SQS message uniformly for every request type — Runway calls aren't
+        // idempotent, so we don't want this message retried either.
+        throw error;
+    }
+}
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoicHJvY2Vzc0FuaW1hdGVTY2VuZS5qcyIsInNvdXJjZVJvb3QiOiIiLCJzb3VyY2VzIjpbInByb2Nlc3NBbmltYXRlU2NlbmUudHMiXSwibmFtZXMiOltdLCJtYXBwaW5ncyI6Ijs7QUFpQkEsa0RBcURDO0FBckVELG9EQUFzRTtBQUN0RSwwREFBcUQ7QUFDckQsd0RBQTBEO0FBQzFELDBEQUEyRDtBQUMzRCxrRUFBK0Q7QUFFL0QsTUFBTSxHQUFHLEdBQUcsSUFBSSxzQkFBUyxDQUFDLEVBQUUsTUFBTSxFQUFFLE9BQU8sQ0FBQyxHQUFHLENBQUMsVUFBVSxJQUFJLFdBQVcsRUFBRSxDQUFDLENBQUM7QUFVdEUsS0FBSyxVQUFVLG1CQUFtQixDQUN2QyxPQUE0QixFQUM1QixNQUFrQjtJQUVsQixNQUFNLEVBQUUsTUFBTSxFQUFFLFNBQVMsRUFBRSxPQUFPLEVBQUUsZUFBZSxFQUFFLEdBQUcsT0FBTyxDQUFDO0lBRWhFLElBQUksQ0FBQztRQUNILE9BQU8sQ0FBQyxHQUFHLENBQUMsc0JBQXNCLEVBQUUsSUFBSSxDQUFDLFNBQVMsQ0FBQyxPQUFPLEVBQUUsSUFBSSxFQUFFLENBQUMsQ0FBQyxDQUFDLENBQUM7UUFFdEUsTUFBTSxRQUFRLEdBQUcsTUFBTSxJQUFBLDJCQUFXLEVBQUMsTUFBTSxFQUFFLFNBQVMsQ0FBQyxDQUFDO1FBQ3RELE1BQU0sS0FBSyxHQUFHLFFBQVEsRUFBRSxNQUFNLENBQUMsSUFBSSxDQUFDLENBQUMsQ0FBQyxFQUFFLEVBQUUsQ0FBQyxDQUFDLENBQUMsRUFBRSxLQUFLLE9BQU8sQ0FBQyxDQUFDO1FBQzdELE1BQU0sUUFBUSxHQUFHLEtBQUssRUFBRSxLQUFLLENBQUMsR0FBRyxJQUFJLEtBQUssRUFBRSxLQUFLLENBQUMsR0FBRyxDQUFDO1FBQ3RELE1BQU0sUUFBUSxHQUFHLFFBQVEsQ0FBQyxDQUFDLENBQUMsTUFBTSxJQUFBLGdDQUFpQixFQUFDLFFBQVEsQ0FBQyxDQUFDLENBQUMsQ0FBQyxJQUFJLENBQUM7UUFFckUsSUFBSSxDQUFDLFFBQVEsRUFBRSxDQUFDO1lBQ2QsTUFBTSxJQUFJLEtBQUssQ0FBQyx5Q0FBeUMsQ0FBQyxDQUFDO1FBQzdELENBQUM7UUFFRCxNQUFNLFFBQVEsR0FBRyxNQUFNLElBQUEsaUNBQWlCLEVBQ3RDLFFBQVEsRUFDUixlQUFlLEVBQ2YsT0FBTyxFQUNQLE1BQU0sRUFDTixTQUFTLENBQ1YsQ0FBQztRQUVGLE1BQU0sSUFBQSxxQ0FBaUIsRUFDckIsZ0JBQWdCLEVBQ2hCLE1BQU0sRUFDTixTQUFTLEVBQ1QsRUFBRSxPQUFPLEVBQUUsUUFBUSxFQUFFLGVBQWUsRUFBRSxFQUN0QyxnQkFBZ0IsQ0FDakIsQ0FBQztRQUVGLE9BQU8sQ0FBQyxHQUFHLENBQUMsV0FBVyxPQUFPLFlBQVksRUFBRSxRQUFRLENBQUMsQ0FBQztRQUV0RCxJQUFJLE1BQU0sSUFBSSxPQUFPLENBQUMsR0FBRyxDQUFDLGVBQWUsRUFBRSxDQUFDO1lBQzFDLE1BQU0sR0FBRyxDQUFDLElBQUksQ0FDWixJQUFJLGlDQUFvQixDQUFDO2dCQUN2QixRQUFRLEVBQUUsT0FBTyxDQUFDLEdBQUcsQ0FBQyxlQUFlO2dCQUNyQyxhQUFhLEVBQUUsTUFBTSxDQUFDLGFBQWE7YUFDcEMsQ0FBQyxDQUNILENBQUM7UUFDSixDQUFDO1FBRUQsT0FBTyxFQUFFLE9BQU8sRUFBRSw2QkFBNkIsRUFBRSxDQUFDO0lBQ3BELENBQUM7SUFBQyxPQUFPLEtBQUssRUFBRSxDQUFDO1FBQ2YsT0FBTyxDQUFDLEtBQUssQ0FBQywyQkFBMkIsT0FBTyxHQUFHLEVBQUUsS0FBSyxDQUFDLENBQUM7UUFDNUQsd0VBQXdFO1FBQ3hFLHFFQUFxRTtRQUNyRSw0REFBNEQ7UUFDNUQsTUFBTSxLQUFLLENBQUM7SUFDZCxDQUFDO0FBQ0gsQ0FBQyIsInNvdXJjZXNDb250ZW50IjpbImltcG9ydCB7IFNRU1JlY29yZCB9IGZyb20gJ2F3cy1sYW1iZGEnO1xuaW1wb3J0IHsgRGVsZXRlTWVzc2FnZUNvbW1hbmQsIFNRU0NsaWVudCB9IGZyb20gJ0Bhd3Mtc2RrL2NsaWVudC1zcXMnO1xuaW1wb3J0IHsgZ2V0TWFuaWZlc3QgfSBmcm9tICcuLi91dGlscy9tYW5pZmVzdFV0aWxzJztcbmltcG9ydCB7IGdldEltYWdlU2lnbmVkVXJsIH0gZnJvbSAnLi4vdXRpbHMvdmlkZW9FZmZlY3RzJztcbmltcG9ydCB7IGFuaW1hdGVTY2VuZUltYWdlIH0gZnJvbSAnLi4vdXRpbHMvcnVud2F5QW5pbWF0ZSc7XG5pbXBvcnQgeyBicm9hZGNhc3RQcm9ncmVzcyB9IGZyb20gJy4uL3V0aWxzL2Jyb2FkY2FzdFByb2dyZXNzJztcblxuY29uc3Qgc3FzID0gbmV3IFNRU0NsaWVudCh7IHJlZ2lvbjogcHJvY2Vzcy5lbnYuQVdTX1JFR0lPTiB8fCAndXMtZWFzdC0xJyB9KTtcblxuZXhwb3J0IGludGVyZmFjZSBBbmltYXRlU2NlbmVSZXF1ZXN0IHtcbiAgdHlwZT86ICdhbmltYXRlLXNjZW5lJztcbiAgdXNlcklkOiBzdHJpbmc7XG4gIHRpbWVzdGFtcDogc3RyaW5nO1xuICBzY2VuZUlkOiBudW1iZXI7XG4gIGFuaW1hdGlvblByb21wdDogc3RyaW5nO1xufVxuXG5leHBvcnQgYXN5bmMgZnVuY3Rpb24gcHJvY2Vzc0FuaW1hdGVTY2VuZShcbiAgcmVxdWVzdDogQW5pbWF0ZVNjZW5lUmVxdWVzdCxcbiAgcmVjb3JkPzogU1FTUmVjb3JkLFxuKTogUHJvbWlzZTxhbnk+IHtcbiAgY29uc3QgeyB1c2VySWQsIHRpbWVzdGFtcCwgc2NlbmVJZCwgYW5pbWF0aW9uUHJvbXB0IH0gPSByZXF1ZXN0O1xuXG4gIHRyeSB7XG4gICAgY29uc29sZS5sb2coJ3Byb2Nlc3NBbmltYXRlU2NlbmU6JywgSlNPTi5zdHJpbmdpZnkocmVxdWVzdCwgbnVsbCwgMikpO1xuXG4gICAgY29uc3QgbWFuaWZlc3QgPSBhd2FpdCBnZXRNYW5pZmVzdCh1c2VySWQsIHRpbWVzdGFtcCk7XG4gICAgY29uc3Qgc2NlbmUgPSBtYW5pZmVzdD8uc2NlbmVzLmZpbmQoKHMpID0+IHMuaWQgPT09IHNjZW5lSWQpO1xuICAgIGNvbnN0IGltYWdlS2V5ID0gc2NlbmU/LmZpbGVzLnBuZyB8fCBzY2VuZT8uZmlsZXMuanBnO1xuICAgIGNvbnN0IGltYWdlVXJsID0gaW1hZ2VLZXkgPyBhd2FpdCBnZXRJbWFnZVNpZ25lZFVybChpbWFnZUtleSkgOiBudWxsO1xuXG4gICAgaWYgKCFpbWFnZVVybCkge1xuICAgICAgdGhyb3cgbmV3IEVycm9yKCdTY2VuZSBoYXMgbm8gZ2VuZXJhdGVkIGltYWdlIHRvIGFuaW1hdGUnKTtcbiAgICB9XG5cbiAgICBjb25zdCB2aWRlb1VybCA9IGF3YWl0IGFuaW1hdGVTY2VuZUltYWdlKFxuICAgICAgaW1hZ2VVcmwsXG4gICAgICBhbmltYXRpb25Qcm9tcHQsXG4gICAgICBzY2VuZUlkLFxuICAgICAgdXNlcklkLFxuICAgICAgdGltZXN0YW1wLFxuICAgICk7XG5cbiAgICBhd2FpdCBicm9hZGNhc3RQcm9ncmVzcyhcbiAgICAgICdzY2VuZV9hbmltYXRlZCcsXG4gICAgICB1c2VySWQsXG4gICAgICB0aW1lc3RhbXAsXG4gICAgICB7IHNjZW5lSWQsIHZpZGVvVXJsLCBhbmltYXRpb25Qcm9tcHQgfSxcbiAgICAgICdTY2VuZSBhbmltYXRlZCcsXG4gICAgKTtcblxuICAgIGNvbnNvbGUubG9nKGDinIUgU2NlbmUgJHtzY2VuZUlkfSBhbmltYXRlZDpgLCB2aWRlb1VybCk7XG5cbiAgICBpZiAocmVjb3JkICYmIHByb2Nlc3MuZW52LlZJREVPX1FVRVVFX1VSTCkge1xuICAgICAgYXdhaXQgc3FzLnNlbmQoXG4gICAgICAgIG5ldyBEZWxldGVNZXNzYWdlQ29tbWFuZCh7XG4gICAgICAgICAgUXVldWVVcmw6IHByb2Nlc3MuZW52LlZJREVPX1FVRVVFX1VSTCxcbiAgICAgICAgICBSZWNlaXB0SGFuZGxlOiByZWNvcmQucmVjZWlwdEhhbmRsZSxcbiAgICAgICAgfSksXG4gICAgICApO1xuICAgIH1cblxuICAgIHJldHVybiB7IG1lc3NhZ2U6ICdTY2VuZSBhbmltYXRlZCBzdWNjZXNzZnVsbHknIH07XG4gIH0gY2F0Y2ggKGVycm9yKSB7XG4gICAgY29uc29sZS5lcnJvcihg4p2MIEVycm9yIGFuaW1hdGluZyBzY2VuZSAke3NjZW5lSWR9OmAsIGVycm9yKTtcbiAgICAvLyBUaGUgY2FsbGVyIChpbmRleC50cykgYnJvYWRjYXN0cyB0aGUgJ2Vycm9yJyBXUyBldmVudCBhbmQgZGVsZXRlcyB0aGVcbiAgICAvLyBTUVMgbWVzc2FnZSB1bmlmb3JtbHkgZm9yIGV2ZXJ5IHJlcXVlc3QgdHlwZSDigJQgUnVud2F5IGNhbGxzIGFyZW4ndFxuICAgIC8vIGlkZW1wb3RlbnQsIHNvIHdlIGRvbid0IHdhbnQgdGhpcyBtZXNzYWdlIHJldHJpZWQgZWl0aGVyLlxuICAgIHRocm93IGVycm9yO1xuICB9XG59XG4iXX0=

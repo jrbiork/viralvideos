@@ -1,12 +1,16 @@
 import { UserItem } from './user';
-export declare const FREE_VIDEO_LIMIT = 1;
-export declare const MAX_SCENES = 6;
-export declare const FREE_MAX_SCENES = 6;
-export declare const PRO_MONTHLY_VIDEO_LIMIT = 15;
-export declare const PRO_MAX_SCENES = 6;
-export declare const FREE_IMAGE_GEN_LIMIT = 3;
-export declare const PRO_IMAGE_GEN_MONTHLY_LIMIT = 30;
-export type Plan = 'free' | 'pro';
+export type Plan = 'free' | 'creator' | 'pro';
+export declare const FREE_VIDEO_LIMIT: number;
+export declare const FREE_MAX_SCENES: number;
+export declare const CREATOR_MONTHLY_VIDEO_LIMIT: number;
+export declare const CREATOR_MAX_SCENES: number;
+export declare const PRO_MONTHLY_VIDEO_LIMIT: number;
+export declare const PRO_MAX_SCENES: number;
+export declare const FREE_IMAGE_GEN_LIMIT: number;
+export declare const CREATOR_IMAGE_GEN_MONTHLY_LIMIT: number;
+export declare const PRO_IMAGE_GEN_MONTHLY_LIMIT: number;
+export declare const CREATOR_ANIMATION_MONTHLY_LIMIT: number;
+export declare const PRO_ANIMATION_MONTHLY_LIMIT: number;
 export interface VideoQuota {
     plan: Plan;
     used: number;
@@ -15,6 +19,7 @@ export interface VideoQuota {
     maxScenes: number;
 }
 export declare function getPlan(user: UserItem | null): Plan;
+export declare function getMaxScenesForUser(userId: string): Promise<number>;
 /**
  * Read-only quota lookup for display purposes.
  */
@@ -33,6 +38,18 @@ export declare function checkAndConsumeVideoQuota(userId: string): Promise<{
  * monthly cap that resets with the billing-period counter.
  */
 export declare function checkAndConsumeImageGenQuota(userId: string): Promise<{
+    allowed: boolean;
+    used: number;
+    limit: number;
+    plan: Plan;
+}>;
+/**
+ * Check whether the user may animate another scene via Runway and, if so,
+ * consume one unit. Free plan is always rejected (animationLimit is 0).
+ * Monthly cap resets with the same lazy billing-period pattern as
+ * image/video quotas.
+ */
+export declare function checkAndConsumeAnimationQuota(userId: string): Promise<{
     allowed: boolean;
     used: number;
     limit: number;

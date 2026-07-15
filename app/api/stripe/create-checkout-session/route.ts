@@ -1,10 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { verifyCognitoTokenPayload } from '@/lib/auth-utils';
+import { planFromPriceId } from '@/lib/stripe-config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-02-24.acacia',
 });
+
+const dynamoClient = new DynamoDBClient({
+  region: process.env.AWS_REGION || 'us-east-1',
+});
+const docClient = DynamoDBDocumentClient.from(dynamoClient);
+const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'viral-videos-users';
 
 const API_GATEWAY_URL = process.env.API_GATEWAY_URL;
 
@@ -79,6 +88,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const resolvedPlan = planFromPriceId(priceId);
+    if (!resolvedPlan || resolvedPlan !== planName) {
+      return NextResponse.json(
+        { error: 'Invalid plan or price selection' },
+        { status: 400 },
+      );
+    }
+
     // Fetch full user data to get stripeCustomerId and email
     const fullUserData = await getUserData(
       token,
@@ -95,8 +112,25 @@ export async function POST(request: NextRequest) {
 
     const user = fullUserData.user;
 
-    // Create or retrieve Stripe customer
+    // Create or retrieve Stripe customer. The stored ID can point at a
+    // customer that no longer exists in this Stripe account/mode (e.g. after
+    // switching test/live keys or resetting test data), so verify it first
+    // rather than trusting it blindly.
     let customerId = user.stripeCustomerId;
+
+    if (customerId) {
+      try {
+        const existing = await stripe.customers.retrieve(customerId);
+        if (existing.deleted) {
+          customerId = undefined;
+        }
+      } catch (error) {
+        console.warn(
+          `Stored stripeCustomerId ${customerId} is invalid, creating a new customer`,
+        );
+        customerId = undefined;
+      }
+    }
 
     if (!customerId) {
       const customer = await stripe.customers.create({
@@ -107,6 +141,20 @@ export async function POST(request: NextRequest) {
         },
       });
       customerId = customer.id;
+
+      // Persist the fresh customer ID immediately rather than waiting on
+      // the checkout.session.completed webhook — locally that webhook only
+      // fires if `stripe listen` is forwarding events, so without this the
+      // billing portal would keep hitting the same "no such customer" error
+      // on every checkout attempt until a webhook happens to land.
+      await docClient.send(
+        new UpdateCommand({
+          TableName: USERS_TABLE_NAME,
+          Key: { userId: userData.sub, username: userData.username },
+          UpdateExpression: 'SET stripeCustomerId = :customerId',
+          ExpressionAttributeValues: { ':customerId': customerId },
+        }),
+      );
     }
 
     // Create checkout session

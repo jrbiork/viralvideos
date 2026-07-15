@@ -59,7 +59,7 @@ export const handler = async (
       };
     }
 
-    // Enforce video quota (free: 3 lifetime, pro: 30/month)
+    // Enforce video quota (limits vary by plan, see infrastructure/lambda/utils/quota.ts)
     const { allowed, quota } = await checkAndConsumeVideoQuota(userId);
     if (!allowed) {
       console.log(
@@ -70,7 +70,7 @@ export const handler = async (
         body: JSON.stringify({
           error:
             quota.plan === 'free'
-              ? `You've used all ${quota.limit} free videos. Upgrade to Pro to create up to 30 videos per month.`
+              ? `You've used all ${quota.limit} free videos. Upgrade to Creator or Pro for more videos every month.`
               : `You've reached your monthly limit of ${quota.limit} videos. Your quota resets next month.`,
           quota,
         }),

@@ -10,7 +10,8 @@ const docClient = DynamoDBDocumentClient.from(client);
 const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'viral-videos-users';
 
 export interface UserSubscription {
-  mode: 'free' | 'starter' | 'creator' | 'influencer';
+  // 'starter'/'influencer' are legacy modes, treated as 'pro' by getPlan()
+  mode: 'free' | 'creator' | 'pro' | 'starter' | 'influencer';
   renewalDate: string | null;
   status: 'active' | 'cancelled' | 'expired';
 }
@@ -28,6 +29,8 @@ export interface UserItem {
   imagesGenerated?: number; // free-tier lifetime counter, via "Generate image" button
   imagesGeneratedThisMonth?: number; // pro-tier monthly counter
   imageQuotaPeriodStart?: string; // ISO month, e.g. "2026-07" — only used by the pro monthly counter
+  animationsGeneratedThisMonth?: number; // pro-tier monthly counter, via "Animate scene" button
+  animationQuotaPeriodStart?: string; // ISO month, e.g. "2026-07"
   [key: string]: any;
 }
 

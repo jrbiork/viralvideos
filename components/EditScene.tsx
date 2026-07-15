@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import ImageEditModal from './modals/ImageEditModal';
-import { MAX_SCENES } from './useUserQuota';
+import AnimateSceneModal from './modals/AnimateSceneModal';
+import { AnimationQuota } from './useUserQuota';
 
 export interface Scene {
   id: number;
@@ -11,6 +12,8 @@ export interface Scene {
   scenePosition?: number;
   placeholderImageUrl?: string;
   removed?: boolean;
+  animated?: boolean;
+  animationPrompt?: string;
 }
 
 interface EditSceneProps {
@@ -23,6 +26,9 @@ interface EditSceneProps {
   onEditedNarrationChange: (value: string) => void;
   onRegenerateAudio?: (sceneId: number, narration?: string) => void;
   imageUrl?: string;
+  // Signed URL to the scene's Runway clip, only set when scene.animated —
+  // shown as the thumbnail instead of the static source image.
+  sceneVideoUrl?: string;
   isSelected?: boolean;
   onSelect?: (sceneId: number) => void;
   regeneratingSceneId?: number | null;
@@ -48,6 +54,19 @@ interface EditSceneProps {
     captionText: string,
     imageUrl: string,
   ) => void;
+  onQueueAnimationEdit?: (
+    sceneId: number,
+    animatedVideoUrl: string,
+    animationPrompt: string,
+  ) => void;
+  animationQuota?: AnimationQuota;
+  maxScenes?: number;
+  // Runway animation runs asynchronously — these reflect the in-flight
+  // request/result for this specific scene, driven by a WebSocket broadcast
+  // handled at the page level (see app/create/page.tsx).
+  isAnimating?: boolean;
+  animationResult?: { videoUrl: string; prompt: string };
+  onStartAnimation?: (sceneId: number) => void;
 }
 
 export default function EditScene({
@@ -60,6 +79,7 @@ export default function EditScene({
   onEditedNarrationChange,
   onRegenerateAudio,
   imageUrl,
+  sceneVideoUrl,
   isSelected = false,
   onSelect,
   regeneratingSceneId,
@@ -77,6 +97,12 @@ export default function EditScene({
   showToasterMessage,
   onQueueImageEdit,
   onQueueAddedScene,
+  onQueueAnimationEdit,
+  animationQuota = { plan: 'free', used: 0, limit: 0, remaining: 0 },
+  maxScenes = 3,
+  isAnimating = false,
+  animationResult,
+  onStartAnimation,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -94,6 +120,73 @@ export default function EditScene({
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(
     imageUrl || null,
   );
+
+  const [isAnimateModalOpen, setIsAnimateModalOpen] = useState(false);
+  const [isSavingAnimation, setIsSavingAnimation] = useState(false);
+  const generatedVideoUrl = animationResult?.videoUrl ?? null;
+  const lastAnimationPrompt = animationResult?.prompt ?? '';
+
+  // The thumbnail video has no automatic retry — if the signed S3 URL
+  // errors (e.g. a transient throttling response), fall back to the static
+  // image rather than leaving the thumbnail blank forever. Resets whenever
+  // the URL itself changes (a fresh animation, or a retry after reload).
+  const [thumbnailVideoErrored, setThumbnailVideoErrored] = useState(false);
+  React.useEffect(() => {
+    setThumbnailVideoErrored(false);
+  }, [sceneVideoUrl]);
+
+  // Runway animation takes 20-90s+, well past API Gateway's hard 29s
+  // integration timeout, so this only submits the job — the actual result
+  // (isAnimating flipping back to false, animationResult appearing) arrives
+  // later via the WebSocket broadcast handled in app/create/page.tsx.
+  const handleAnimateSceneFromModal = async (prompt: string) => {
+    const response = await fetch('/api/animate-scene', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        sceneId: scene.id,
+        animationPrompt: prompt,
+        timestamp: timestamp || queryParams.get('timestamp'),
+      }),
+    });
+
+    if (response.ok) {
+      onStartAnimation?.(Number(scene.id));
+    } else {
+      const errorData = await response.json();
+      console.error('Scene animation failed:', errorData);
+      showToasterMessage?.(
+        `Failed to animate scene: ${errorData.error || 'Unknown error'}`,
+        'error',
+      );
+      throw new Error(errorData.error || 'Failed to animate scene');
+    }
+  };
+
+  const handleSaveAnimation = async () => {
+    if (!generatedVideoUrl) {
+      console.error('No generated animation URL to save');
+      return;
+    }
+
+    setIsSavingAnimation(true);
+    try {
+      onQueueAnimationEdit?.(
+        Number(scene.id),
+        generatedVideoUrl,
+        lastAnimationPrompt,
+      );
+
+      showToasterMessage?.(
+        'Animation queued — click "Apply changes" to save',
+        'success',
+      );
+    } finally {
+      setIsSavingAnimation(false);
+    }
+  };
 
   // Handlers extracted from inline props for ImageEditModal
   const handleGenerateImageFromModal = async (prompt: string) => {
@@ -186,7 +279,7 @@ export default function EditScene({
   const hasValidNarration =
     scene.narration && scene.narration.trim().length > 0;
   const hasValidImage = currentImageUrl || imageUrl;
-  const isUnderSceneLimit = totalScenesCount <= MAX_SCENES;
+  const isUnderSceneLimit = totalScenesCount <= maxScenes;
 
   const handleCreateScene = async (
     narration: string = scene.narration,
@@ -438,33 +531,101 @@ export default function EditScene({
           {currentImageUrl ||
           (scene.isUserAdded && scene.placeholderImageUrl) ? (
             <div className="flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl overflow-hidden relative group">
-              <img
-                src={
-                  currentImageUrl ||
-                  (scene.isUserAdded ? scene.placeholderImageUrl : undefined)
-                }
-                alt={`Scene ${displayIndex + 1}`}
-                className="w-full h-auto object-contain object-top rounded-xl"
-                onError={(e) => {
-                  // Hide the image if it fails to load
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.parentElement!.style.backgroundColor =
-                    '#374151';
-                }}
-              />
+              {scene.animated && sceneVideoUrl && !thumbnailVideoErrored ? (
+                <video
+                  src={sceneVideoUrl}
+                  className="w-full h-auto object-contain object-top rounded-xl"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  onError={() => setThumbnailVideoErrored(true)}
+                />
+              ) : (
+                <img
+                  src={
+                    currentImageUrl ||
+                    (scene.isUserAdded ? scene.placeholderImageUrl : undefined)
+                  }
+                  alt={`Scene ${displayIndex + 1}`}
+                  className="w-full h-auto object-contain object-top rounded-xl"
+                  onError={(e) => {
+                    // Hide the image if it fails to load
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.parentElement!.style.backgroundColor =
+                      '#374151';
+                  }}
+                />
+              )}
+
+              {/* Always-visible badge marking this scene as Runway-animated */}
+              {scene.animated && (
+                <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-black/70 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md pointer-events-none">
+                  <svg
+                    className="w-3 h-3"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M14.752 11.168l-6.518-3.759A1 1 0 007 8.279v7.442a1 1 0 001.234.972l6.518-1.628a1 1 0 00.748-.972v-2.925a1 1 0 00-.748-.972z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M3 6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"
+                    />
+                  </svg>
+                  Animated
+                </div>
+              )}
 
               {/* Hover Overlay with Top-Right Icons */}
               <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
                 <div className="absolute top-1 right-1 flex gap-1 pointer-events-none">
+                  {!scene.animated && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsImageEditModalOpen(true);
+                      }}
+                      className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
+                      title="Edit"
+                    >
+                      <img src="/edit.svg" alt="Edit" className="w-4 h-4" />
+                    </button>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      setIsImageEditModalOpen(true);
+                      setIsAnimateModalOpen(true);
                     }}
                     className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
-                    title="Edit"
+                    title={scene.animated ? 'Re-animate scene' : 'Animate scene'}
                   >
-                    <img src="/edit.svg" alt="Edit" className="w-4 h-4" />
+                    <svg
+                      className="w-4 h-4 text-white"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M14.752 11.168l-6.518-3.759A1 1 0 007 8.279v7.442a1 1 0 001.234.972l6.518-1.628a1 1 0 00.748-.972v-2.925a1 1 0 00-.748-.972z"
+                      />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M3 6a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6z"
+                      />
+                    </svg>
                   </button>
                 </div>
               </div>
@@ -746,6 +907,20 @@ export default function EditScene({
           generatedImageUrl={generatedImageUrl}
           validationErrors={{ image: false }}
           onClearValidationError={() => {}}
+        />
+
+        {/* Animate Scene Modal */}
+        <AnimateSceneModal
+          isOpen={isAnimateModalOpen}
+          onClose={() => setIsAnimateModalOpen(false)}
+          currentImageUrl={currentImageUrl}
+          displayIndex={displayIndex}
+          onAnimateScene={handleAnimateSceneFromModal}
+          onSaveAnimation={handleSaveAnimation}
+          isAnimating={isAnimating}
+          isSavingAnimation={isSavingAnimation}
+          generatedVideoUrl={generatedVideoUrl}
+          animationQuota={animationQuota}
         />
       </div>
     </>

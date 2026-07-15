@@ -3,10 +3,11 @@ import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { generateNarration } from '../utils/audio';
 import { generateSubtitles } from '../utils/subtitles';
 import { generateVideoEffects } from '../utils/videoEffects';
+import { ANIMATION_DURATION_SECONDS } from '../utils/runwayAnimate';
 import { uploadImageToS3 } from '../utils/s3Uploader';
 import { broadcastProgress } from '../utils/broadcastProgress';
 import { getUser } from '../utils/user';
-import { MAX_SCENES } from '../utils/quota';
+import { getMaxScenesForUser } from '../utils/quota';
 import { Scene } from '../utils/script';
 import {
   getManifest,
@@ -36,6 +37,11 @@ export interface BatchEditRequest {
       imageUrl: string;
     }[];
     removedSceneIds: number[];
+    animationEdits?: {
+      sceneId: number;
+      animatedVideoUrl: string;
+      animationPrompt: string;
+    }[];
   };
 }
 
@@ -48,7 +54,13 @@ export async function processBatchEdit(
   record?: SQSRecord,
 ): Promise<any> {
   const { userId, timestamp, edits } = request;
-  const { narrationEdits, imageEdits, addedScenes, removedSceneIds } = edits;
+  const {
+    narrationEdits,
+    imageEdits: requestedImageEdits,
+    addedScenes,
+    removedSceneIds,
+    animationEdits = [],
+  } = edits;
 
   try {
     console.log('processBatchEdit:', JSON.stringify(request, null, 2));
@@ -67,8 +79,9 @@ export async function processBatchEdit(
     const resultingCount =
       currentNonRemovedCount - removedSceneIds.length + addedScenes.length;
 
-    if (resultingCount > MAX_SCENES) {
-      const message = `This change would result in ${resultingCount} scenes, but the maximum is ${MAX_SCENES}.`;
+    const maxScenes = await getMaxScenesForUser(userId);
+    if (resultingCount > maxScenes) {
+      const message = `This change would result in ${resultingCount} scenes, but the maximum is ${maxScenes}.`;
       console.error('processBatchEdit rejected:', message);
 
       await broadcastProgress('error', userId, timestamp, {}, message);
@@ -84,6 +97,24 @@ export async function processBatchEdit(
 
       return { message: 'Batch edit rejected: scene limit exceeded' };
     }
+
+    // Scenes that are (or are about to become) Runway-animated: their image
+    // is locked (the animated clip is tied to that exact source image) and
+    // their mp4 must never be touched by the Ken-Burns path again.
+    const animatedSceneIds = new Set<number>([
+      ...manifest.scenes.filter((s) => s.animated).map((s) => s.id),
+      ...animationEdits.map((e) => e.sceneId),
+    ]);
+
+    const imageEdits = requestedImageEdits.filter((edit) => {
+      if (animatedSceneIds.has(edit.sceneId)) {
+        console.warn(
+          `⚠️ Ignoring image edit for scene ${edit.sceneId}: scene is animated, image is locked`,
+        );
+        return false;
+      }
+      return true;
+    });
 
     // 1) Persist replaced/new images to S3 (scene-{id}.png)
     const imageUploads = [
@@ -124,7 +155,10 @@ export async function processBatchEdit(
         description: '',
         duration: durationForScene(edit.sceneId),
         narration: edit.narration,
-        animated: false,
+        animated: animatedSceneIds.has(edit.sceneId),
+        hardCapSeconds: animatedSceneIds.has(edit.sceneId)
+          ? ANIMATION_DURATION_SECONDS
+          : undefined,
       })),
       ...addedScenes.map((scene) => ({
         id: scene.sceneId,
@@ -159,12 +193,20 @@ export async function processBatchEdit(
       const narrationEdit = editedSceneIds.has(scene.id)
         ? audioScenes.find((edited) => edited.id === scene.id)
         : undefined;
+      const animationEdit = animationEdits.find((e) => e.sceneId === scene.id);
+      const isAnimated = animatedSceneIds.has(scene.id);
       return {
         ...scene,
         removed: removedSceneIds.includes(scene.id) || scene.removed || false,
+        animated: isAnimated,
+        animationPrompt: animationEdit?.animationPrompt ?? scene.animationPrompt,
         files: {
           ...scene.files,
-          duration: narrationEdit?.duration ?? scene.files.duration,
+          // Animated scenes are a fixed-length Runway clip — always pin
+          // duration to that, regardless of what narration produced.
+          duration: isAnimated
+            ? ANIMATION_DURATION_SECONDS
+            : narrationEdit?.duration ?? scene.files.duration,
         },
       };
     });
@@ -178,6 +220,7 @@ export async function processBatchEdit(
       const manifestScene = createManifestScene(
         {
           id: added.sceneId,
+          scenePosition: added.scenePosition,
           description: '',
           duration: audioScene?.duration || 10,
           narration: added.captionText,
@@ -203,14 +246,21 @@ export async function processBatchEdit(
     if (affectedSceneIds.size > 0) {
       const user = await getUser(userId);
       const effectScenes = updatedScenes
-        .filter((scene) => affectedSceneIds.has(scene.id) && !scene.removed)
+        .filter(
+          (scene) =>
+            affectedSceneIds.has(scene.id) &&
+            !scene.removed &&
+            !scene.animated, // animated scenes keep their Runway clip forever
+        )
         .map((scene) => ({
           id: scene.id,
           scenePosition: scene.scenePosition,
           duration: scene.files.duration,
           animated: false,
         }));
-      await generateVideoEffects(effectScenes, userId, timestamp, user);
+      if (effectScenes.length > 0) {
+        await generateVideoEffects(effectScenes, userId, timestamp, user);
+      }
     }
 
     // 5) Single manifest write + single broadcast
