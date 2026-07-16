@@ -33,12 +33,14 @@ import VideoPreview from '@/components/VideoPreview';
 import Modal from '@/components/Modal';
 import { useUserDataCache } from '@/hooks/useUserDataCache';
 import { useUserQuota } from '@/components/useUserQuota';
+import { useUnsavedChanges } from '@/components/UnsavedChangesContext';
 import { arrayMove } from '@dnd-kit/sortable';
 
 import { Manifest } from '../types/manifest';
 
 export default function GeneratePage() {
   const router = useRouter();
+  const { setHasUnsavedChanges, confirmNavigation } = useUnsavedChanges();
   const [currentStep, setCurrentStep] = useState(1);
   const [showQuotaModal, setShowQuotaModal] = useState(false);
   const [selectedVoice, setSelectedVoiceState] = useState(DEFAULT_VOICE); // Track voice selection
@@ -442,8 +444,18 @@ export default function GeneratePage() {
     [videoGenerationState.manifest],
   );
 
-  // Custom handleEditScene that uses subtitle text from manifest
+  // Custom handleEditScene that uses subtitle text from manifest, unless the
+  // user already has an unapplied edit for this scene — that must win, since
+  // the manifest subtitle isn't updated until "Apply changes" completes.
   const handleEditSceneWithSubtitle = (sceneId: number, narration: string) => {
+    const pendingNarration = pendingEdits.narrationEdits.find(
+      (e) => e.sceneId === sceneId,
+    )?.narration;
+    if (pendingNarration !== undefined) {
+      handleEditScene(sceneId, pendingNarration);
+      return;
+    }
+
     const subtitles = getSubtitles();
     const subtitleKey = `${videoGenerationState.currentTimestamp}.scene-${sceneId}.subtitle`;
     const subtitleText = subtitles[subtitleKey] || narration;
@@ -599,6 +611,16 @@ export default function GeneratePage() {
     pendingEdits.animationEdits.length +
     pendingRemovedSceneIds.length +
     (hasSceneReorder ? 1 : 0);
+
+  useEffect(() => {
+    setHasUnsavedChanges(pendingEditsCount > 0);
+  }, [pendingEditsCount, setHasUnsavedChanges]);
+
+  // Clear the flag when this page unmounts (e.g. after a confirmed
+  // navigation away), so it doesn't linger and block the next page.
+  useEffect(() => {
+    return () => setHasUnsavedChanges(false);
+  }, [setHasUnsavedChanges]);
 
   const handleSceneReorder = useCallback(
     (activeId: number, overId: number) => {

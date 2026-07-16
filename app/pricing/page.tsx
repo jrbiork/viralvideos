@@ -373,13 +373,13 @@ export default function Pricing() {
                   key={featureIndex}
                   className={`flex items-center ${
                     feature.highlight
-                      ? 'text-yellow-300 font-semibold'
+                      ? 'text-purple-300 font-semibold'
                       : 'text-gray-300'
                   }`}
                 >
                   <svg
                     className={`w-5 h-5 mr-3 flex-shrink-0 ${
-                      feature.highlight ? 'text-yellow-300' : 'text-green-400'
+                      feature.highlight ? 'text-purple-300' : 'text-green-400'
                     }`}
                     fill="currentColor"
                     viewBox="0 0 20 20"

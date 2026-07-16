@@ -6,6 +6,7 @@ import Sidebar from './Sidebar';
 import UserDropdown from './UserDropdown';
 import Breadcrumb from './Breadcrumb';
 import MobileNav from './MobileNav';
+import { useUnsavedChanges } from './UnsavedChangesContext';
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -32,6 +33,7 @@ export default function MainLayout({
 }: MainLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { confirmNavigation } = useUnsavedChanges();
 
   // Define breadcrumb items based on current path
   const getBreadcrumbItems = () => {
@@ -72,7 +74,7 @@ export default function MainLayout({
           <div className="flex items-center space-x-4">
             <div
               className="flex items-center space-x-2 cursor-pointer"
-              onClick={() => router.push('/')}
+              onClick={() => confirmNavigation(() => router.push('/'))}
             >
               <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
                 <svg

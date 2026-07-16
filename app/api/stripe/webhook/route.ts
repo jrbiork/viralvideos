@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import {
-  DynamoDBDocumentClient,
-  GetCommand,
-  UpdateCommand,
-} from '@aws-sdk/lib-dynamodb';
+import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { planFromPriceId } from '@/lib/stripe-config';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -53,6 +49,7 @@ async function updateUserSubscription(
     renewalDate?: string | null;
     cancelAtPeriodEnd?: boolean;
   },
+  returnValues: 'ALL_NEW' | 'UPDATED_OLD' = 'ALL_NEW',
 ) {
   // Build update expression dynamically
   let updateExpression = 'SET';
@@ -131,7 +128,7 @@ async function updateUserSubscription(
       Object.keys(expressionAttributeNames).length > 0
         ? expressionAttributeNames
         : undefined,
-    ReturnValues: 'ALL_NEW',
+    ReturnValues: returnValues,
   });
 
   const result = await docClient.send(updateCommand);
@@ -306,23 +303,24 @@ export async function POST(request: NextRequest) {
         const priceId = subscription.items.data[0]?.price?.id;
         const resolvedPlan = priceId ? planFromPriceId(priceId) : null;
 
-        let planChanged = false;
-        if (resolvedPlan) {
-          const existing = await docClient.send(
-            new GetCommand({
-              TableName: USERS_TABLE_NAME,
-              Key: { userId: metadata.userId, username: metadata.username },
-            }),
-          );
-          planChanged = existing.Item?.subscription?.mode !== resolvedPlan;
-        }
+        // Read the pre-update plan off the same UpdateItem call (via
+        // ReturnValues) instead of a separate GetItem — the app's IAM user
+        // only has UpdateItem permission on this table, not GetItem.
+        const previousAttributes = await updateUserSubscription(
+          metadata.userId,
+          metadata.username,
+          {
+            subscriptionStatus: status,
+            renewalDate,
+            cancelAtPeriodEnd: subscription.cancel_at_period_end,
+            ...(resolvedPlan ? { subscriptionMode: resolvedPlan } : {}),
+          },
+          resolvedPlan ? 'UPDATED_OLD' : 'ALL_NEW',
+        );
 
-        await updateUserSubscription(metadata.userId, metadata.username, {
-          subscriptionStatus: status,
-          renewalDate,
-          cancelAtPeriodEnd: subscription.cancel_at_period_end,
-          ...(resolvedPlan ? { subscriptionMode: resolvedPlan } : {}),
-        });
+        const planChanged =
+          !!resolvedPlan &&
+          previousAttributes?.subscription?.mode !== resolvedPlan;
 
         if (planChanged) {
           await resetMonthlyQuota(metadata.userId, metadata.username);

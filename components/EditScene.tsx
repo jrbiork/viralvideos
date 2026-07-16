@@ -535,7 +535,11 @@ export default function EditScene({
           {/* Scene Image */}
           {currentImageUrl ||
           (scene.isUserAdded && scene.placeholderImageUrl) ? (
-            <div className="flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl overflow-hidden relative group">
+            <div
+              className={`flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl overflow-hidden relative group ${
+                scene.animated ? 'ring-2 ring-[#7552F2]' : ''
+              }`}
+            >
               {scene.animated && sceneVideoUrl && !thumbnailVideoErrored ? (
                 <video
                   src={sceneVideoUrl}
@@ -565,7 +569,13 @@ export default function EditScene({
 
               {/* Always-visible badge marking this scene as Runway-animated */}
               {scene.animated && (
-                <div className="absolute bottom-1 left-1 flex items-center gap-1 bg-black/70 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md pointer-events-none">
+                <div
+                  className="absolute bottom-1 left-1 flex items-center gap-1 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-md pointer-events-none"
+                  style={{
+                    background:
+                      'linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%)',
+                  }}
+                >
                   <svg
                     className="w-3 h-3"
                     fill="none"
@@ -720,27 +730,31 @@ export default function EditScene({
                     {narrationWordCount}/{MAX_NARRATION_WORDS}
                   </div>
                 </div>
-                {/* Duration Badge - positioned below the textarea (only show for saved scenes) */}
-                {!scene.isUserAdded && (
-                  <div className="flex justify-start mb-2">
-                    <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>{scene.duration}s</span>
-                    </div>
+                {/* Duration Badge - positioned below the textarea (kept as an
+                    invisible spacer for user-added scenes, which have no
+                    duration yet, so the buttons line up with saved scenes) */}
+                <div
+                  className={`flex justify-start mb-2 ${
+                    scene.isUserAdded ? 'invisible' : ''
+                  }`}
+                >
+                  <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span>{scene.duration}s</span>
                   </div>
-                )}
+                </div>
                 <div className="flex justify-end space-x-3">
                   {hasUnsavedChanges &&
                     (scene.isUserAdded ? (
@@ -849,27 +863,31 @@ export default function EditScene({
                     </p>
                   </div>
                 </div>
-                {/* Duration Badge - positioned below the text area (only show for saved scenes) */}
-                {!scene.isUserAdded && (
-                  <div className="flex justify-start mb-2">
-                    <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                        />
-                      </svg>
-                      <span>{scene.duration}s</span>
-                    </div>
+                {/* Duration Badge - positioned below the text area (kept as an
+                    invisible spacer for user-added scenes, which have no
+                    duration yet, so the Edit button lines up with saved scenes) */}
+                <div
+                  className={`flex justify-start mb-2 ${
+                    scene.isUserAdded ? 'invisible' : ''
+                  }`}
+                >
+                  <div className="bg-transparent text-white text-xs rounded-md px-2 py-1 flex items-center gap-1">
+                    <svg
+                      className="w-3.5 h-3.5"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                    <span>{scene.duration}s</span>
                   </div>
-                )}
+                </div>
                 <div className="flex justify-end">
                   <button
                     onClick={() => onEditScene(scene.id, scene.narration)}

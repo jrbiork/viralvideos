@@ -5,6 +5,7 @@ import { AuthProvider } from '../components/AuthContext';
 import { WebSocketProvider } from '../components/WebSocketContext';
 import WebSocketStatus from '../components/WebSocketStatus';
 import PostHogProvider from '../components/PostHogProvider';
+import { UnsavedChangesProvider } from '../components/UnsavedChangesContext';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -34,12 +35,14 @@ export default function RootLayout({
         <PostHogProvider>
           <AuthProvider>
             <WebSocketProvider>
-              {children}
-              {/* Global WebSocket Status - visible on all pages */}
-              {/* <div className="fixed top-20 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
-                <div className="text-xs text-gray-600 mb-1">WebSocket Status</div>
-                <WebSocketStatus showControls={true} />
-              </div> */}
+              <UnsavedChangesProvider>
+                {children}
+                {/* Global WebSocket Status - visible on all pages */}
+                {/* <div className="fixed top-20 right-4 z-50 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
+                  <div className="text-xs text-gray-600 mb-1">WebSocket Status</div>
+                  <WebSocketStatus showControls={true} />
+                </div> */}
+              </UnsavedChangesProvider>
             </WebSocketProvider>
           </AuthProvider>
         </PostHogProvider>

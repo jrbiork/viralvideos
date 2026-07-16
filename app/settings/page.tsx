@@ -117,7 +117,9 @@ export default function SettingsPage() {
 
       if (!response.ok) {
         console.error('Failed to create portal session:', data.error);
-        alert('Failed to open subscription management. Please try again.');
+        alert(
+          data.error || 'Failed to open subscription management. Please try again.',
+        );
         return;
       }
 
@@ -318,7 +320,7 @@ export default function SettingsPage() {
                     {plan === 'pro'
                       ? 'Pro Plan'
                       : plan === 'creator'
-                        ? 'Creator Plan'
+                        ? 'Creator'
                         : 'Free Plan'}
                   </span>
                 </div>
@@ -334,7 +336,7 @@ export default function SettingsPage() {
 
                 {/* Billing status line */}
                 {isPaid && cancelAtPeriodEnd && formattedRenewalDate && (
-                  <p className="text-sm text-yellow-400 mb-4">
+                  <p className="text-sm text-purple-300 mb-4">
                     Cancelled — access ends on {formattedRenewalDate}
                   </p>
                 )}
@@ -359,6 +361,9 @@ export default function SettingsPage() {
                 )}
 
                 {/* Usage */}
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-slate-400 mb-3">
+                  Monthly Usage
+                </h3>
                 <div className="mb-5">
                   <div className="flex items-center justify-between text-sm mb-1.5">
                     <span className="text-slate-400">
