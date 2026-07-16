@@ -42,6 +42,7 @@ export interface BatchEditRequest {
       animatedVideoUrl: string;
       animationPrompt: string;
     }[];
+    sceneOrder?: number[] | null;
   };
 }
 
@@ -60,6 +61,7 @@ export async function processBatchEdit(
     addedScenes,
     removedSceneIds,
     animationEdits = [],
+    sceneOrder,
   } = edits;
 
   try {
@@ -210,6 +212,23 @@ export async function processBatchEdit(
         },
       };
     });
+
+    // Apply any drag-and-drop reorder before inserting added scenes, so the
+    // splice/bump logic below operates on final desired order. Ids not
+    // present in sceneOrder (shouldn't happen in practice) keep their
+    // existing relative order at the end.
+    if (sceneOrder && sceneOrder.length > 0) {
+      const orderIndex = new Map(sceneOrder.map((id, i) => [id, i]));
+      const known = updatedScenes
+        .filter((s) => orderIndex.has(s.id))
+        .sort((a, b) => orderIndex.get(a.id)! - orderIndex.get(b.id)!);
+      const unknown = updatedScenes.filter((s) => !orderIndex.has(s.id));
+      updatedScenes.length = 0;
+      updatedScenes.push(...known, ...unknown);
+      updatedScenes.forEach((s, i) => {
+        s.scenePosition = i;
+      });
+    }
 
     // Insert added scenes at their positions (mirrors addSceneToManifest)
     const addedByPosition = [...addedScenes].sort(

@@ -4,7 +4,7 @@ export const STRIPE_PLANS = {
   creator: {
     name: 'Creator',
     priceId: process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID || '',
-    price: 12,
+    price: 11.9,
   },
   pro: {
     name: 'Pro',

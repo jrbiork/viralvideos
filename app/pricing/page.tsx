@@ -200,7 +200,7 @@ export default function Pricing() {
     {
       planKey: 'creator',
       name: 'Creator',
-      price: '$12',
+      price: '$11.90',
       period: '/month',
       quota: '10 videos per month',
       features: [

@@ -1,9 +1,64 @@
 import React from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical } from 'lucide-react';
 import EditScene, { Scene } from './EditScene';
 import EditSceneSkeleton from './EditSceneSkeleton';
 import AddSceneButton from './AddSceneButton';
 import { AnimationQuota } from './useUserQuota';
 import { Manifest } from '@/app/types/manifest';
+
+// Wraps a single scene card so it can be dragged to reorder (desktop only —
+// the handle is hidden below the `md` breakpoint via CSS, so mobile is
+// unaffected since only the handle carries drag listeners).
+function SortableSceneCard({
+  id,
+  children,
+}: {
+  id: number;
+  children: (args: { dragHandle: React.ReactNode }) => React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : undefined,
+    position: 'relative',
+  };
+
+  const dragHandle = (
+    <button
+      type="button"
+      className="hidden md:flex items-center justify-center text-gray-500 hover:text-gray-300 cursor-grab active:cursor-grabbing touch-none"
+      aria-label="Drag to reorder scene"
+      {...attributes}
+      {...listeners}
+    >
+      <GripVertical size={18} />
+    </button>
+  );
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      {children({ dragHandle })}
+    </div>
+  );
+}
 
 interface SceneCardsContainerProps {
   videoGenerationState: {
@@ -70,6 +125,7 @@ interface SceneCardsContainerProps {
     animatedVideoUrl: string;
     animationPrompt: string;
   }[];
+  onReorderScene?: (activeId: number, overId: number) => void;
 }
 
 export default function SceneCardsContainer({
@@ -104,6 +160,7 @@ export default function SceneCardsContainer({
   animationResults,
   onStartAnimation,
   pendingAnimationEdits,
+  onReorderScene,
 }: SceneCardsContainerProps) {
   const nonRemovedTotal = scenes.filter((s: any) => !s.removed).length;
   const atSceneLimit = nonRemovedTotal >= maxScenes;
@@ -111,6 +168,16 @@ export default function SceneCardsContainer({
   const addSceneDisabledReason = atSceneLimit
     ? `Maximum ${maxScenes} scenes allowed`
     : 'Cannot add a scene while a scene is being deleted';
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id || !onReorderScene) return;
+    onReorderScene(Number(active.id), Number(over.id));
+  };
 
   return (
     <div className="space-y-4 mb-6 h-full overflow-y-auto pr-2 px-4 custom-scrollbar">
@@ -132,7 +199,16 @@ export default function SceneCardsContainer({
               />
 
               {/* Scene Cards */}
-              {scenes.map((scene: any, index: number) => {
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={scenes.map((s: any) => s.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {scenes.map((scene: any, index: number) => {
                 // Get the image URL for this scene (only for original scenes)
                 // Use the hydrated image URLs directly from the manifest
                 let imageUrl = undefined;
@@ -185,8 +261,11 @@ export default function SceneCardsContainer({
                   : undefined;
 
                 return (
-                  <div key={scene.id}>
+                  <SortableSceneCard key={scene.id} id={scene.id}>
+                    {({ dragHandle }) => (
+                      <>
                     <EditScene
+                      dragHandle={dragHandle}
                       scene={{
                         ...scene,
                         animated: isAnimated,
@@ -293,9 +372,13 @@ export default function SceneCardsContainer({
                         disabledReason={addSceneDisabledReason}
                       />
                     )}
-                  </div>
+                      </>
+                    )}
+                  </SortableSceneCard>
                 );
-              })}
+                  })}
+                </SortableContext>
+              </DndContext>
 
               {/* Add scene button after last scene */}
               <AddSceneButton

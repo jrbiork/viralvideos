@@ -67,6 +67,9 @@ interface EditSceneProps {
   isAnimating?: boolean;
   animationResult?: { videoUrl: string; prompt: string };
   onStartAnimation?: (sceneId: number) => void;
+  // Drag handle for reordering (desktop only) — rendered next to the scene
+  // label. Only this element carries drag listeners/attributes.
+  dragHandle?: React.ReactNode;
 }
 
 export default function EditScene({
@@ -103,6 +106,7 @@ export default function EditScene({
   isAnimating = false,
   animationResult,
   onStartAnimation,
+  dragHandle,
 }: EditSceneProps) {
   const urlTest =
     'https://wallpaper.forfun.com/fetch/19/19549495ffb40723d19982e9961041d9.jpeg?h=1200&r=0.5';
@@ -360,7 +364,8 @@ export default function EditScene({
       `}</style>
       <div className="mb-4">
         {/* Scene Label */}
-        <div className="mb-2">
+        <div className="mb-2 flex items-center gap-2">
+          {dragHandle}
           <h3 className="text-white text-lg font-semibold">
             Scene {displayIndex + 1}
           </h3>

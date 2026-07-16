@@ -55,13 +55,14 @@ export default function ExportVideo({
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-500 mx-auto mb-6"></div>
           <h1 className="text-2xl lg:text-3xl font-bold text-white mb-4">
-            Generating Your Video
+            Your Video Is On Its Way!
           </h1>
           <p className="text-gray-300 text-lg">
-            Please wait while we combine your scenes into the final video...
+            No need to stick around — we&apos;ll let you know the moment it&apos;s
+            ready.
           </p>
           <p className="text-gray-400 text-sm mt-2">
-            This may take a few minutes
+            You&apos;ll find it waiting for you in the Videos section.
           </p>
         </div>
       </div>

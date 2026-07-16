@@ -325,7 +325,7 @@ export default function SettingsPage() {
 
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-2xl font-bold text-white">
-                    {plan === 'pro' ? '$19.90' : plan === 'creator' ? '$12.00' : '$0'}
+                    {plan === 'pro' ? '$19.90' : plan === 'creator' ? '$11.90' : '$0'}
                   </span>
                   {isPaid && (
                     <span className="text-slate-400 text-sm">/ month</span>

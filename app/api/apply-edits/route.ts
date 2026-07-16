@@ -32,13 +32,15 @@ export async function POST(request: NextRequest) {
     const addedScenes = edits?.addedScenes || [];
     const removedSceneIds = edits?.removedSceneIds || [];
     const animationEdits = edits?.animationEdits || [];
+    const sceneOrder = edits?.sceneOrder || null;
 
     if (
       narrationEdits.length === 0 &&
       imageEdits.length === 0 &&
       addedScenes.length === 0 &&
       removedSceneIds.length === 0 &&
-      animationEdits.length === 0
+      animationEdits.length === 0 &&
+      !sceneOrder
     ) {
       return NextResponse.json(
         { error: 'No edits to apply' },
@@ -69,6 +71,7 @@ export async function POST(request: NextRequest) {
         addedScenes,
         removedSceneIds,
         animationEdits,
+        sceneOrder,
       },
     };
 

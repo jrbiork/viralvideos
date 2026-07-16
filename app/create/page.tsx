@@ -33,6 +33,7 @@ import VideoPreview from '@/components/VideoPreview';
 import Modal from '@/components/Modal';
 import { useUserDataCache } from '@/hooks/useUserDataCache';
 import { useUserQuota } from '@/components/useUserQuota';
+import { arrayMove } from '@dnd-kit/sortable';
 
 import { Manifest } from '../types/manifest';
 
@@ -125,6 +126,12 @@ export default function GeneratePage() {
     { scene: Scene; position: number }[]
   >([]);
 
+  // User's drag-and-drop reordering of scene ids. null means "use the
+  // natural order" (manifest order + spliced-in additions, as today).
+  const [customSceneOrder, setCustomSceneOrder] = useState<number[] | null>(
+    null,
+  );
+
   // State to track which scene is being deleted
   const [deletingSceneId, setDeletingSceneId] = useState<number | null>(null);
 
@@ -186,13 +193,6 @@ export default function GeneratePage() {
   const pendingRemovedSceneIds = Array.from(removedOriginalScenes).filter(
     (id) => !manifestRemovedSceneIds.has(id),
   );
-
-  const pendingEditsCount =
-    pendingEdits.narrationEdits.length +
-    pendingEdits.imageEdits.length +
-    pendingEdits.addedScenes.length +
-    pendingEdits.animationEdits.length +
-    pendingRemovedSceneIds.length;
 
   // Record a replaced image for an existing scene (original scenes only)
   const handleQueueImageEdit = useCallback(
@@ -397,6 +397,7 @@ export default function GeneratePage() {
         animationEdits: [],
       });
       setRemovedOriginalScenes(new Set());
+      setCustomSceneOrder(null);
       setIsApplyingEdits(false);
       showToasterMessage('Changes applied', 'success');
     });
@@ -541,6 +542,20 @@ export default function GeneratePage() {
       allScenes.map((s) => ({ id: s.id, description: s.description })),
     );
 
+    // Apply any user drag-and-drop reorder. This is a derived filter/sort
+    // (not a synced copy) so it self-heals when scenes are added/removed:
+    // removed ids simply vanish from allScenes, and new ids that aren't in
+    // customSceneOrder yet fall through to `unknown` and keep their natural
+    // position at the end.
+    if (customSceneOrder) {
+      const orderIndex = new Map(customSceneOrder.map((id, i) => [id, i]));
+      const known = allScenes
+        .filter((s) => orderIndex.has(s.id))
+        .sort((a, b) => orderIndex.get(a.id)! - orderIndex.get(b.id)!);
+      const unknown = allScenes.filter((s) => !orderIndex.has(s.id));
+      allScenes = [...known, ...unknown];
+    }
+
     // Re-index scenePosition based on final order
     allScenes = allScenes.map((scene: Scene, index: number) => ({
       ...scene,
@@ -558,7 +573,47 @@ export default function GeneratePage() {
     );
 
     return allScenes;
-  }, [originalScenes, additionalScenes]);
+  }, [originalScenes, additionalScenes, customSceneOrder]);
+
+  // Drag-and-drop reorder: only meaningful for scenes already in the
+  // manifest (isUserAdded pending scenes are positioned via their own
+  // addedScenes[].scenePosition on Apply instead).
+  const manifestSceneIdOrder = useMemo(
+    () => originalScenes.filter((s) => !s.removed).map((s) => s.id),
+    [originalScenes],
+  );
+
+  const reorderedManifestSceneIds = useMemo(
+    () => scenes.filter((s) => manifestSceneIdOrder.includes(s.id)).map((s) => s.id),
+    [scenes, manifestSceneIdOrder],
+  );
+
+  const hasSceneReorder =
+    customSceneOrder !== null &&
+    reorderedManifestSceneIds.some((id, i) => id !== manifestSceneIdOrder[i]);
+
+  const pendingEditsCount =
+    pendingEdits.narrationEdits.length +
+    pendingEdits.imageEdits.length +
+    pendingEdits.addedScenes.length +
+    pendingEdits.animationEdits.length +
+    pendingRemovedSceneIds.length +
+    (hasSceneReorder ? 1 : 0);
+
+  const handleSceneReorder = useCallback(
+    (activeId: number, overId: number) => {
+      setCustomSceneOrder((prev) => {
+        const ids = scenes.map((s) => s.id);
+        const oldIndex = ids.indexOf(activeId);
+        const newIndex = ids.indexOf(overId);
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) {
+          return prev;
+        }
+        return arrayMove(ids, oldIndex, newIndex);
+      });
+    },
+    [scenes],
+  );
 
   // Generate Video should be blocked when every scene has been removed —
   // there would be nothing left to combine into a video.
@@ -759,6 +814,7 @@ export default function GeneratePage() {
             addedScenes: pendingEdits.addedScenes,
             removedSceneIds: pendingRemovedSceneIds,
             animationEdits: pendingEdits.animationEdits,
+            sceneOrder: hasSceneReorder ? reorderedManifestSceneIds : null,
           },
         }),
       });
@@ -1092,6 +1148,7 @@ export default function GeneratePage() {
               animationResults={animationResults}
               onStartAnimation={handleStartAnimation}
               pendingAnimationEdits={pendingEdits.animationEdits}
+              onReorderScene={handleSceneReorder}
             />
           </div>
 

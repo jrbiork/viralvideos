@@ -25,6 +25,7 @@ export interface BatchEditRequest {
             animatedVideoUrl: string;
             animationPrompt: string;
         }[];
+        sceneOrder?: number[] | null;
     };
 }
 /**
