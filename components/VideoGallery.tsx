@@ -37,7 +37,11 @@ interface Video {
   size?: number;
 }
 
-interface VideoGalleryProps {}
+export type VideoStatusFilter = 'all' | 'done' | 'draft';
+
+interface VideoGalleryProps {
+  statusFilter?: VideoStatusFilter;
+}
 
 export interface VideoGalleryHandle {
   refreshVideos: () => void;
@@ -45,7 +49,7 @@ export interface VideoGalleryHandle {
 }
 
 const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
-  (props, ref) => {
+  ({ statusFilter = 'all' }, ref) => {
     const router = useRouter();
     const [videos, setVideos] = useState<Video[]>([]);
     const [loading, setLoading] = useState(true);
@@ -406,6 +410,14 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
               }}
             >
               {videos
+                .filter((video) => {
+                  const isDone = Boolean(
+                    video.finalVideoUrl || video.videoGenerated,
+                  );
+                  if (statusFilter === 'done') return isDone;
+                  if (statusFilter === 'draft') return !isDone;
+                  return true;
+                })
                 .sort(
                   (a, b) =>
                     new Date(b.lastModified).getTime() -

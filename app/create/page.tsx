@@ -1223,17 +1223,22 @@ export default function GeneratePage() {
         </div>
       </Modal>
 
-      {/* Shown when a free user who already used their free video tries to
-          generate another one */}
+      {/* Shown when a user has used up their video quota for the current
+          period (free: lifetime cap, creator/pro: monthly cap) */}
       <Modal
         isOpen={showQuotaModal}
         onClose={() => setShowQuotaModal(false)}
-        title="You've used your free video"
+        title={
+          quota.plan === 'free'
+            ? "You've used your free video"
+            : "You've reached your monthly video limit"
+        }
       >
         <div className="space-y-4">
           <p className="text-gray-300 text-sm">
-            Free plan includes {quota.limit} video. Upgrade to Creator or Pro
-            for more videos every month.
+            {quota.plan === 'free'
+              ? `Free plan includes ${quota.limit} video. Upgrade to Creator or Pro for more videos every month.`
+              : `Your plan includes ${quota.limit} videos per month. Your quota resets next month.`}
           </p>
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <button
@@ -1242,17 +1247,19 @@ export default function GeneratePage() {
             >
               Cancel
             </button>
-            <button
-              onClick={() => router.push('/pricing')}
-              className="flex-1 px-4 py-3 text-white rounded-xl font-medium transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
-              style={{
-                background:
-                  'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
-                boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
-              }}
-            >
-              Upgrade to Pro
-            </button>
+            {quota.plan !== 'pro' && (
+              <button
+                onClick={() => router.push('/pricing')}
+                className="flex-1 px-4 py-3 text-white rounded-xl font-medium transition-all duration-200 hover:-translate-y-[1px] hover:brightness-95"
+                style={{
+                  background:
+                    'var(--Gradient, linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%))',
+                  boxShadow: '0 2px 6px 0 rgba(100, 0, 160, 0.25)',
+                }}
+              >
+                {quota.plan === 'free' ? 'Upgrade to Pro' : 'Upgrade Plan'}
+              </button>
+            )}
           </div>
         </div>
       </Modal>

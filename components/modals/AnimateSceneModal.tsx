@@ -28,6 +28,7 @@ export default function AnimateSceneModal({
 }: AnimateSceneModalProps) {
   const [animationPrompt, setAnimationPrompt] = useState('');
   const [hasGeneratedVideo, setHasGeneratedVideo] = useState(false);
+  const [showDiscardConfirm, setShowDiscardConfirm] = useState(false);
   // Disables the button and shows a spinner the instant it's clicked,
   // covering the gap before the submit request even resolves (isAnimating
   // only flips true once the parent gets the "queued" ack back).
@@ -48,6 +49,10 @@ export default function AnimateSceneModal({
     }
     prevIsAnimatingRef.current = isAnimating;
   }, [isAnimating, generatedVideoUrl]);
+
+  useEffect(() => {
+    if (!isOpen) setShowDiscardConfirm(false);
+  }, [isOpen]);
 
   const handleAnimate = async () => {
     if (!animationPrompt.trim()) {
@@ -84,7 +89,12 @@ export default function AnimateSceneModal({
   };
 
   const handleDiscard = () => {
+    setShowDiscardConfirm(true);
+  };
+
+  const handleConfirmDiscard = () => {
     setHasGeneratedVideo(false);
+    setShowDiscardConfirm(false);
   };
 
   const handleUseAnimation = async () => {
@@ -342,6 +352,41 @@ export default function AnimateSceneModal({
           )}
         </div>
       </div>
+
+      {showDiscardConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[110]">
+          <div className="bg-slate-900 rounded-2xl p-6 max-w-sm w-full mx-4 shadow-2xl border border-slate-700/60">
+            <h3 className="text-white font-semibold mb-2">
+              Discard this animation?
+            </h3>
+            <p className="text-slate-400 text-sm mb-6">
+              You'll lose this animated clip. This can't be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowDiscardConfirm(false)}
+                className="py-2 px-4 text-white transition-colors text-xs font-bold hover:bg-[#5B5BFF]/30"
+                style={{
+                  borderRadius: '12px',
+                  border: '1.5px solid #5B5BFF',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDiscard}
+                className="py-2 px-4 text-white transition-colors text-xs font-bold hover:brightness-95"
+                style={{
+                  borderRadius: '12px',
+                  background: '#DC2626',
+                }}
+              >
+                Discard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
