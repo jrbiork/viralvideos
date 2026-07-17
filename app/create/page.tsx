@@ -196,6 +196,25 @@ export default function GeneratePage() {
     (id) => !manifestRemovedSceneIds.has(id),
   );
 
+  // A new scene only reaches pendingEdits.addedScenes once it has an image
+  // (see EditScene's hasValidImage gate on "Save Changes") — until then it
+  // sits in additionalScenes with narration but nothing to submit, and would
+  // otherwise be silently dropped from Apply/Generate Video. Animating a new
+  // scene isn't possible before it has an image (EditScene only renders the
+  // Animate control once an image exists), so checking addedScenes alone
+  // covers both cases.
+  const queuedAddedSceneIds = new Set(
+    pendingEdits.addedScenes.map((s) => s.sceneId),
+  );
+  const incompleteAddedScenes = additionalScenes.filter(
+    (item) =>
+      !!item.scene.narration?.trim() &&
+      !queuedAddedSceneIds.has(item.scene.id),
+  );
+  const hasIncompleteAddedScenes = incompleteAddedScenes.length > 0;
+  const incompleteAddedSceneMessage =
+    'One of your new scenes has narration but no image or animation. Add an image or animate it, or remove the scene.';
+
   // Record a replaced image for an existing scene (original scenes only)
   const handleQueueImageEdit = useCallback(
     (sceneId: number, generatedImageUrl: string) => {
@@ -210,9 +229,15 @@ export default function GeneratePage() {
     [],
   );
 
-  // Record a Runway-animated scene to be applied on the next Apply
+  // Runway animations are applied immediately on "Use this animation" rather
+  // than waiting for the batch "Apply changes" button — otherwise a reload
+  // before that click loses the in-memory queue entirely, reverting the
+  // scene's duration/narration lock and re-enabling image edits that should
+  // be disabled once a scene is animated.
   const handleQueueAnimationEdit = useCallback(
-    (sceneId: number, animatedVideoUrl: string, animationPrompt: string) => {
+    async (sceneId: number, animatedVideoUrl: string, animationPrompt: string) => {
+      // Optimistic local update so the badge/border/5s duration/locked image
+      // edit show up instantly while the request round-trips.
       setPendingEdits((prev) => ({
         ...prev,
         animationEdits: [
@@ -220,8 +245,47 @@ export default function GeneratePage() {
           { sceneId, animatedVideoUrl, animationPrompt },
         ],
       }));
+
+      if (!videoGenerationState.currentTimestamp) return;
+
+      try {
+        const response = await fetch('/api/apply-edits', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            timestamp: videoGenerationState.currentTimestamp,
+            edits: {
+              narrationEdits: [],
+              imageEdits: [],
+              addedScenes: [],
+              removedSceneIds: [],
+              animationEdits: [{ sceneId, animatedVideoUrl, animationPrompt }],
+              sceneOrder: null,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || 'Failed to save animation');
+        }
+      } catch (error) {
+        // Roll back — the backend never saved it, so the UI shouldn't claim
+        // the scene is animated.
+        setPendingEdits((prev) => ({
+          ...prev,
+          animationEdits: prev.animationEdits.filter(
+            (e) => e.sceneId !== sceneId,
+          ),
+        }));
+        showToasterMessage(
+          error instanceof Error ? error.message : 'Failed to save animation',
+          'error',
+        );
+        throw error;
+      }
     },
-    [],
+    [videoGenerationState.currentTimestamp, showToasterMessage],
   );
 
   // Runway animation runs asynchronously (routinely exceeds API Gateway's
@@ -406,6 +470,42 @@ export default function GeneratePage() {
 
     return unsubscribe;
   }, [isApplyingEdits, subscribe, pendingEdits.addedScenes, showToasterMessage]);
+
+  // Animation edits are applied immediately (see handleQueueAnimationEdit),
+  // independent of the batch "Apply changes" flow above. Once the manifest
+  // confirms a scene is animated, drop its optimistic entry so it stops
+  // inflating the pending-changes count and doesn't get resubmitted the next
+  // time a real batch apply runs.
+  useEffect(() => {
+    const unsubscribe = subscribe('create-page-animation-apply', (message) => {
+      if (message.action !== 'preview_completed' || !message.data?.manifest) {
+        return;
+      }
+
+      const manifest = message.data.manifest;
+      setPendingEdits((prev) => {
+        if (prev.animationEdits.length === 0) return prev;
+
+        const stillPending = prev.animationEdits.filter((edit) => {
+          const manifestScene = manifest.scenes?.find((s: any) => {
+            const id = s.files?.mp3
+              ? parseInt(
+                  s.files.mp3.match(/scene-(\d+)\./)?.[1] ||
+                    s.scenePosition.toString(),
+                )
+              : s.scenePosition;
+            return id === edit.sceneId;
+          });
+          return !manifestScene?.animated;
+        });
+
+        if (stillPending.length === prev.animationEdits.length) return prev;
+        return { ...prev, animationEdits: stillPending };
+      });
+    });
+
+    return unsubscribe;
+  }, [subscribe]);
 
   // Pick up the Runway animation result once it completes in the background
   // (the global handler already toasts on 'error'; this just clears the
@@ -624,6 +724,7 @@ export default function GeneratePage() {
 
   const handleSceneReorder = useCallback(
     (activeId: number, overId: number) => {
+      if (isApplyingEdits) return;
       setCustomSceneOrder((prev) => {
         const ids = scenes.map((s) => s.id);
         const oldIndex = ids.indexOf(activeId);
@@ -634,7 +735,7 @@ export default function GeneratePage() {
         return arrayMove(ids, oldIndex, newIndex);
       });
     },
-    [scenes],
+    [scenes, isApplyingEdits],
   );
 
   // Generate Video should be blocked when every scene has been removed —
@@ -642,12 +743,18 @@ export default function GeneratePage() {
   const allScenesDisabled =
     scenes.length > 0 && scenes.every((s: Scene) => s.removed);
 
-  // Auto-select first scene when script data is loaded
+  // Auto-select first scene when script data is loaded, and re-select
+  // whenever the previously-selected scene no longer exists (e.g. a
+  // user-added scene was deleted while selected) — otherwise the preview
+  // panel is left pointing at a stale id with nothing to show.
   useEffect(() => {
-    if (scenes.length > 0 && !sceneState.selectedSceneId) {
+    const selectedSceneExists = scenes.some(
+      (s) => s.id === sceneState.selectedSceneId,
+    );
+    if (scenes.length > 0 && !selectedSceneExists) {
       autoSelectFirstScene(scenes);
     }
-  }, [scenes.length, sceneState.selectedSceneId]); // Only depend on scenes.length, not the entire scenes array
+  }, [scenes, sceneState.selectedSceneId]);
 
   // Auto-play video when selectedSceneId changes (only if auto-advance is enabled)
   useEffect(() => {
@@ -811,6 +918,11 @@ export default function GeneratePage() {
         'One of your new scenes is missing narration. Add narration or remove the scene before applying changes.',
         'error',
       );
+      return;
+    }
+
+    if (hasIncompleteAddedScenes) {
+      showToasterMessage(incompleteAddedSceneMessage, 'error');
       return;
     }
 
@@ -986,9 +1098,16 @@ export default function GeneratePage() {
             {pendingEditsCount > 0 && (
               <button
                 onClick={handleApplyEdits}
-                disabled={isApplyingEdits}
+                disabled={isApplyingEdits || hasIncompleteAddedScenes}
+                title={
+                  hasIncompleteAddedScenes
+                    ? incompleteAddedSceneMessage
+                    : undefined
+                }
                 className={`h-12 px-6 text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 border-[1.5px] border-[#5B5BFF] hover:bg-[#5B5BFF] ${
-                  isApplyingEdits ? 'opacity-60 cursor-not-allowed' : ''
+                  isApplyingEdits || hasIncompleteAddedScenes
+                    ? 'opacity-60 cursor-not-allowed'
+                    : ''
                 }`}
                 style={{
                   boxShadow: '0 4px 16px 0 rgba(100, 0, 160, 0.35)',
@@ -1009,10 +1128,13 @@ export default function GeneratePage() {
               disabled={
                 !isManifestFullyReady(videoGenerationState.manifest) ||
                 isApplyingEdits ||
-                allScenesDisabled
+                allScenesDisabled ||
+                hasIncompleteAddedScenes
               }
               title={
-                isApplyingEdits
+                hasIncompleteAddedScenes
+                  ? incompleteAddedSceneMessage
+                  : isApplyingEdits
                   ? 'Waiting for pending changes to finish applying...'
                   : allScenesDisabled
                   ? 'All scenes are disabled. Restore at least one scene to generate a video.'
@@ -1023,7 +1145,8 @@ export default function GeneratePage() {
               className={`h-12 px-6 min-w-[170px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-2 rounded-[12px] text-white transition-all duration-200 ${
                 isManifestFullyReady(videoGenerationState.manifest) &&
                 !isApplyingEdits &&
-                !allScenesDisabled
+                !allScenesDisabled &&
+                !hasIncompleteAddedScenes
                   ? 'hover:-translate-y-[1px] hover:brightness-95'
                   : 'opacity-50 cursor-not-allowed'
               }`}
@@ -1171,6 +1294,7 @@ export default function GeneratePage() {
               onStartAnimation={handleStartAnimation}
               pendingAnimationEdits={pendingEdits.animationEdits}
               onReorderScene={handleSceneReorder}
+              isApplyingEdits={isApplyingEdits}
             />
           </div>
 

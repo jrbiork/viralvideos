@@ -5,8 +5,8 @@ interface ProgressStepsProps {
 export default function ProgressSteps({ currentStep }: ProgressStepsProps) {
   const steps = [
     { id: 1, label: 'Write your idea', shortLabel: 'Write' },
-    { id: 2, label: 'Preview your video', shortLabel: 'Preview' },
-    { id: 3, label: 'Export your story video', shortLabel: 'Export' },
+    { id: 2, label: 'Preview and Edit', shortLabel: 'Preview' },
+    { id: 3, label: 'Download your video', shortLabel: 'Export' },
   ];
 
   return (

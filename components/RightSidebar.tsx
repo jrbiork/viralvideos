@@ -115,7 +115,19 @@ export default function RightSidebar({
         </div>
       )}
 
-      {currentStep === 2 && videoPreviewReady && scenes.length > 0 && (
+      {currentStep === 2 &&
+        videoPreviewReady &&
+        scenes.length > 0 &&
+        !scenes.some((s: any) => s.id === sceneState.selectedSceneId) && (
+          <div className="flex justify-center items-center h-full">
+            <VideoSkeleton phase="scenes" showMessage={false} />
+          </div>
+        )}
+
+      {currentStep === 2 &&
+        videoPreviewReady &&
+        scenes.length > 0 &&
+        scenes.some((s: any) => s.id === sceneState.selectedSceneId) && (
           <>
             {scenes.map((scene: any, index: number) => {
               // Get the actual scene number from the manifest file names

@@ -112,7 +112,7 @@ export default function AnimateSceneModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="bg-slate-900 rounded-2xl w-full mx-4 max-h-[65vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out max-w-[51.2rem]">
+      <div className="bg-slate-800 rounded-2xl w-full mx-4 max-h-[65vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out max-w-[51.2rem]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/60">
           <h2 className="text-base font-semibold text-white">

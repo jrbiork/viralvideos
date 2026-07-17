@@ -25,13 +25,15 @@ import { Manifest } from '@/app/types/manifest';
 // unaffected since only the handle carries drag listeners).
 function SortableSceneCard({
   id,
+  disabled,
   children,
 }: {
   id: number;
+  disabled?: boolean;
   children: (args: { dragHandle: React.ReactNode }) => React.ReactNode;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id });
+    useSortable({ id, disabled });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -114,7 +116,7 @@ interface SceneCardsContainerProps {
     sceneId: number,
     animatedVideoUrl: string,
     animationPrompt: string,
-  ) => void;
+  ) => Promise<void>;
   animationQuota?: AnimationQuota;
   maxScenes: number;
   animatingSceneId?: number | null;
@@ -126,7 +128,14 @@ interface SceneCardsContainerProps {
     animationPrompt: string;
   }[];
   onReorderScene?: (activeId: number, overId: number) => void;
+  isApplyingEdits?: boolean;
 }
+
+// Shown while audio/subtitles are generating for the first time — reassures
+// the user they don't need to stay on this screen, since the finished video
+// also shows up in Videos.
+const GENERATING_SCENES_MESSAGE =
+  "Your scenes will be ready in a minute. We'll let you know when it's ready. You can always access it in the videos section.";
 
 export default function SceneCardsContainer({
   videoGenerationState,
@@ -161,11 +170,15 @@ export default function SceneCardsContainer({
   onStartAnimation,
   pendingAnimationEdits,
   onReorderScene,
+  isApplyingEdits = false,
 }: SceneCardsContainerProps) {
   const nonRemovedTotal = scenes.filter((s: any) => !s.removed).length;
   const atSceneLimit = nonRemovedTotal >= maxScenes;
-  const addSceneDisabled = atSceneLimit || deletingSceneId !== null;
-  const addSceneDisabledReason = atSceneLimit
+  const addSceneDisabled =
+    atSceneLimit || deletingSceneId !== null || isApplyingEdits;
+  const addSceneDisabledReason = isApplyingEdits
+    ? 'Cannot add a scene while changes are being applied'
+    : atSceneLimit
     ? `Maximum ${maxScenes} scenes allowed`
     : 'Cannot add a scene while a scene is being deleted';
 
@@ -175,6 +188,7 @@ export default function SceneCardsContainer({
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
+    if (isApplyingEdits) return;
     if (!over || active.id === over.id || !onReorderScene) return;
     onReorderScene(Number(active.id), Number(over.id));
   };
@@ -184,9 +198,19 @@ export default function SceneCardsContainer({
       {/* Scene Cards */}
       {videoGenerationState.isLoadingAudioSubtitles
         ? // Show skeleton placeholders while loading audio/subtitles
-          Array.from({ length: 3 }).map((_, index) => (
-            <EditSceneSkeleton key={index} />
-          ))
+          <>
+            <div
+              className="text-center text-sm font-medium text-white rounded-xl px-4 py-3"
+              style={{
+                background: 'linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%)',
+              }}
+            >
+              {GENERATING_SCENES_MESSAGE}
+            </div>
+            {Array.from({ length: 3 }).map((_, index) => (
+              <EditSceneSkeleton key={index} />
+            ))}
+          </>
         : scenes.length > 0 && (
             <>
               {/* Add scene button before first scene */}
@@ -261,7 +285,11 @@ export default function SceneCardsContainer({
                   : undefined;
 
                 return (
-                  <SortableSceneCard key={scene.id} id={scene.id}>
+                  <SortableSceneCard
+                    key={scene.id}
+                    id={scene.id}
+                    disabled={isApplyingEdits}
+                  >
                     {({ dragHandle }) => (
                       <>
                     <EditScene
@@ -352,6 +380,7 @@ export default function SceneCardsContainer({
                       isDisabled={
                         deletingSceneId === scene.id && !scene.isUserAdded
                       }
+                      isApplying={isApplyingEdits}
                       showToasterMessage={showToasterMessage}
                       onQueueImageEdit={onQueueImageEdit}
                       onQueueAddedScene={onQueueAddedScene}

@@ -43,6 +43,7 @@ interface EditSceneProps {
   displayIndex?: number; // The sequential display index for this scene
   totalScenesCount?: number; // Total number of scenes (original + additional)
   isDisabled?: boolean; // Whether the scene is disabled (e.g., during deletion)
+  isApplying?: boolean; // Whether a batch "Apply changes" is in flight (locks the whole card)
   showToasterMessage?: (
     message: string,
     type: 'success' | 'error' | 'info',
@@ -58,7 +59,7 @@ interface EditSceneProps {
     sceneId: number,
     animatedVideoUrl: string,
     animationPrompt: string,
-  ) => void;
+  ) => Promise<void>;
   animationQuota?: AnimationQuota;
   maxScenes?: number;
   // Runway animation runs asynchronously — these reflect the in-flight
@@ -97,6 +98,7 @@ export default function EditScene({
   displayIndex = 0,
   totalScenesCount = 0,
   isDisabled = false,
+  isApplying = false,
   showToasterMessage,
   onQueueImageEdit,
   onQueueAddedScene,
@@ -177,16 +179,13 @@ export default function EditScene({
 
     setIsSavingAnimation(true);
     try {
-      onQueueAnimationEdit?.(
+      await onQueueAnimationEdit?.(
         Number(scene.id),
         generatedVideoUrl,
         lastAnimationPrompt,
       );
 
-      showToasterMessage?.(
-        'Animation queued — click "Apply changes" to save',
-        'success',
-      );
+      showToasterMessage?.('Animation applied', 'success');
     } finally {
       setIsSavingAnimation(false);
     }
@@ -377,9 +376,10 @@ export default function EditScene({
             isSelected
               ? 'border-[#7552F2] shadow-lg'
               : 'border-slate-700/50 hover:border-slate-600'
-          } ${isDisabled ? 'opacity-50 pointer-events-none' : ''}`}
+          } ${isDisabled || isApplying ? 'opacity-50 pointer-events-none' : ''}`}
           onClick={() =>
             !isDisabled &&
+            !isApplying &&
             !(scene.removed && !scene.isUserAdded) &&
             onSelect &&
             onSelect(scene.id)
@@ -392,6 +392,18 @@ export default function EditScene({
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
                 <span className="text-white text-sm font-medium">
                   Regenerating Scene, Audio and Captions...
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Applying Changes Overlay */}
+          {isApplying && !isDisabled && !isRegenerating && (
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-xl flex items-center justify-center z-40">
+              <div className="flex flex-col items-center space-y-3">
+                <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-500 border-t-transparent"></div>
+                <span className="text-white text-sm font-medium">
+                  Applying changes...
                 </span>
               </div>
             </div>

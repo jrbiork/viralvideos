@@ -98,6 +98,7 @@ Strict rules:
 - **Two concise character bylines at the top level** (<= 10 words each): \`charactersBylines = [female, male]\`.
 - **Every scene must:**
   1) Start \`description\` with \`[FL: <female byline>] [ML: <male byline>]\` then the visual.
+- **Narration tone:** write every \`narration\` like a witty friend telling the story out loud — casual, punchy, contractions welcome (e.g. "she's", "didn't"), short sentences, a little personality/humor where it fits. Not a formal documentary narrator, not stiff or literary. Keep it clear and tasteful — casual, not crude or meme-y.
 Output: **JSON only** following the provided schema.`,
         },
         {
@@ -134,7 +135,7 @@ Output: **JSON only** following the provided schema.`,
     const scenes = parsedResponse.videoScenes || parsedResponse;
     const voiceToneInstruction =
       parsedResponse.voiceToneInstruction ||
-      'Speak in a cheerful and positive tone';
+      'Speak in a warm, upbeat, conversational tone — like telling a friend a fun story';
 
     // Add scene IDs to each scene
     const scenesWithIds = addSceneIds(scenes);

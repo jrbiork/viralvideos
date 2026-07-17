@@ -204,8 +204,8 @@ export default function Pricing() {
       period: '/month',
       quota: '10 videos per month',
       features: [
-        { text: 'Up to 4 scenes per video', highlight: true },
-        { text: '3 Incredible AI Animated Scenes', highlight: true },
+        { text: 'Up to 5 scenes per video', highlight: true },
+        { text: '5 Incredible AI Animated Scenes', highlight: true },
         { text: '20 additional AI-generated images', highlight: true },
         { text: 'Auto-generated audio' },
         { text: 'Auto-generated subtitles' },
@@ -435,7 +435,7 @@ export default function Pricing() {
             <p className="text-gray-300">
               Free accounts include 1 story video with up to 3 scenes.
               Creator accounts can create 10 videos every month with up to
-              4 scenes each, and Pro accounts can create 20 videos every
+              5 scenes each, and Pro accounts can create 20 videos every
               month with up to 6 scenes each.
             </p>
           </div>

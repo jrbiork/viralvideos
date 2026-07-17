@@ -11,9 +11,17 @@ interface VideoSkeletonProps {
   // 'audio': script/narration/subtitles still in progress (cycles messages).
   // 'scenes': audio is ready, Ken-Burns scene videos are being rendered.
   phase?: 'audio' | 'scenes';
+  // Hide the spinner/status text — used for brief, non-generation waits
+  // (e.g. the selection momentarily pointing at a just-deleted scene) where
+  // no actual work is happening, so a "Creating scenes..." message would be
+  // misleading.
+  showMessage?: boolean;
 }
 
-export default function VideoSkeleton({ phase = 'audio' }: VideoSkeletonProps) {
+export default function VideoSkeleton({
+  phase = 'audio',
+  showMessage = true,
+}: VideoSkeletonProps) {
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
@@ -47,14 +55,16 @@ export default function VideoSkeleton({ phase = 'audio' }: VideoSkeletonProps) {
             </div>
 
             {/* Loading text */}
-            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-              <div className="text-center">
-                <div className="flex items-center justify-center space-x-2 mb-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  <span className="text-white text-sm">{message}</span>
+            {showMessage && (
+              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                <div className="text-center">
+                  <div className="flex items-center justify-center space-x-2 mb-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    <span className="text-white text-sm">{message}</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

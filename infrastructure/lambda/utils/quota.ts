@@ -21,7 +21,7 @@ interface PlanLimits {
 
 const PLAN_LIMITS: Record<Plan, PlanLimits> = {
   free: { videoLimit: 1, maxScenes: 3, imageGenLimit: 3, animationLimit: 0 },
-  creator: { videoLimit: 10, maxScenes: 4, imageGenLimit: 20, animationLimit: 3 },
+  creator: { videoLimit: 10, maxScenes: 5, imageGenLimit: 20, animationLimit: 5 },
   pro: { videoLimit: 20, maxScenes: 6, imageGenLimit: 40, animationLimit: 10 },
 };
 
