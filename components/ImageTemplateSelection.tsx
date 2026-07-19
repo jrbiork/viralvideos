@@ -28,7 +28,12 @@ export default function ImageTemplateSelection({
     setIsOpen(false);
     setHoveredTemplate(null);
   };
-  const dropdownPosition = useFloatingPosition(triggerRef, isOpen, closeDropdown);
+  const dropdownPosition = useFloatingPosition(
+    triggerRef,
+    isOpen,
+    closeDropdown,
+    panelRef,
+  );
 
   const selectedTemplateData = AVAILABLE_TEMPLATES.find(
     (template) => template.id === selectedTemplate,

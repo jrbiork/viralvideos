@@ -37,6 +37,13 @@
   background: #6441e6;
 }
 
+/* Matches body's background so mobile overscroll/rubber-banding, or any
+   transient page-height mismatch, reveals dark background instead of the
+   browser's default white below short content. */
+html {
+  background-color: rgb(var(--background-start-rgb));
+}
+
 body {
   color: rgb(var(--text-primary));
   background: linear-gradient(

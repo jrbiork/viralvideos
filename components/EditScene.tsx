@@ -548,7 +548,7 @@ export default function EditScene({
           {currentImageUrl ||
           (scene.isUserAdded && scene.placeholderImageUrl) ? (
             <div
-              className={`flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl overflow-hidden relative group ${
+              className={`flex-shrink-0 w-32 sm:w-[7.0rem] mx-auto sm:mx-0 rounded-xl overflow-hidden relative group ${
                 scene.animated ? 'ring-2 ring-[#7552F2]' : ''
               }`}
             >
@@ -659,7 +659,7 @@ export default function EditScene({
             </div>
           ) : scene.isUserAdded ? (
             <div
-              className="flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl flex items-center justify-center relative group"
+              className="flex-shrink-0 w-32 sm:w-[7.0rem] mx-auto sm:mx-0 rounded-xl flex items-center justify-center relative group"
               style={{
                 height: '12.43rem', // Reduced by 15% more from 14.62rem
                 backgroundColor: '#374151',
@@ -701,7 +701,7 @@ export default function EditScene({
             </div>
           ) : (
             <div
-              className="flex-shrink-0 w-full sm:w-[7.0rem] rounded-xl flex items-center justify-center"
+              className="flex-shrink-0 w-32 sm:w-[7.0rem] mx-auto sm:mx-0 rounded-xl flex items-center justify-center"
               style={{
                 height: '12.43rem', // Reduced by 15% more from 14.62rem
                 backgroundColor: '#374151',
@@ -857,7 +857,7 @@ export default function EditScene({
               <div className="space-y-1">
                 <div className="relative">
                   <div
-                    className="w-full h-32 bg-slate-700/50 rounded-xl pt-5 pr-6 pb-6 pl-6 text-white mb-2 cursor-pointer"
+                    className="w-full h-32 bg-slate-700/50 rounded-xl pt-5 pr-6 pb-6 pl-6 text-white mb-2 cursor-pointer overflow-y-auto custom-scrollbar"
                     style={{
                       fontFamily: 'inherit',
                       fontFeatureSettings: 'inherit',

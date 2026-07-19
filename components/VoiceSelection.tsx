@@ -96,7 +96,12 @@ export default function VoiceSelection({
   const triggerRef = useRef<HTMLDivElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeDropdown = () => setIsOpen(false);
-  const dropdownPosition = useFloatingPosition(triggerRef, isOpen, closeDropdown);
+  const dropdownPosition = useFloatingPosition(
+    triggerRef,
+    isOpen,
+    closeDropdown,
+    panelRef,
+  );
 
   const selectedVoiceData = AVAILABLE_VOICES.find(
     (voice) => voice.id === selectedVoice,

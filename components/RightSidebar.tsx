@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import VideoSkeleton from './VideoSkeleton';
 import { isManifestFullyReady } from '@/lib/manifest-helpers';
 
@@ -66,6 +67,16 @@ export default function RightSidebar({
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
+
+  // The scene subtitle is an HTML overlay (not baked into the mp4 yet), so
+  // native video fullscreen — which only elevates the <video> element, not
+  // its sibling overlay — would leave it behind. We use a CSS-only "fake
+  // fullscreen" instead, which keeps the overlay in the same DOM subtree.
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    setIsFullscreen(false);
+  }, [sceneState.selectedSceneId]);
 
   return (
     <div className="sticky">
@@ -167,11 +178,23 @@ export default function RightSidebar({
               const mediaFiles = getMediaFiles();
               const videoUrl = mediaFiles[videoKey];
 
-              return (
-                <div key={scene.id} className={isSelected ? 'block' : 'hidden'}>
-                  {videoUrl && (
-                    <div className="relative flex justify-center">
-                      <div className="rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden">
+              const showFullscreen = isSelected && isFullscreen;
+
+              const videoPreview = videoUrl && (
+                    <div
+                      className={
+                        showFullscreen
+                          ? 'fixed inset-0 z-[100] bg-black flex items-center justify-center'
+                          : 'relative flex justify-center'
+                      }
+                    >
+                      <div
+                        className={
+                          showFullscreen
+                            ? 'relative h-[92vh] max-h-[92vh] w-auto max-w-full aspect-[9/16] bg-black overflow-hidden'
+                            : 'rounded-xl shadow-lg border-2 border-gray-600 aspect-[9/16] w-[65%] bg-black overflow-hidden'
+                        }
+                      >
                         <video
                           ref={(videoRef) => {
                             if (videoRef && isSelected) {
@@ -184,30 +207,94 @@ export default function RightSidebar({
                                 index,
                               );
                             }
+                            if (videoRef) {
+                              // iOS Safari's native fullscreen hands the video
+                              // off to an OS-level player outside the DOM, so
+                              // the subtitle overlay (a sibling element) can
+                              // never be composited on top of it. Intercept
+                              // and fall back to our CSS fullscreen instead.
+                              (videoRef as any).onwebkitbeginfullscreen = () => {
+                                try {
+                                  (videoRef as any).webkitExitFullscreen?.();
+                                } catch {}
+                                setIsFullscreen(true);
+                              };
+                            }
                           }}
                           className="w-full h-full object-contain"
                           controls
+                          controlsList="nofullscreen"
+                          playsInline
                           preload="auto"
                           src={videoUrl}
                           onError={(event) => {
                             console.error('Video error:', event);
                           }}
                         />
-                      </div>
 
-                      {/* Subtitles Overlay */}
-                      {isSelected && sceneState.currentSubtitle && (
-                        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
-                          <p
-                            className="text-xl font-medium leading-relaxed text-center"
-                            style={{ fontFamily: 'DMSerifText, serif' }}
+                        {isSelected && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setIsFullscreen((prev) => !prev);
+                            }}
+                            className="absolute top-2 right-2 z-20 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors"
+                            title={isFullscreen ? 'Exit full screen' : 'Full screen'}
                           >
-                            {parseColoredText(sceneState.currentSubtitle)}
-                          </p>
-                        </div>
-                      )}
+                            {isFullscreen ? (
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 9V4.5M9 9H4.5M9 9L3.75 3.75M15 9h4.5M15 9V4.5M15 9l5.25-5.25M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 15h4.5M15 15v4.5m0-4.5l5.25 5.25"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                className="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M8 3.5H4.5V7M20 7V3.5H16.5M16.5 20.5H20V17M4.5 17V20.5H8"
+                                />
+                              </svg>
+                            )}
+                          </button>
+                        )}
+
+                        {/* Subtitles Overlay */}
+                        {isSelected && sceneState.currentSubtitle && (
+                          <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
+                            <p
+                              className="text-xl font-medium leading-relaxed text-center"
+                              style={{ fontFamily: 'DMSerifText, serif' }}
+                            >
+                              {parseColoredText(sceneState.currentSubtitle)}
+                            </p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
+                  );
+
+              return (
+                <div key={scene.id} className={isSelected ? 'block' : 'hidden'}>
+                  {videoPreview &&
+                    (showFullscreen
+                      ? createPortal(videoPreview, document.body)
+                      : videoPreview)}
                   {!videoUrl &&
                     isSelected &&
                     (scene.isUserAdded ? (

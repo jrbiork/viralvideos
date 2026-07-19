@@ -65,9 +65,9 @@ export async function generateNarration(
 
       // Generate speech with standard format
       const response = await openai.audio.speech.create({
-        model: 'gpt-4o-mini-tts',
+        model: 'gpt-4o-mini-tts-2025-12-15',
         voice: voice,
-        instructions: `Speak clearly and keep duration in ${scene.duration}s hard cap. Avoid long pauses.`,
+        instructions: `${instructions} Speak like a warm, outgoing friend sharing this in person — natural rhythm, genuine energy, relaxed pacing with real breaths, not a scripted read. Keep duration in ${scene.duration}s hard cap. Avoid long pauses.`,
         input: scene.narration,
       });
       // Check if response has duration metadata

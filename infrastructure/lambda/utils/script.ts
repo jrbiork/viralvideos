@@ -92,13 +92,13 @@ export async function generateStoryBreakdown(
       messages: [
         {
           role: 'system',
-          content: `Create a ${totalDuration}-second 9:16 vertical video split into exactly ${sceneCount} scenes (each ${sceneDuration}s).
+          content: `Create a 9:16 vertical video split into exactly ${sceneCount} scenes. Each scene's narration should run **15 to 20 seconds when spoken aloud** (roughly 40-55 words) — set each scene's \`duration\` field to match how long its narration will actually take to say.
 Strict rules:
 - If the user names any, **rewrite to a generic archetype** (e.g., “an elderly Southern gentleman in a white suit and string tie”)—never use real names or marks.
 - **Two concise character bylines at the top level** (<= 10 words each): \`charactersBylines = [female, male]\`.
 - **Every scene must:**
   1) Start \`description\` with \`[FL: <female byline>] [ML: <male byline>]\` then the visual.
-- **Narration tone:** write every \`narration\` like a witty friend telling the story out loud — casual, punchy, contractions welcome (e.g. "she's", "didn't"), short sentences, a little personality/humor where it fits. Not a formal documentary narrator, not stiff or literary. Keep it clear and tasteful — casual, not crude or meme-y.
+- **Narration tone:** write every \`narration\` like an outgoing, warm friend telling you this story in person because they're genuinely excited about it — casual, punchy, contractions welcome (e.g. "she's", "didn't"), short sentences, a little personality/humor where it fits. Talk *to* the listener, not *at* them — throw in the odd "you know", "honestly", "here's the thing", a rhetorical question, a reaction ("wild, right?"). Vary sentence rhythm like real speech, not uniform AI cadence. Avoid stock AI phrasing ("in a world where", "little did they know", "the truth is", "it turns out that", overused em-dashes). Not a formal documentary narrator, not stiff or literary. Keep it clear and tasteful — casual, not crude or meme-y.
 Output: **JSON only** following the provided schema.`,
         },
         {

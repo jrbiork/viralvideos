@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useUnsavedChanges } from './UnsavedChangesContext';
 
@@ -7,6 +8,7 @@ export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { confirmNavigation } = useUnsavedChanges();
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const navigationItems = [
     {
@@ -28,8 +30,32 @@ export default function Sidebar() {
 
   return (
     <div className="w-full lg:w-64 border-b lg:border-b-0 lg:border-r border-slate-800 p-4 lg:p-6 flex flex-col max-h-screen overflow-y-auto">
+      {/* Mobile-only collapse toggle */}
+      <button
+        onClick={() => setIsExpanded((prev) => !prev)}
+        className="w-full flex items-center justify-between text-gray-300 lg:hidden"
+        aria-expanded={isExpanded}
+      >
+        <span className="font-medium text-sm">Menu</span>
+        <svg
+          className={`w-4 h-4 transition-transform duration-200 ${
+            isExpanded ? 'rotate-180' : ''
+          }`}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M19 9l-7 7-7-7"
+          />
+        </svg>
+      </button>
+
       {/* Navigation Links */}
-      <div className="mb-8">
+      <div className={`mb-8 ${isExpanded ? 'mt-4' : 'hidden'} lg:block lg:mt-0`}>
         <div className="space-y-2">
           {navigationItems.slice(0, 2).map((item) => (
             <button

@@ -16,6 +16,7 @@ export function useFloatingPosition(
   triggerRef: RefObject<HTMLElement | null>,
   isOpen: boolean,
   onClose: () => void,
+  panelRef?: RefObject<HTMLElement | null>,
 ): FloatingPosition | null {
   const [position, setPosition] = useState<FloatingPosition | null>(null);
 
@@ -33,14 +34,26 @@ export function useFloatingPosition(
 
     update();
 
-    const handleScroll = () => onClose();
+    // Scrolling inside the portaled panel itself (e.g. touch-scrolling the
+    // options list) also fires a capture-phase 'scroll' event here — ignore
+    // those so the dropdown doesn't close under the user's finger.
+    const handleScroll = (e: Event) => {
+      if (
+        panelRef?.current &&
+        e.target instanceof Node &&
+        panelRef.current.contains(e.target)
+      ) {
+        return;
+      }
+      onClose();
+    };
     window.addEventListener('scroll', handleScroll, true);
     window.addEventListener('resize', update);
     return () => {
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('resize', update);
     };
-  }, [isOpen, triggerRef, onClose]);
+  }, [isOpen, triggerRef, onClose, panelRef]);
 
   return position;
 }
