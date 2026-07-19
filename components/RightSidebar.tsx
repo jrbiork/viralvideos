@@ -78,6 +78,11 @@ export default function RightSidebar({
     setIsFullscreen(false);
   }, [sceneState.selectedSceneId]);
 
+  // On mobile, the scene preview takes up a lot of vertical space above the
+  // scene list — let users collapse it to see more of the list at once.
+  // Always expanded on desktop, where there's a dedicated sidebar for it.
+  const [isPreviewExpanded, setIsPreviewExpanded] = useState(true);
+
   return (
     <div className="sticky">
       {currentStep === 1 &&
@@ -105,6 +110,9 @@ export default function RightSidebar({
                 <video
                   className="w-full h-full object-contain"
                   controls
+                  controlsList="nofullscreen nodownload noremoteplayback"
+                  disablePictureInPicture
+                  playsInline
                   muted
                   loop
                   autoPlay={isDesktop}
@@ -140,7 +148,33 @@ export default function RightSidebar({
         scenes.length > 0 &&
         scenes.some((s: any) => s.id === sceneState.selectedSceneId) && (
           <>
-            {scenes.map((scene: any, index: number) => {
+            <button
+              type="button"
+              onClick={() => setIsPreviewExpanded((prev) => !prev)}
+              className="lg:hidden w-full flex items-center justify-center gap-2 text-sm font-medium text-gray-300 hover:text-white py-2"
+            >
+              <span>{isPreviewExpanded ? 'Hide preview' : 'Show preview'}</span>
+              <svg
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  isPreviewExpanded ? 'rotate-180' : ''
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+
+            <div
+              className={`${isPreviewExpanded ? 'block' : 'hidden'} lg:block`}
+            >
+              {scenes.map((scene: any, index: number) => {
               // Get the actual scene number from the manifest file names
               let sceneNumber = scene.id.toString();
               if (videoGenerationState.manifest?.scenes) {
@@ -312,7 +346,8 @@ export default function RightSidebar({
                     ))}
                 </div>
               );
-            })}
+              })}
+            </div>
 
             {/* Scene Audio - Hidden Controls */}
             {scenes.map((scene: any, index: number) => {

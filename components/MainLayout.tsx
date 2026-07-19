@@ -52,10 +52,7 @@ export default function MainLayout({
   };
 
   return (
-    <div
-      className="min-h-screen lg:h-screen flex flex-col"
-      style={{ backgroundColor }}
-    >
+    <div className="lg:h-screen flex flex-col" style={{ backgroundColor }}>
       {/* Header */}
       <div className="sticky top-0 z-50 w-full" id="navbar-wrapper">
         <nav

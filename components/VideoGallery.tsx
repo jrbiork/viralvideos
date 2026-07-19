@@ -404,10 +404,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
         <div className="w-full flex flex-col h-full">
           <div className="flex-1 overflow-y-auto">
             <div
-              className="grid gap-4 sm:gap-6 lg:gap-7 pb-4 w-full p-4 sm:p-8"
-              style={{
-                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 247px))',
-              }}
+              className="grid grid-cols-2 gap-4 sm:gap-6 lg:gap-7 pb-4 w-full p-4 sm:p-8 sm:[grid-template-columns:repeat(auto-fill,minmax(180px,247px))]"
             >
               {videos
                 .filter((video) => {

@@ -111,8 +111,8 @@ export default function AnimateSceneModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100]">
-      <div className="bg-slate-800 rounded-2xl w-full mx-4 max-h-[65vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out max-w-[51.2rem]">
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center z-[100] overflow-y-auto py-8">
+      <div className="bg-slate-800 rounded-2xl w-full mx-4 max-h-[85vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out max-w-[51.2rem]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/60">
           <h2 className="text-base font-semibold text-white">
@@ -139,7 +139,7 @@ export default function AnimateSceneModal({
         </div>
 
         {/* Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 items-start overflow-y-auto max-h-[calc(65vh-56px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 items-start overflow-y-auto max-h-[calc(85vh-56px)]">
           {/* Left: Current Image */}
           <div className="lg:col-span-1 flex flex-col items-center">
             <h3 className="text-white font-semibold mb-4">Current Image</h3>
