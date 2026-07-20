@@ -314,20 +314,30 @@ export default function SettingsPage() {
                         ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-blue-300 ring-1 ring-inset ring-blue-500/30'
                         : plan === 'creator'
                           ? 'bg-gradient-to-r from-amber-500/20 to-pink-500/20 text-amber-300 ring-1 ring-inset ring-amber-500/30'
-                          : 'bg-slate-700/60 text-slate-300 ring-1 ring-inset ring-slate-600/50'
+                          : plan === 'starter'
+                            ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 ring-1 ring-inset ring-emerald-500/30'
+                            : 'bg-slate-700/60 text-slate-300 ring-1 ring-inset ring-slate-600/50'
                     }`}
                   >
                     {plan === 'pro'
                       ? 'Pro Plan'
                       : plan === 'creator'
                         ? 'Creator'
-                        : 'Free Plan'}
+                        : plan === 'starter'
+                          ? 'Starter'
+                          : 'Free Plan'}
                   </span>
                 </div>
 
                 <div className="flex items-baseline gap-2 mb-1">
                   <span className="text-2xl font-bold text-white">
-                    {plan === 'pro' ? '$19.90' : plan === 'creator' ? '$11.90' : '$0'}
+                    {plan === 'pro'
+                      ? '$19.90'
+                      : plan === 'creator'
+                        ? '$11.90'
+                        : plan === 'starter'
+                          ? '$7.90'
+                          : '$0'}
                   </span>
                   {isPaid && (
                     <span className="text-slate-400 text-sm">/ month</span>

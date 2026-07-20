@@ -1,31 +1,36 @@
 import { useUserDataCache } from '../hooks/useUserDataCache';
 
-export type Plan = 'free' | 'creator' | 'pro';
+export type Plan = 'free' | 'starter' | 'creator' | 'pro';
 
 interface PlanLimits {
-  videoLimit: number; // free = lifetime cap, creator/pro = monthly cap
+  videoLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
   maxScenes: number;
-  imageGenLimit: number; // free = lifetime cap, creator/pro = monthly cap
+  imageGenLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
   animationLimit: number; // 0 for free (animations always rejected)
 }
 
 const PLAN_LIMITS: Record<Plan, PlanLimits> = {
   free: { videoLimit: 1, maxScenes: 3, imageGenLimit: 3, animationLimit: 0 },
+  starter: { videoLimit: 8, maxScenes: 4, imageGenLimit: 10, animationLimit: 3 },
   creator: { videoLimit: 10, maxScenes: 5, imageGenLimit: 20, animationLimit: 5 },
   pro: { videoLimit: 20, maxScenes: 6, imageGenLimit: 40, animationLimit: 10 },
 };
 
 export const FREE_VIDEO_LIMIT = PLAN_LIMITS.free.videoLimit;
 export const FREE_MAX_SCENES = PLAN_LIMITS.free.maxScenes;
+export const STARTER_MONTHLY_VIDEO_LIMIT = PLAN_LIMITS.starter.videoLimit;
+export const STARTER_MAX_SCENES = PLAN_LIMITS.starter.maxScenes;
 export const CREATOR_MONTHLY_VIDEO_LIMIT = PLAN_LIMITS.creator.videoLimit;
 export const CREATOR_MAX_SCENES = PLAN_LIMITS.creator.maxScenes;
 export const PRO_MONTHLY_VIDEO_LIMIT = PLAN_LIMITS.pro.videoLimit;
 export const PRO_MAX_SCENES = PLAN_LIMITS.pro.maxScenes;
 
 export const FREE_IMAGE_GEN_LIMIT = PLAN_LIMITS.free.imageGenLimit;
+export const STARTER_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.starter.imageGenLimit;
 export const CREATOR_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.creator.imageGenLimit;
 export const PRO_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.pro.imageGenLimit;
 
+export const STARTER_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.starter.animationLimit;
 export const CREATOR_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.creator.animationLimit;
 export const PRO_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.pro.animationLimit;
 
@@ -52,10 +57,13 @@ export interface AnimationQuota {
   remaining: number;
 }
 
-// Legacy subscription modes (starter/influencer) collapse into pro.
+// Legacy 'influencer' subscription mode collapses into pro.
 function derivePlan(user: { subscription?: { mode: string; status: string } } | undefined): Plan {
   if (!user?.subscription || user.subscription.status !== 'active') {
     return 'free';
+  }
+  if (user.subscription.mode === 'starter') {
+    return 'starter';
   }
   if (user.subscription.mode === 'creator') {
     return 'creator';

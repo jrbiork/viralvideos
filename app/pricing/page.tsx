@@ -171,7 +171,7 @@ export default function Pricing() {
   };
 
   type PlanFeature = { text: string; highlight?: boolean };
-  type PlanKey = 'free' | 'creator' | 'pro';
+  type PlanKey = 'free' | 'starter' | 'creator' | 'pro';
 
   const plans: {
     planKey: PlanKey;
@@ -192,6 +192,24 @@ export default function Pricing() {
         { text: 'Up to 3 scenes per video' },
         { text: 'Auto-generated audio' },
         { text: 'Auto-generated subtitles' },
+        { text: 'Vertical format' },
+        { text: 'Download and share' },
+      ],
+      popular: false,
+    },
+    {
+      planKey: 'starter',
+      name: 'Starter',
+      price: '$7.90',
+      period: '/month',
+      quota: '8 videos per month',
+      features: [
+        { text: 'Up to 4 scenes per video', highlight: true },
+        { text: '3 Incredible AI Animated Scenes', highlight: true },
+        { text: '10 additional AI-generated images', highlight: true },
+        { text: 'Auto-generated audio' },
+        { text: 'Auto-generated subtitles' },
+        { text: 'No watermark' },
         { text: 'Vertical format' },
         { text: 'Download and share' },
       ],
@@ -247,8 +265,15 @@ export default function Pricing() {
     | { kind: 'current' }
     | { kind: 'action'; text: string; onClick: () => void };
 
+  const PAID_PLAN_ORDER: Record<'starter' | 'creator' | 'pro', number> = {
+    starter: 0,
+    creator: 1,
+    pro: 2,
+  };
+
   function getPlanButton(planKey: PlanKey): PlanButton {
-    const priceIds: Record<'creator' | 'pro', string> = {
+    const priceIds: Record<'starter' | 'creator' | 'pro', string> = {
+      starter: process.env.NEXT_PUBLIC_STRIPE_STARTER_PRICE_ID || '',
       creator: process.env.NEXT_PUBLIC_STRIPE_CREATOR_PRICE_ID || '',
       pro: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID || '',
     };
@@ -291,8 +316,10 @@ export default function Pricing() {
       };
     }
 
-    // currentPlan is 'creator' or 'pro' and planKey is the other paid tier
-    const isUpgrade = currentPlan === 'creator' && planKey === 'pro';
+    // currentPlan is a paid tier and planKey is a different paid tier
+    const isUpgrade =
+      PAID_PLAN_ORDER[planKey as 'starter' | 'creator' | 'pro'] >
+      PAID_PLAN_ORDER[currentPlan as 'starter' | 'creator' | 'pro'];
     return {
       kind: 'action',
       text: isUpgrade ? 'Upgrade Plan' : 'Downgrade Plan',
@@ -327,7 +354,7 @@ export default function Pricing() {
       {/* Pricing Cards */}
       <div
         id="pricing-cards"
-        className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto"
+        className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto"
       >
         {plans.map((plan, index) => (
           <div
@@ -434,9 +461,10 @@ export default function Pricing() {
             </h3>
             <p className="text-gray-300">
               Free accounts include 1 story video with up to 3 scenes.
-              Creator accounts can create 10 videos every month with up to
-              5 scenes each, and Pro accounts can create 20 videos every
-              month with up to 6 scenes each.
+              Starter accounts can create 8 videos every month with up to
+              4 scenes each, Creator accounts can create 10 videos every
+              month with up to 5 scenes each, and Pro accounts can create
+              20 videos every month with up to 6 scenes each.
             </p>
           </div>
 
@@ -455,8 +483,9 @@ export default function Pricing() {
               Does my monthly quota roll over?
             </h3>
             <p className="text-gray-300">
-              No — Creator resets to 10 videos and Pro resets to 20 videos
-              at the start of each billing period.
+              No — Starter resets to 8 videos, Creator resets to 10 videos,
+              and Pro resets to 20 videos at the start of each billing
+              period.
             </p>
           </div>
 

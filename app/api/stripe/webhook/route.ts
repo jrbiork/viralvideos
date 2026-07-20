@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         const priceId = subscription.items.data[0]?.price?.id;
         const resolvedPlan =
           (priceId && planFromPriceId(priceId)) ||
-          (metadata.planName as 'creator' | 'pro' | undefined) ||
+          (metadata.planName as 'starter' | 'creator' | 'pro' | undefined) ||
           'pro';
 
         // Update user with Stripe IDs and subscription info
