@@ -200,7 +200,7 @@ export default function SceneCardsContainer({
         ? // Show skeleton placeholders while loading audio/subtitles
           <>
             <div
-              className="text-center text-sm font-medium text-white rounded-xl px-4 py-3"
+              className="text-center text-xs font-medium text-white rounded-lg px-3 py-1.5"
               style={{
                 background: 'linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%)',
               }}

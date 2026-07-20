@@ -322,7 +322,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
 
     if (loading) {
       return (
-        <div className="w-full min-h-[60vh] flex items-center justify-center">
+        <div className="w-full min-h-[40vh] sm:min-h-[60vh] flex items-center justify-center">
           <div className="text-center animate-fade-in-up">
             <div className="relative mb-6 flex justify-center">
               <div className="relative w-16 h-16">
@@ -343,7 +343,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
 
     if (!isAuthenticated) {
       return (
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center justify-center min-h-[40vh] sm:min-h-[60vh]">
           <div className="text-center animate-fade-in-up">
             <div className="w-16 h-16 bg-yellow-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
               <FileVideo className="w-8 h-8 text-yellow-400" />
@@ -362,7 +362,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
 
     if (error) {
       return (
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center justify-center min-h-[40vh] sm:min-h-[60vh]">
           <div className="text-center animate-fade-in-up">
             <div className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center mx-auto mb-6">
               <FileVideo className="w-8 h-8 text-white" />
@@ -384,7 +384,7 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
 
     if (videos.length === 0) {
       return (
-        <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex items-center justify-center min-h-[40vh] sm:min-h-[60vh]">
           <div className="text-center animate-fade-in-up">
             <div className="w-16 h-16 bg-slate-600 rounded-full flex items-center justify-center mx-auto mb-6">
               <FileVideo className="w-8 h-8 text-white" />
@@ -529,9 +529,9 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                     </div>
 
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between text-sm text-slate-400">
-                        <div className="flex items-center">
-                          <Calendar className="w-4 h-4 mr-2" />
+                      <div className="flex items-center justify-between text-xs text-slate-400">
+                        <div className="flex items-center whitespace-nowrap">
+                          <Calendar className="w-3.5 h-3.5 mr-1.5 shrink-0" />
                           {formatDate(video.lastModified)}
                         </div>
                       </div>

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimationQuota } from '../useUserQuota';
 
 interface AnimateSceneModalProps {
@@ -110,9 +111,13 @@ export default function AnimateSceneModal({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-start sm:items-center justify-center z-[100] overflow-y-auto py-8">
-      <div className="bg-slate-800 rounded-2xl w-full mx-4 max-h-[85vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out max-w-[51.2rem]">
+  // Portaled to <body> — this modal is rendered inside the step-2 sliding
+  // panel, whose CSS transform makes any descendant "fixed" element relative
+  // to that panel instead of the true viewport (same class of bug as the
+  // scene-preview fullscreen overlay).
+  return createPortal(
+    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+      <div className="bg-slate-800 rounded-2xl w-full max-h-[90vh] overflow-hidden shadow-2xl border border-slate-700/60 transition-all duration-300 ease-in-out max-w-[51.2rem]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/60">
           <h2 className="text-base font-semibold text-white">
@@ -139,11 +144,11 @@ export default function AnimateSceneModal({
         </div>
 
         {/* Body */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 p-4 items-start overflow-y-auto max-h-[calc(85vh-56px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 p-3 sm:p-4 items-start overflow-y-auto max-h-[calc(90vh-56px)]">
           {/* Left: Current Image */}
           <div className="lg:col-span-1 flex flex-col items-center">
-            <h3 className="text-white font-semibold mb-4">Current Image</h3>
-            <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-2 ring-slate-700 max-h-[40vh] mt-2">
+            <h3 className="text-white font-semibold mb-2 lg:mb-4">Current Image</h3>
+            <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-2 ring-slate-700 max-h-[28vh] lg:max-h-[40vh] mt-2">
               {currentImageUrl ? (
                 <img
                   src={currentImageUrl}
@@ -171,7 +176,7 @@ export default function AnimateSceneModal({
                 className="flex justify-center bg-slate-800/50 border border-slate-700 rounded-xl p-4"
                 style={{ width: '100%' }}
               >
-                <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 h-[40vh] flex items-center justify-center">
+                <div className="relative aspect-[9/16] rounded-xl overflow-hidden bg-slate-800 ring-1 ring-slate-700 h-[28vh] lg:h-[40vh] flex items-center justify-center">
                   {isAnimating ? (
                     <div className="w-full h-full bg-slate-700/60 animate-pulse flex items-center justify-center">
                       <span className="inline-block h-8 w-8 border-2 border-white/70 border-t-transparent rounded-full animate-spin" />
@@ -387,6 +392,7 @@ export default function AnimateSceneModal({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -51,7 +51,7 @@ export async function generateStoryBreakdown(
       properties: {
         description: { type: 'string' },
         duration: { type: 'number' },
-        narration: { type: 'string' },
+        narration: { type: 'string', maxLength: 210 },
         charactersBrief: {
           type: 'array',
           minItems: 2,
@@ -92,7 +92,7 @@ export async function generateStoryBreakdown(
       messages: [
         {
           role: 'system',
-          content: `Create a 9:16 vertical video split into exactly ${sceneCount} scenes. Each scene's narration should run **15 to 20 seconds when spoken aloud** (roughly 40-55 words) — set each scene's \`duration\` field to match how long its narration will actually take to say.
+          content: `Create a 9:16 vertical video split into exactly ${sceneCount} scenes. Each scene's narration must run **no more than 15 seconds when spoken aloud, and no less than 12** — that's a hard ceiling of **32 words**, never more. Count the words before finalizing each scene and trim if it's over. Set each scene's \`duration\` field to match how long its narration will actually take to say (12-15).
 Strict rules:
 - If the user names any, **rewrite to a generic archetype** (e.g., “an elderly Southern gentleman in a white suit and string tie”)—never use real names or marks.
 - **Two concise character bylines at the top level** (<= 10 words each): \`charactersBylines = [female, male]\`.

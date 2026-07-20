@@ -283,7 +283,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (provider: string) => {
     const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-    const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
+    // Derived from the current domain (rather than a fixed env var) so login
+    // works from any domain the app is served on — the popup's callback page
+    // ends up on this same origin, which is also what makes its
+    // window.opener.postMessage(..., window.location.origin) reach us.
+    const redirectUri = `${window.location.origin}/auth/callback`;
 
     if (!cognitoDomain || !clientId || !redirectUri) {
       console.error('Missing Cognito configuration');
@@ -427,13 +431,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Redirect to Cognito logout if needed
     const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
-    const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
 
     if (cognitoDomain && clientId) {
       // Ensure the domain doesn't already include the protocol
       const cleanDomain = cognitoDomain.replace(/^https?:\/\//, '');
-      const logoutUri =
-        process.env.NEXT_PUBLIC_LOGOUT_URI || 'http://localhost:3000';
+      // Derived from the current domain — see the matching comment in login().
+      const logoutUri = window.location.origin;
       const logoutUrl =
         `https://${cleanDomain}/logout?` +
         `client_id=${clientId}&` +
@@ -468,7 +471,10 @@ async function exchangeCodeForTokens(code: string) {
   const cognitoDomain = process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
   const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID;
   const clientSecret = process.env.NEXT_PUBLIC_COGNITO_CLIENT_SECRET;
-  const redirectUri = process.env.NEXT_PUBLIC_REDIRECT_URI;
+  // This function runs on the /auth/callback page itself, so its origin is
+  // exactly the redirect_uri Cognito was told to use in login() — see the
+  // comment there.
+  const redirectUri = `${window.location.origin}/auth/callback`;
 
   if (!cognitoDomain || !clientId || !redirectUri) {
     throw new Error('Missing Cognito configuration');

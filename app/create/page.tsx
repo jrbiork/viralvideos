@@ -931,10 +931,7 @@ export default function GeneratePage() {
       ...prev,
       isLoadingVideoScenes: true,
     }));
-    showToasterMessage(
-      "This might take a couple of minutes. You can come back later or check your Videos gallery — we'll notify you once it's done.",
-      'info',
-    );
+    showToasterMessage('Baking your video. It might take couple minutes.', 'info');
 
     try {
       const response = await fetch('/api/apply-edits', {
@@ -1013,10 +1010,6 @@ export default function GeneratePage() {
       // Enable transitions before changing step
       setDisableInitialTransition(false);
       setCurrentStep(3);
-      showToasterMessage(
-        "This might take a couple of minutes. You can come back later or check your Videos gallery — we'll notify you once it's done.",
-        'info',
-      );
 
       // Update URL to reflect step 3, preserving timestamp
       try {
