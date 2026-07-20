@@ -95,3 +95,6 @@ build/
 undefined
 .vercel
 .env*
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
