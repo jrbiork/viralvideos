@@ -10,7 +10,7 @@ const docClient = DynamoDBDocumentClient.from(client);
 const USERS_TABLE_NAME = process.env.USERS_TABLE_NAME || 'viral-videos-users';
 
 export interface UserSubscription {
-  // 'starter'/'influencer' are legacy modes, treated as 'pro' by getPlan()
+  // 'influencer' is a legacy mode, treated as 'pro' by getPlan()
   mode: 'free' | 'creator' | 'pro' | 'starter' | 'influencer';
   renewalDate: string | null;
   status: 'active' | 'cancelled' | 'expired';
