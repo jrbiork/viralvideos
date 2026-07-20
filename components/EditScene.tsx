@@ -121,6 +121,7 @@ export default function EditScene({
 
   const [isImageEditModalOpen, setIsImageEditModalOpen] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>();
   const [isSavingImage, setIsSavingImage] = useState(false);
   const [currentImageUrl, setCurrentImageUrl] = useState<string | null>(
@@ -228,6 +229,69 @@ export default function EditScene({
       );
     } finally {
       setIsGeneratingImage(false);
+    }
+  };
+
+  // Uploads a user-provided image straight to S3 via a presigned POST URL
+  // (see app/api/upload-image), then plugs the resulting URL into the same
+  // `generatedImageUrl` state the AI-generation path uses — everything
+  // downstream (save/apply/batch-edit) is agnostic to how the image was made.
+  const handleUploadImageFromModal = async (file: File) => {
+    setIsUploadingImage(true);
+    try {
+      const presignResponse = await fetch('/api/upload-image', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contentType: file.type,
+          timestamp: timestamp || queryParams.get('timestamp'),
+        }),
+      });
+
+      if (!presignResponse.ok) {
+        const errorData = await presignResponse.json();
+        console.error('Failed to get upload URL:', errorData);
+        showToasterMessage?.(
+          `Failed to upload image: ${errorData.error || 'Unknown error'}`,
+          'error',
+        );
+        return;
+      }
+
+      const { uploadUrl, uploadFields, imageUrl: uploadedImageUrl } =
+        await presignResponse.json();
+
+      const formData = new FormData();
+      Object.entries(uploadFields).forEach(([key, value]) => {
+        formData.append(key, value as string);
+      });
+      formData.append('file', file);
+
+      const s3Response = await fetch(uploadUrl, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!s3Response.ok) {
+        console.error('Failed to upload image to S3:', s3Response.status);
+        showToasterMessage?.(
+          'Failed to upload image. Please try again with a smaller file.',
+          'error',
+        );
+        return;
+      }
+
+      setGeneratedImageUrl(uploadedImageUrl);
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      showToasterMessage?.(
+        'Failed to upload image. Please try again.',
+        'error',
+      );
+    } finally {
+      setIsUploadingImage(false);
     }
   };
 
@@ -936,8 +1000,10 @@ export default function EditScene({
           currentImageUrl={currentImageUrl}
           displayIndex={displayIndex}
           onGenerateImage={handleGenerateImageFromModal}
+          onUploadImage={handleUploadImageFromModal}
           onSaveImage={handleSaveImage}
           isGeneratingImage={isGeneratingImage}
+          isUploadingImage={isUploadingImage}
           isSavingImage={isSavingImage}
           generatedImageUrl={generatedImageUrl}
           validationErrors={{ image: false }}

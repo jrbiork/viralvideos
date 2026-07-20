@@ -65,6 +65,12 @@ export class ViralVideosStack extends cdk.Stack {
     });
 
     // S3 Bucket for storing video parts
+    const corsOrigins = Array.from(
+      new Set([
+        'http://localhost:3000',
+        process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
+      ]),
+    );
     const videoPartsBucket = new s3.Bucket(this, 'VideoPartsBucket', {
       bucketName: `video-parts-${this.account}-${this.region}`,
       versioned: true,
@@ -77,6 +83,16 @@ export class ViralVideosStack extends cdk.Stack {
           enabled: true,
           noncurrentVersionExpiration: cdk.Duration.days(15),
           expiration: cdk.Duration.days(30),
+        },
+      ],
+      // Allows the browser to POST user-uploaded scene images directly to
+      // S3 via a presigned POST URL (see app/api/upload-image).
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.POST, s3.HttpMethods.PUT],
+          allowedOrigins: corsOrigins,
+          allowedHeaders: ['*'],
+          exposedHeaders: ['ETag'],
         },
       ],
     });
