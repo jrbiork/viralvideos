@@ -135,7 +135,7 @@ interface SceneCardsContainerProps {
 // the user they don't need to stay on this screen, since the finished video
 // also shows up in Videos.
 const GENERATING_SCENES_MESSAGE =
-  "Your scenes will be ready in a minute. We'll let you know when it's ready. You can always access it in the videos section.";
+  "Scenes ready in a minute — we'll notify you, or find them in Videos.";
 
 export default function SceneCardsContainer({
   videoGenerationState,
@@ -200,7 +200,7 @@ export default function SceneCardsContainer({
         ? // Show skeleton placeholders while loading audio/subtitles
           <>
             <div
-              className="text-center text-xs font-medium text-white rounded-lg px-3 py-1.5"
+              className="text-center text-[11px] font-medium text-white rounded-lg px-2.5 py-1"
               style={{
                 background: 'linear-gradient(90deg, #7552F2 0%, #2CA4F2 100%)',
               }}

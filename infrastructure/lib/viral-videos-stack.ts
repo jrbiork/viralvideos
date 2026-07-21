@@ -68,6 +68,8 @@ export class ViralVideosStack extends cdk.Stack {
     const corsOrigins = Array.from(
       new Set([
         'http://localhost:3000',
+        'https://storyreel.video',
+        'https://viralvideos-roan.vercel.app',
         process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
       ]),
     );
@@ -96,6 +98,17 @@ export class ViralVideosStack extends cdk.Stack {
         },
       ],
     });
+
+    // The Next.js app (app/api/upload-image) signs presigned S3 requests
+    // using this IAM user's credentials (AWS_ACCESS_KEY_ID/SECRET on
+    // Vercel) — it needs read/write on the video-parts bucket to generate
+    // presigned uploads and downloads for user-uploaded scene images.
+    const viralvideosAppUser = iam.User.fromUserName(
+      this,
+      'ViralVideosAppUser',
+      'viralvideos-app',
+    );
+    videoPartsBucket.grantReadWrite(viralvideosAppUser);
 
     // SQS Queue for video generation requests
     const videoQueue = new sqs.Queue(this, 'VideoGenerationQueue', {

@@ -304,7 +304,7 @@ export default function ImageEditModal({
 
               {/* Action Buttons */}
               {hasGeneratedImage && generatedImageUrl && (
-              <div className="mt-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-6">
+              <div className="mt-4 flex flex-row items-center gap-3 sm:gap-6">
                 <button
                   onClick={handleTryAnother}
                   disabled={isBusy}

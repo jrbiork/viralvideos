@@ -3,7 +3,6 @@ import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
 import { generateNarration } from '../utils/audio';
 import { generateSubtitles } from '../utils/subtitles';
 import { generateVideoEffects } from '../utils/videoEffects';
-import { ANIMATION_DURATION_SECONDS } from '../utils/runwayAnimate';
 import { uploadImageToS3 } from '../utils/s3Uploader';
 import { broadcastProgress } from '../utils/broadcastProgress';
 import { getUser } from '../utils/user';
@@ -158,9 +157,6 @@ export async function processBatchEdit(
         duration: durationForScene(edit.sceneId),
         narration: edit.narration,
         animated: animatedSceneIds.has(edit.sceneId),
-        hardCapSeconds: animatedSceneIds.has(edit.sceneId)
-          ? ANIMATION_DURATION_SECONDS
-          : undefined,
       })),
       ...addedScenes.map((scene) => ({
         id: scene.sceneId,
@@ -204,11 +200,7 @@ export async function processBatchEdit(
         animationPrompt: animationEdit?.animationPrompt ?? scene.animationPrompt,
         files: {
           ...scene.files,
-          // Animated scenes are a fixed-length Runway clip — always pin
-          // duration to that, regardless of what narration produced.
-          duration: isAnimated
-            ? ANIMATION_DURATION_SECONDS
-            : narrationEdit?.duration ?? scene.files.duration,
+          duration: narrationEdit?.duration ?? scene.files.duration,
         },
       };
     });

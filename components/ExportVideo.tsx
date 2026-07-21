@@ -58,11 +58,10 @@ export default function ExportVideo({
             Your Video Is On Its Way!
           </h1>
           <p className="text-gray-300 text-lg">
-            No need to stick around — we&apos;ll let you know the moment it&apos;s
-            ready.
+            We&apos;ll let you know when it&apos;s ready.
           </p>
           <p className="text-gray-400 text-sm mt-2">
-            You&apos;ll find it waiting for you in the Videos section.
+            Find it in the Videos section.
           </p>
         </div>
       </div>

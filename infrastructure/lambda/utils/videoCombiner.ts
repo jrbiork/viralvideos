@@ -137,6 +137,7 @@ export async function combineVideoAndAudio(
           scenePosition,
           userId,
           timestamp,
+          scene.animated,
         );
       },
     );
@@ -335,6 +336,8 @@ async function concatenateScenes(
  * @param scenePosition Index of the scene being processed
  * @param userId User ID for S3 operations
  * @param timestamp Timestamp for S3 operations
+ * @param isAnimated Whether this scene's video is a fixed-length Runway
+ *   animation clip that should loop to cover the full audio duration
  * @returns Path to the combined scene file
  */
 async function processScene(
@@ -344,6 +347,7 @@ async function processScene(
   scenePosition: number,
   userId: string,
   timestamp: string,
+  isAnimated = false,
 ): Promise<string> {
   // Extract the actual scene ID from the filename
   const sceneIdMatch = videoFile.Key.match(/scene-(\d+)\.mp4/);
@@ -416,6 +420,14 @@ async function processScene(
     }, 5 * 60 * 1000); // 5 minute timeout
 
     const command = ffmpeg().input(videoPath);
+
+    if (isAnimated) {
+      // Animated scenes have a fixed-length Runway clip (e.g. 5s) that is
+      // often shorter than the narration — loop it indefinitely so the
+      // -shortest output option below trims it to exactly the audio length
+      // instead of the audio getting cut short.
+      command.inputOptions(['-stream_loop', '-1']);
+    }
 
     if (audioPath) {
       command.input(audioPath);

@@ -169,7 +169,7 @@ export default function AnimateSceneModal({
                 className="text-white font-semibold mb-2 text-center"
                 style={{ width: '100%', textAlign: 'center' }}
               >
-                Animated Preview (5s)
+                Animated Preview
               </h3>
               <div
                 className="flex justify-center bg-slate-800/50 border border-slate-700 rounded-xl p-4"
@@ -291,8 +291,8 @@ export default function AnimateSceneModal({
                 </span>
               </div>
               <p className="text-xs text-amber-400/90 mb-3">
-                The animated clip will be 5 seconds long — adjust your
-                narration to fit the new 5s scene duration.
+                The animated clip is 5 seconds long and will loop to fill
+                your narration.
               </p>
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-0 mt-6">
                 <textarea

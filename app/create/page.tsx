@@ -170,6 +170,10 @@ export default function GeneratePage() {
   const [isApplyingEdits, setIsApplyingEdits] = useState(false);
   const [showPendingChangesModal, setShowPendingChangesModal] =
     useState(false);
+  // Set when the user applies pending edits from the "Generate Video"
+  // confirmation modal — once those edits actually land (preview_completed),
+  // combine-video should fire automatically instead of requiring a second click.
+  const [generateAfterApply, setGenerateAfterApply] = useState(false);
 
   // Scene ids already marked removed in the persisted manifest (hydrated by
   // useCreateUrlParams on load) — these are NOT pending changes, they were
@@ -443,6 +447,13 @@ export default function GeneratePage() {
         // WebSocket handler already shows the toast; just stop the spinner
         // and leave pendingEdits/removedOriginalScenes queued for retry.
         setIsApplyingEdits(false);
+        if (generateAfterApply) {
+          // Undo the optimistic jump to step 3 — the edits never landed, so
+          // there's nothing ready to combine into a video.
+          setGenerateAfterApply(false);
+          setIsVideoGenerating(false);
+          setCurrentStep(2);
+        }
         return;
       }
 
@@ -466,10 +477,24 @@ export default function GeneratePage() {
       setCustomSceneOrder(null);
       setIsApplyingEdits(false);
       showToasterMessage('Changes applied', 'success');
+
+      if (generateAfterApply) {
+        // The user chose "Apply Changes" from the Generate Video modal and
+        // was already optimistically moved to step 3 — now that the edits
+        // are actually reflected in the manifest, kick off the real combine.
+        setGenerateAfterApply(false);
+        handleCombineVideo();
+      }
     });
 
     return unsubscribe;
-  }, [isApplyingEdits, subscribe, pendingEdits.addedScenes, showToasterMessage]);
+  }, [
+    isApplyingEdits,
+    subscribe,
+    pendingEdits.addedScenes,
+    showToasterMessage,
+    generateAfterApply,
+  ]);
 
   // Animation edits are applied immediately (see handleQueueAnimationEdit),
   // independent of the batch "Apply changes" flow above. Once the manifest
@@ -904,10 +929,13 @@ export default function GeneratePage() {
     handleCancelEdit();
   };
 
-  // Send all accumulated in-memory edits to the backend in a single batch
-  const handleApplyEdits = async () => {
+  // Send all accumulated in-memory edits to the backend in a single batch.
+  // Returns whether the request was successfully queued (not whether the
+  // edits have finished applying — callers that need to react to completion
+  // should watch for the preview_completed WebSocket event instead).
+  const handleApplyEdits = async (): Promise<boolean> => {
     if (pendingEditsCount === 0 || !videoGenerationState.currentTimestamp) {
-      return;
+      return false;
     }
 
     const incompleteScene = additionalScenes.find(
@@ -918,12 +946,12 @@ export default function GeneratePage() {
         'One of your new scenes is missing narration. Add narration or remove the scene before applying changes.',
         'error',
       );
-      return;
+      return false;
     }
 
     if (hasIncompleteAddedScenes) {
       showToasterMessage(incompleteAddedSceneMessage, 'error');
-      return;
+      return false;
     }
 
     setIsApplyingEdits(true);
@@ -957,6 +985,7 @@ export default function GeneratePage() {
 
       // Pending state is cleared when the preview_completed WebSocket event arrives
       console.log('✅ Batch edit queued');
+      return true;
     } catch (error) {
       console.error('Error applying edits:', error);
       setIsApplyingEdits(false);
@@ -968,6 +997,7 @@ export default function GeneratePage() {
         error instanceof Error ? error.message : 'Failed to apply changes',
         'error',
       );
+      return false;
     }
   };
 
@@ -995,6 +1025,31 @@ export default function GeneratePage() {
     }
   };
 
+  // Switches the UI to the step-3 "creating your video" view. Used both for
+  // the normal Generate Video click and to optimistically jump ahead while
+  // queued edits are still being applied in the background (see
+  // handleApplyChangesFromModal).
+  const goToGeneratingStep = () => {
+    setIsVideoGenerating(true);
+    setVideoCompletionData(null);
+    // Enable transitions before changing step
+    setDisableInitialTransition(false);
+    setCurrentStep(3);
+
+    // Update URL to reflect step 3, preserving timestamp
+    try {
+      const params = new URLSearchParams(window.location.search);
+      params.set('step', '3');
+      if (videoGenerationState.currentTimestamp) {
+        params.set('timestamp', videoGenerationState.currentTimestamp);
+      }
+      const newUrl = `${window.location.pathname}?${params.toString()}`;
+      window.history.replaceState(null, '', newUrl);
+    } catch (e) {
+      console.warn('Failed to update URL to step=3', e);
+    }
+  };
+
   const handleCombineVideo = async () => {
     if (!videoGenerationState.currentTimestamp) {
       console.error('No timestamp available');
@@ -1004,25 +1059,7 @@ export default function GeneratePage() {
     posthog.capture('generate_video_clicked');
 
     try {
-      // Set generating state and navigate to step 3
-      setIsVideoGenerating(true);
-      setVideoCompletionData(null);
-      // Enable transitions before changing step
-      setDisableInitialTransition(false);
-      setCurrentStep(3);
-
-      // Update URL to reflect step 3, preserving timestamp
-      try {
-        const params = new URLSearchParams(window.location.search);
-        params.set('step', '3');
-        if (videoGenerationState.currentTimestamp) {
-          params.set('timestamp', videoGenerationState.currentTimestamp);
-        }
-        const newUrl = `${window.location.pathname}?${params.toString()}`;
-        window.history.replaceState(null, '', newUrl);
-      } catch (e) {
-        console.warn('Failed to update URL to step=3', e);
-      }
+      goToGeneratingStep();
 
       const response = await fetch('/api/combine-video', {
         method: 'POST',
@@ -1058,9 +1095,17 @@ export default function GeneratePage() {
     handleCombineVideo();
   };
 
-  const handleApplyChangesFromModal = () => {
+  const handleApplyChangesFromModal = async () => {
     setShowPendingChangesModal(false);
-    handleApplyEdits();
+    const queued = await handleApplyEdits();
+    if (!queued) return;
+
+    // Optimistically jump to the "creating your video" step rather than
+    // making the user click Generate Video again once the edits land —
+    // handleCombineVideo actually fires once preview_completed arrives
+    // (see the create-page-batch-apply subscription above).
+    setGenerateAfterApply(true);
+    goToGeneratingStep();
   };
 
   // Right sidebar content
