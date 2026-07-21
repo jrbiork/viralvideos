@@ -35,8 +35,7 @@ export default function AnimateSceneModal({
   // only flips true once the parent gets the "queued" ack back).
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const canAnimate =
-    animationQuota.plan !== 'free' && animationQuota.remaining > 0;
+  const canAnimate = animationQuota.remaining > 0;
 
   // Animation is asynchronous — onAnimateScene only submits the job. The
   // actual result arrives later as `isAnimating` flips back to false with
@@ -272,12 +271,12 @@ export default function AnimateSceneModal({
             <div className="flex flex-col items-center justify-center lg:col-span-3 text-center py-8">
               <h4 className="text-white font-semibold mb-2">
                 {animationQuota.plan === 'free'
-                  ? 'Animating scenes is a Creator/Pro feature'
+                  ? "You've used your free scene animation"
                   : "You've used this month's scene animations"}
               </h4>
               <p className="text-slate-400 text-sm max-w-sm">
                 {animationQuota.plan === 'free'
-                  ? 'Upgrade to Creator or Pro to animate scenes into short videos with Runway.'
+                  ? 'Upgrade to Starter, Creator, or Pro for more scene animations every month.'
                   : `Your limit of ${animationQuota.limit} scene animations resets next month.`}
               </p>
             </div>
@@ -287,8 +286,8 @@ export default function AnimateSceneModal({
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-white font-semibold">Animation prompt</h4>
                 <span className="text-xs text-slate-400">
-                  {animationQuota.remaining}/{animationQuota.limit} left this
-                  month
+                  {animationQuota.remaining}/{animationQuota.limit} left
+                  {animationQuota.plan !== 'free' ? ' this month' : ''}
                 </span>
               </div>
               <p className="text-xs text-amber-400/90 mb-3">

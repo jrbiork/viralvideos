@@ -190,6 +190,8 @@ export default function Pricing() {
       quota: '1 video',
       features: [
         { text: 'Up to 3 scenes per video' },
+        { text: '1 Incredible AI Animated Scene', highlight: true },
+        { text: '3 AI-generated images', highlight: true },
         { text: 'Auto-generated audio' },
         { text: 'Auto-generated subtitles' },
         { text: 'Vertical format' },

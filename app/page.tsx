@@ -2,7 +2,7 @@
 
 import React, { Fragment } from 'react';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import posthog from 'posthog-js';
 import AnimatedBackground from '../components/AnimatedBackground';
@@ -11,27 +11,59 @@ import { useAuth } from '../components/AuthContext';
 import UserDropdown from '../components/UserDropdown';
 import MobileNav from '../components/MobileNav';
 
-// Small illustrated (non-photographic) face avatar used for testimonials —
-// intentionally cartoon-style rather than a photo, since we don't attach
-// real people's likenesses to placeholder quotes.
-function FaceAvatar({ skin, hair }: { skin: string; hair: string }) {
+// Fades + slides children into view the first time they cross into the
+// viewport, with an optional stagger delay.
+function Reveal({
+  children,
+  delay = 0,
+  className = '',
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setVisible(true);
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.15 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <svg viewBox="0 0 44 44" className="w-11 h-11 rounded-full flex-shrink-0">
-      <circle cx="22" cy="22" r="22" fill={skin} />
-      <path
-        d="M2 20a20 20 0 0 1 40 0v-2a20 18 0 0 0-40 0z"
-        fill={hair}
+    <div
+      ref={ref}
+      className={`transition-all duration-700 ease-out ${
+        visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
+      } ${className}`}
+      style={{ transitionDelay: visible ? `${delay}ms` : '0ms' }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// Avatar backed by a real photo, used for testimonials.
+function PhotoAvatar({ src, alt }: { src: string; alt: string }) {
+  return (
+    <div className="w-11 h-11 rounded-full flex-shrink-0 overflow-hidden ring-1 ring-white/10">
+      <img
+        src={src}
+        alt={alt}
+        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
       />
-      <circle cx="15" cy="24" r="2.1" fill="#33261f" />
-      <circle cx="29" cy="24" r="2.1" fill="#33261f" />
-      <path
-        d="M15 31c2.5 2.2 11.5 2.2 14 0"
-        stroke="#33261f"
-        strokeWidth="2"
-        strokeLinecap="round"
-        fill="none"
-      />
-    </svg>
+    </div>
   );
 }
 
@@ -329,13 +361,15 @@ export default function Home() {
 
         <div className="relative">
           {/* Features Section */}
-          <div className="relative z-10 max-w-6xl mx-auto px-6 py-20">
-            <h2 className="text-4xl font-bold text-white text-center mb-16">
-              Creating Story &amp; Educational Videos Has Never Been So Easy
-            </h2>
+          <div className="relative z-10 max-w-4xl mx-auto px-6 py-20">
+            <Reveal>
+              <h2 className="text-4xl font-bold text-white text-center mb-16">
+                Creating Story &amp; Educational Videos Has Never Been So Easy
+              </h2>
+            </Reveal>
 
-          {/* Feature Grid */}
-          <div className="grid md:grid-cols-3 gap-8">
+          {/* Feature List */}
+          <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-sm divide-y divide-white/10 overflow-hidden">
             {[
               {
                 bg: 'from-red-500 to-orange-500',
@@ -386,13 +420,30 @@ export default function Home() {
                 desc: 'Bring static scenes to life with cinematic AI-powered animation, available on Creator and Pro plans.',
               },
             ].map((feature, i) => (
-              <div
-                key={i}
-                className="group bg-gray-800/50 rounded-xl p-6 border border-gray-700/50 transition-all duration-300 hover:-translate-y-1 hover:border-purple-400/40 hover:bg-gray-800/80 hover:shadow-xl hover:shadow-purple-500/10"
-              >
-                <div className="flex items-center mb-4">
+              <Reveal key={i} delay={i * 80}>
+                <div
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    e.currentTarget.style.setProperty(
+                      '--x',
+                      `${e.clientX - rect.left}px`
+                    );
+                    e.currentTarget.style.setProperty(
+                      '--y',
+                      `${e.clientY - rect.top}px`
+                    );
+                  }}
+                  className="group relative flex items-center gap-5 p-6 transition-colors duration-300 hover:bg-white/[0.05]"
+                >
                   <div
-                    className={`w-12 h-12 bg-gradient-to-br ${feature.bg} rounded-lg flex items-center justify-center mr-4 shadow-lg transition-transform duration-300 group-hover:scale-110`}
+                    className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"
+                    style={{
+                      background:
+                        'radial-gradient(400px circle at var(--x, 50%) var(--y, 50%), rgba(139,92,246,0.15), transparent 70%)',
+                    }}
+                  />
+                  <div
+                    className={`icon-float relative z-10 flex-shrink-0 w-12 h-12 bg-gradient-to-br ${feature.bg} rounded-lg flex items-center justify-center shadow-lg transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
                   >
                     <svg
                       className="w-6 h-6 text-white"
@@ -404,98 +455,88 @@ export default function Home() {
                       {feature.icon}
                     </svg>
                   </div>
-                  <h3 className="text-xl font-bold text-white">
-                    {feature.title}
-                  </h3>
+                  <div className="relative z-10 flex-1 transition-transform duration-300 group-hover:translate-x-1.5">
+                    <h3 className="text-xl font-bold text-white transition-colors duration-300 group-hover:text-purple-300">
+                      {feature.title}
+                    </h3>
+                    <p className="text-gray-300 mt-1">{feature.desc}</p>
+                  </div>
                 </div>
-                <p className="text-gray-300">{feature.desc}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </div>
 
           {/* Testimonials Section */}
           <div className="relative z-10 max-w-6xl mx-auto px-6 py-20">
-            <h2 className="text-4xl font-bold text-white text-center mb-4">
-              Successful Stories That Speak
-            </h2>
-            <p className="text-xl text-gray-300 text-center mb-16">
-              Real workflows from teachers, creators, and teams using
-              StoryReel every day.
-            </p>
+            <Reveal>
+              <h2 className="text-4xl font-bold text-white text-center mb-4">
+                Successful Stories That Speak
+              </h2>
+              <p className="text-xl text-gray-300 text-center mb-16">
+                Real workflows from teachers, creators, and teams using
+                StoryReel every day.
+              </p>
+            </Reveal>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-stretch">
               {[
                 {
                   quote:
-                    "I used to burn my Sunday nights making slides nobody watched past the intro. Now I write a rough script on my lunch break and StoryReel turns it into something my 7th graders actually sit through.",
+                    'My students actually watch these instead of tuning out. Cut my lesson prep from hours to minutes.',
                   name: 'Alice B.',
                   role: 'Middle School Teacher',
-                  skin: '#f0c9a0',
-                  hair: '#3b2417',
+                  photo: '/assets/testimonial-3.jpg',
                 },
                 {
                   quote:
-                    "Clients want a 60-second explainer by Friday on basically no budget. StoryReel is the only way I've found to say yes to that brief and still sleep.",
-                  name: 'Hernandez R.',
-                  role: 'Freelance Video Editor',
-                  skin: '#c88a5e',
-                  hair: '#1a1a1a',
-                },
-                {
-                  quote:
-                    "We don't have a video budget, full stop. Got three donor updates out last quarter that would've cost us thousands through an agency.",
-                  name: 'Joshua M.',
-                  role: 'Nonprofit Comms Lead',
-                  skin: '#8d5a3c',
-                  hair: '#120c08',
-                },
-                {
-                  quote:
-                    "Wasn't expecting much from the animation feature, ngl. It turned one flat photo into something that held people past the first three seconds, which almost never happens for me.",
-                  name: 'Priya N.',
-                  role: 'YouTube Creator',
-                  skin: '#deab7d',
-                  hair: '#241608',
-                },
-                {
-                  quote:
-                    'Re-recorded my intro lesson four separate times trying to get it right. Now I write it once and let StoryReel handle the rest.',
-                  name: 'Elena K.',
-                  role: 'Online Course Creator',
-                  skin: '#f6d7b0',
-                  hair: '#6b4423',
-                },
-                {
-                  quote:
-                    "Was skeptical an AI tool could make something that didn't look cheap. It proved me wrong fast — the first video went straight into an actual ad.",
+                    "Made a video to teach my son about the solar system. He's watched it a dozen times and now he's the one teaching me.",
                   name: 'Marcus D.',
-                  role: 'Small Business Owner',
-                  skin: '#e8b992',
-                  hair: '#2b2b2b',
+                  role: 'Dad',
+                  photo: '/assets/testimonial-2.jpg',
+                },
+                {
+                  quote:
+                    'Turned our listing photos into a walkthrough video in minutes. Leads started asking about the property the same day.',
+                  name: 'Hernandez R.',
+                  role: 'Real Estate Agent',
+                  photo: '/assets/testimonial-1.jpg',
+                },
+                {
+                  quote:
+                    "My first StoryReel clip outperformed everything I'd posted that month. Now it's part of my weekly content.",
+                  name: 'Priya N.',
+                  role: 'TikTok Creator',
+                  photo: '/assets/testimonial-5.jpg',
+                },
+                {
+                  quote:
+                    'Needed a polished opener for a keynote with zero notice. Had it looking professional in under ten minutes.',
+                  name: 'Joshua M.',
+                  role: 'Conference Speaker',
+                  photo: '/assets/testimonial-4.jpg',
                 },
               ].map((t, i) => (
-                <div
-                  key={i}
-                  className="relative flex flex-col justify-between bg-white/[0.04] backdrop-blur-sm border border-white/10 rounded-2xl p-6 pt-8 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.07] hover:border-purple-400/30 hover:shadow-xl hover:shadow-purple-500/10"
-                >
-                  <span
-                    className="absolute -top-2 left-4 text-7xl font-serif text-white/10 select-none leading-none"
-                    aria-hidden="true"
-                  >
-                    &ldquo;
-                  </span>
-                  <p className="relative text-gray-200 leading-relaxed mb-6">
-                    {t.quote}
-                  </p>
-                  <div className="flex items-center pt-4 border-t border-white/10">
-                    <FaceAvatar skin={t.skin} hair={t.hair} />
-                    <div className="ml-3">
-                      <div className="font-bold text-white">{t.name}</div>
-                      <div className="text-gray-400 text-sm">{t.role}</div>
+                <Reveal key={i} delay={i * 80}>
+                  <div className="group relative flex flex-col justify-between bg-white/[0.04] backdrop-blur-sm border border-white/10 rounded-2xl p-6 pt-8 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:bg-white/[0.08] hover:border-purple-400/30 hover:shadow-xl hover:shadow-purple-500/10 h-full">
+                    <span
+                      className="absolute -top-2 left-4 text-7xl font-serif text-white/10 select-none leading-none transition-colors duration-300 group-hover:text-purple-400/20"
+                      aria-hidden="true"
+                    >
+                      &ldquo;
+                    </span>
+                    <p className="relative text-gray-200 leading-relaxed mb-6">
+                      {t.quote}
+                    </p>
+                    <div className="flex items-center pt-4 border-t border-white/10">
+                      <PhotoAvatar src={t.photo} alt={t.name} />
+                      <div className="ml-3">
+                        <div className="font-bold text-white">{t.name}</div>
+                        <div className="text-gray-400 text-sm">{t.role}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </Reveal>
               ))}
             </div>
           </div>

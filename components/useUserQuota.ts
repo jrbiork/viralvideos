@@ -6,11 +6,11 @@ interface PlanLimits {
   videoLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
   maxScenes: number;
   imageGenLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
-  animationLimit: number; // 0 for free (animations always rejected)
+  animationLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
 }
 
 const PLAN_LIMITS: Record<Plan, PlanLimits> = {
-  free: { videoLimit: 1, maxScenes: 3, imageGenLimit: 3, animationLimit: 0 },
+  free: { videoLimit: 1, maxScenes: 3, imageGenLimit: 3, animationLimit: 1 },
   starter: { videoLimit: 8, maxScenes: 4, imageGenLimit: 10, animationLimit: 3 },
   creator: { videoLimit: 10, maxScenes: 5, imageGenLimit: 20, animationLimit: 5 },
   pro: { videoLimit: 20, maxScenes: 6, imageGenLimit: 40, animationLimit: 10 },
@@ -30,6 +30,7 @@ export const STARTER_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.starter.imageGenLimit
 export const CREATOR_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.creator.imageGenLimit;
 export const PRO_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.pro.imageGenLimit;
 
+export const FREE_ANIMATION_LIMIT = PLAN_LIMITS.free.animationLimit;
 export const STARTER_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.starter.animationLimit;
 export const CREATOR_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.creator.animationLimit;
 export const PRO_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.pro.animationLimit;
@@ -49,7 +50,6 @@ export interface ImageQuota {
   remaining: number;
 }
 
-// Free plan always reports limit/remaining 0 (animationLimit is 0).
 export interface AnimationQuota {
   plan: Plan;
   used: number;
@@ -139,7 +139,13 @@ export function useUserQuota(): {
 
   let animationQuota: AnimationQuota;
   if (plan === 'free') {
-    animationQuota = { plan, used: 0, limit: 0, remaining: 0 };
+    const used = user?.animationsGenerated || 0;
+    animationQuota = {
+      plan,
+      used,
+      limit: limits.animationLimit,
+      remaining: Math.max(0, limits.animationLimit - used),
+    };
   } else {
     const used =
       user?.animationQuotaPeriodStart === currentMonth

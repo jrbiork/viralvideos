@@ -210,6 +210,20 @@ body {
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+@keyframes iconFloat {
+  0%,
+  100% {
+    transform: translateY(0) scale(1.1) rotate(3deg);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.1) rotate(3deg);
+  }
+}
+
+.group:hover .icon-float {
+  animation: iconFloat 1.4s ease-in-out infinite;
+}
+
 /* Video controls hover effect */
 video {
   transition: all 0.3s ease;
