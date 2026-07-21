@@ -16,11 +16,11 @@ interface PlanLimits {
   videoLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
   maxScenes: number;
   imageGenLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
-  animationLimit: number; // 0 for free (animations always rejected)
+  animationLimit: number; // free = lifetime cap, starter/creator/pro = monthly cap
 }
 
 const PLAN_LIMITS: Record<Plan, PlanLimits> = {
-  free: { videoLimit: 1, maxScenes: 3, imageGenLimit: 3, animationLimit: 0 },
+  free: { videoLimit: 1, maxScenes: 3, imageGenLimit: 3, animationLimit: 1 },
   starter: { videoLimit: 8, maxScenes: 4, imageGenLimit: 10, animationLimit: 3 },
   creator: { videoLimit: 10, maxScenes: 5, imageGenLimit: 20, animationLimit: 5 },
   pro: { videoLimit: 20, maxScenes: 6, imageGenLimit: 40, animationLimit: 10 },
@@ -40,6 +40,7 @@ export const STARTER_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.starter.imageGenLimit
 export const CREATOR_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.creator.imageGenLimit;
 export const PRO_IMAGE_GEN_MONTHLY_LIMIT = PLAN_LIMITS.pro.imageGenLimit;
 
+export const FREE_ANIMATION_LIMIT = PLAN_LIMITS.free.animationLimit; // lifetime, via the "Animate scene" button
 export const STARTER_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.starter.animationLimit; // via the "Animate scene" button
 export const CREATOR_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.creator.animationLimit;
 export const PRO_ANIMATION_MONTHLY_LIMIT = PLAN_LIMITS.pro.animationLimit;
@@ -243,9 +244,8 @@ export async function checkAndConsumeImageGenQuota(
 
 /**
  * Check whether the user may animate another scene via Runway and, if so,
- * consume one unit. Free plan is always rejected (animationLimit is 0).
- * Monthly cap resets with the same lazy billing-period pattern as
- * image/video quotas.
+ * consume one unit. Free is a lifetime cap; starter/creator/pro is a
+ * monthly cap that resets with the billing-period counter.
  */
 export async function checkAndConsumeAnimationQuota(
   userId: string,
@@ -259,26 +259,44 @@ export async function checkAndConsumeAnimationQuota(
     return {
       allowed: false,
       used: 0,
-      limit: PLAN_LIMITS.free.animationLimit,
+      limit: FREE_ANIMATION_LIMIT,
       plan: 'free',
     };
   }
 
   const plan = getPlan(user);
-  const limit = PLAN_LIMITS[plan].animationLimit;
 
   if (plan === 'free') {
-    console.log(
-      `Animation quota rejected for user ${userId}: scene animation requires Creator or Pro`,
+    const used = user.animationsGenerated || 0;
+    const limit = FREE_ANIMATION_LIMIT;
+
+    if (used >= limit) {
+      console.log(
+        `Animation quota exhausted for user ${userId}: ${used}/${limit} (free)`,
+      );
+      return { allowed: false, used, limit, plan };
+    }
+
+    await docClient.send(
+      new UpdateCommand({
+        TableName: USERS_TABLE_NAME,
+        Key: { userId: user.userId, username: user.username },
+        UpdateExpression:
+          'SET animationsGenerated = if_not_exists(animationsGenerated, :zero) + :one',
+        ExpressionAttributeValues: { ':zero': 0, ':one': 1 },
+      }),
     );
-    return { allowed: false, used: 0, limit, plan };
+
+    return { allowed: true, used: used + 1, limit, plan };
   }
 
+  // Starter/creator/pro: monthly cap
   const month = currentMonth();
   const used =
     user.animationQuotaPeriodStart === month
       ? user.animationsGeneratedThisMonth || 0
       : 0;
+  const limit = PLAN_LIMITS[plan].animationLimit;
 
   if (used >= limit) {
     console.log(

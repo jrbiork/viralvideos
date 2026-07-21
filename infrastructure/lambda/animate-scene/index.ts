@@ -57,7 +57,7 @@ export const handler = async (
         body: JSON.stringify({
           error:
             plan === 'free'
-              ? `Animating scenes is a Creator/Pro feature. Upgrade for scene animations every month.`
+              ? `You've used your ${limit} free scene animation. Upgrade for scene animations every month.`
               : `You've reached this month's limit of ${limit} scene animations. Your limit resets next month.`,
           animationQuota: { used, limit, plan },
         }),

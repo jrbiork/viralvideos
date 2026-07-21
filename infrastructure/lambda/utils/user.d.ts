@@ -16,6 +16,7 @@ export interface UserItem {
     imagesGenerated?: number;
     imagesGeneratedThisMonth?: number;
     imageQuotaPeriodStart?: string;
+    animationsGenerated?: number;
     animationsGeneratedThisMonth?: number;
     animationQuotaPeriodStart?: string;
     [key: string]: any;

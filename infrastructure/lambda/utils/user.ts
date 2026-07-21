@@ -29,6 +29,7 @@ export interface UserItem {
   imagesGenerated?: number; // free-tier lifetime counter, via "Generate image" button
   imagesGeneratedThisMonth?: number; // pro-tier monthly counter
   imageQuotaPeriodStart?: string; // ISO month, e.g. "2026-07" — only used by the pro monthly counter
+  animationsGenerated?: number; // free-tier lifetime counter, via "Animate scene" button
   animationsGeneratedThisMonth?: number; // pro-tier monthly counter, via "Animate scene" button
   animationQuotaPeriodStart?: string; // ISO month, e.g. "2026-07"
   [key: string]: any;
