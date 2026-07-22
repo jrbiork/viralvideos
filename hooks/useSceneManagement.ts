@@ -271,7 +271,18 @@ export function useSceneManagement() {
         try {
           const subtitles = assContent ? parseAssFile(assContent) : [];
 
-          const currentTime = videoRef.currentTime;
+          // Animated scenes loop a short (e.g. 5s) clip under the full-length
+          // narration, so the video's own currentTime/duration reset every
+          // loop — subtitle timing must follow the audio (the real
+          // narration clock) instead.
+          const audioElement = scene.animated
+            ? (document.getElementById(
+                `audio-${scene.id}`,
+              ) as HTMLAudioElement | null)
+            : null;
+          const currentTime = audioElement
+            ? audioElement.currentTime
+            : videoRef.currentTime;
           // Slightly larger tolerance and a small lookahead to avoid missing short cues
           const epsilon = 0.25; // ~250ms tolerance
           const lookaheadWindow = 0.3; // ~300ms lookahead for imminent cue
@@ -311,8 +322,11 @@ export function useSceneManagement() {
           if (!currentSub) {
             // If we're after the last subtitle but before video end, synthesize a final word fallback
             const lastSubEnd = lastSub ? lastSub.end : undefined;
-            const beforeVideoEnds = Number.isFinite(videoRef.duration)
-              ? currentTime <= videoRef.duration + 0.01
+            const totalDuration = audioElement
+              ? audioElement.duration
+              : videoRef.duration;
+            const beforeVideoEnds = Number.isFinite(totalDuration)
+              ? currentTime <= totalDuration + 0.01
               : true;
             if (
               lastSubEnd !== undefined &&
@@ -434,9 +448,10 @@ export function useSceneManagement() {
       updateSubtitle();
     });
 
-    videoRef.addEventListener('ended', () => {
+    const advanceToNextScene = () => {
       // Reset auto-playing flag
       videoRef.dataset.autoPlaying = 'false';
+      videoRef.pause();
 
       const audioElement = document.getElementById(
         `audio-${scene.id}`,
@@ -458,7 +473,22 @@ export function useSceneManagement() {
           dispatch({ type: 'SET_SELECTED_SCENE_ID', payload: nextScene.id });
         }
       }
-    });
+    };
+
+    if (scene.animated && !scene.hasCombined) {
+      // The video loops a short raw clip, so its own 'ended' event never
+      // fires (per the HTML spec, `loop` suppresses `ended`) — the audio's
+      // real narration length is the true end-of-scene signal instead. Once
+      // a "-combined.mp4" exists the video is already the full narration
+      // length (no `loop`, no separate audio element), so it fires 'ended'
+      // normally like any non-animated scene.
+      const audioElement = document.getElementById(
+        `audio-${scene.id}`,
+      ) as HTMLAudioElement | null;
+      audioElement?.addEventListener('ended', advanceToNextScene);
+    } else {
+      videoRef.addEventListener('ended', advanceToNextScene);
+    }
   };
 
   return {

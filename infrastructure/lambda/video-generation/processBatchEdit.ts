@@ -1,8 +1,10 @@
 import { SQSRecord } from 'aws-lambda';
 import { DeleteMessageCommand, SQSClient } from '@aws-sdk/client-sqs';
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { generateNarration } from '../utils/audio';
 import { generateSubtitles } from '../utils/subtitles';
 import { generateVideoEffects } from '../utils/videoEffects';
+import { processScene } from '../utils/videoCombiner';
 import { uploadImageToS3 } from '../utils/s3Uploader';
 import { broadcastProgress } from '../utils/broadcastProgress';
 import { getUser } from '../utils/user';
@@ -17,6 +19,7 @@ import {
 import { ManifestScene } from '../types/s3Types';
 
 const sqs = new SQSClient({ region: process.env.AWS_REGION || 'us-east-1' });
+const s3 = new S3Client({ region: process.env.AWS_REGION || 'us-east-1' });
 
 export interface BatchEditRequest {
   type?: 'batch-edit';
@@ -274,7 +277,54 @@ export async function processBatchEdit(
       }
     }
 
-    // 5) Single manifest write + single broadcast
+    // 5) Rebuild the per-scene "-combined.mp4" (narration-length, animation
+    // looped, subtitles baked in) for every scene whose narration, image, or
+    // animation just changed, so the editor preview reflects the edit
+    // immediately instead of only after the next full "Generate Video"
+    // export. That file is otherwise a cached artifact from the last
+    // export, and would keep serving stale (pre-edit) content.
+    const staleCombinedSceneIds = new Set<number>([
+      ...narrationEdits.map((e) => e.sceneId),
+      ...imageEdits.map((e) => e.sceneId),
+      ...animationEdits.map((e) => e.sceneId),
+    ]);
+    if (staleCombinedSceneIds.size > 0) {
+      await Promise.allSettled(
+        updatedScenes
+          .filter((scene) => staleCombinedSceneIds.has(scene.id) && !scene.removed)
+          .map(async (scene) => {
+            try {
+              await processScene(
+                { Key: scene.files.mp4 },
+                scene.files.mp3 ? { Key: scene.files.mp3 } : null,
+                scene.files.ass ? { Key: scene.files.ass } : null,
+                scene.scenePosition,
+                userId,
+                timestamp,
+                scene.animated,
+              );
+            } catch (error) {
+              // Regeneration failed — fall back to deleting the stale cache
+              // so hydrateManifest omits it and the preview falls back to
+              // the raw source clip instead of showing pre-edit content.
+              console.error(
+                `⚠️ Failed to rebuild combined preview for scene ${scene.id}, invalidating stale cache instead:`,
+                error,
+              );
+              await s3
+                .send(
+                  new DeleteObjectCommand({
+                    Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+                    Key: `${userId}/${timestamp}.scene-${scene.id}-combined.mp4`,
+                  }),
+                )
+                .catch(() => {});
+            }
+          }),
+      );
+    }
+
+    // 6) Single manifest write + single broadcast
     const totalDuration = updatedScenes
       .filter((scene) => !scene.removed)
       .reduce((acc, scene) => acc + scene.files.duration, 0);

@@ -31,4 +31,8 @@ export interface Manifest {
   finalVideoUrl?: string;
   totalDuration?: number;
   size?: string;
+  // True from the moment combine-video is enqueued until the final video
+  // finishes (or fails) — used to block editing a video that's still being
+  // rendered in the background.
+  isCombining?: boolean;
 }

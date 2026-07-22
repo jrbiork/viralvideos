@@ -96,7 +96,8 @@ Strict rules:
 - **Two concise character bylines at the top level** (<= 10 words each): \`charactersBylines = [female, male]\`.
 - **Every scene must:**
   1) Start \`description\` with \`[FL: <female byline>] [ML: <male byline>]\` then the visual.
-- **Narration tone:** write every \`narration\` like an outgoing, warm friend telling you this story in person because they're genuinely excited about it — casual, punchy, contractions welcome (e.g. "she's", "didn't"), short sentences, a little personality/humor where it fits. Talk *to* the listener, not *at* them — throw in the odd "you know", "honestly", "here's the thing", a rhetorical question, a reaction ("wild, right?"). Vary sentence rhythm like real speech, not uniform AI cadence. Avoid stock AI phrasing ("in a world where", "little did they know", "the truth is", "it turns out that", overused em-dashes). Not a formal documentary narrator, not stiff or literary. Keep it clear and tasteful — casual, not crude or meme-y.
+- **Narration tone:** write every \`narration\` like an outgoing, warm friend telling you this story in person because they're genuinely excited about it, casual, punchy, contractions welcome (e.g. "she's", "didn't"), short sentences, a little personality/humor where it fits. Talk *to* the listener, not *at* them, throw in the odd "you know", "honestly", "here's the thing", a rhetorical question, a reaction ("wild, right?"). Vary sentence rhythm like real speech, not uniform AI cadence. Avoid stock AI phrasing ("in a world where", "little did they know", "the truth is", "it turns out that"). Not a formal documentary narrator, not stiff or literary. Keep it clear and tasteful, casual, not crude or meme-y.
+- **Never use the em dash character (—) anywhere in the output.** Use a comma, period, or "and" instead.
 Output: **JSON only** following the provided schema.`,
         },
         {

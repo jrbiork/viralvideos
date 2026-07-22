@@ -1,5 +1,5 @@
 import { SQSRecord } from 'aws-lambda';
-import { combineVideoAndAudio } from './videoCombiner';
+import { combineVideoAndAudio } from '../utils/videoCombiner';
 import { broadcastProgress } from '../utils/broadcastProgress';
 import {
   getManifest,
@@ -53,6 +53,7 @@ export async function processVideoCombine(
     //
     const updatedManifest = await updateManifest(manifest, {
       videoGenerated: true,
+      isCombining: false,
       sceneCount: manifest.scenes.filter(
         (scene: ManifestScene) => !removedScenes.includes(scene.id),
       ).length,
@@ -93,6 +94,21 @@ export async function processVideoCombine(
     console.log('🎬 Video combined completed', finalVideoSignedUrl);
   } catch (error) {
     console.error('Error in processVideoCombine:', error);
+
+    // Best-effort: clear the in-progress flag so a failed combine doesn't
+    // permanently lock the user out of editing this video.
+    try {
+      const failedManifest = await getManifest(request.userId, request.timestamp);
+      if (failedManifest) {
+        await updateManifest(failedManifest, { isCombining: false });
+      }
+    } catch (cleanupError) {
+      console.error(
+        'Failed to clear isCombining after combine failure:',
+        cleanupError,
+      );
+    }
+
     throw Error('Video combine failed');
   }
 }

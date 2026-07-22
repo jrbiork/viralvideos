@@ -211,6 +211,12 @@ export default function RightSidebar({
               const isSelected = sceneState.selectedSceneId === scene.id;
               const mediaFiles = getMediaFiles();
               const videoUrl = mediaFiles[videoKey];
+              // The "-combined.mp4" already has narration audio and subtitles
+              // muxed in (and, for animated scenes, the clip looped to full
+              // length) — the separate <audio> track and HTML caption
+              // overlay below are only for the raw (silent, unsubtitled)
+              // source video, and must not run alongside it.
+              const hasCombinedMedia = !!scene.hasCombined;
 
               const showFullscreen = isSelected && isFullscreen;
 
@@ -260,6 +266,7 @@ export default function RightSidebar({
                           controlsList="nofullscreen"
                           playsInline
                           preload="auto"
+                          loop={!!scene.animated && !hasCombinedMedia}
                           src={videoUrl}
                           onError={(event) => {
                             console.error('Video error:', event);
@@ -308,8 +315,9 @@ export default function RightSidebar({
                           </button>
                         )}
 
-                        {/* Subtitles Overlay */}
-                        {isSelected && sceneState.currentSubtitle && (
+                        {/* Subtitles Overlay — skipped when the video's own
+                            subtitles are already burned in */}
+                        {isSelected && !hasCombinedMedia && sceneState.currentSubtitle && (
                           <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 w-4/5 z-10">
                             <p
                               className="text-xl font-medium leading-relaxed text-center"
@@ -383,7 +391,9 @@ export default function RightSidebar({
                 videoGenerationState.manifest?.generatedAt ||
                 videoGenerationState.currentTimestamp;
               const audioKey = `${manifestTimestamp}.scene-${sceneNumber}.mp3`;
-              return getMediaFiles()[audioKey] ? (
+              // The combined clip already has this narration muxed in —
+              // playing this element alongside it would double the audio.
+              return getMediaFiles()[audioKey] && !scene.hasCombined ? (
                 <audio
                   key={scene.id}
                   id={`audio-${scene.id}`}

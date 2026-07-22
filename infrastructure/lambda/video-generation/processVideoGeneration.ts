@@ -274,6 +274,15 @@ export async function processVideoGeneration(
     await getVideoEffectUrls(request.userId, timestamp, scenes, user);
 
     console.log('🎬 Video effects URLs generated:');
+
+    // Re-fetch rather than reusing the in-memory `manifest` from before
+    // getVideoEffectUrls — that step can take 10s+ per scene, and if the
+    // user applies narration/image edits during that window, a concurrent
+    // batch-edit invocation writes them to S3. Broadcasting the stale
+    // in-memory copy here would clobber the frontend's view of those edits
+    // with pre-edit data even though S3 itself is correct.
+    manifest = (await getManifest(request.userId, request.timestamp)) || manifest;
+
     console.log(
       '🎬 Manifest preview completed:',
       JSON.stringify(manifest, null, 2),

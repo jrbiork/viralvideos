@@ -297,7 +297,6 @@ export default function SceneCardsContainer({
                       scene={{
                         ...scene,
                         animated: isAnimated,
-                        duration: isAnimated ? 5 : scene.duration,
                         animationPrompt:
                           pendingAnimation?.animationPrompt ||
                           manifestScene?.animationPrompt,

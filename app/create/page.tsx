@@ -629,6 +629,8 @@ export default function GeneratePage() {
         scenePosition: manifestScene.scenePosition,
         removed:
           manifestScene.removed || removedOriginalScenes.has(actualSceneId), // Manifest is authoritative; local state covers not-yet-applied removals
+        animated: manifestScene.animated,
+        hasCombined: !!manifestScene.files?.combined,
       };
     });
   }, [

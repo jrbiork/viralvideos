@@ -25,6 +25,7 @@ export interface Manifest {
     prefix: string;
     generatedAt: string;
     videoGenerated: boolean;
+    isCombining?: boolean;
     updatedAt: string;
     sceneCount: number;
     totalDuration: number;

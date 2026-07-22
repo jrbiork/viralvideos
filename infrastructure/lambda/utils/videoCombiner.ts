@@ -35,7 +35,7 @@ function probeHasAudio(filePath: string): Promise<boolean> {
 }
 
 // S3 file object interface
-interface S3FileObject {
+export interface S3FileObject {
   Key: string;
 }
 
@@ -340,7 +340,7 @@ async function concatenateScenes(
  *   animation clip that should loop to cover the full audio duration
  * @returns Path to the combined scene file
  */
-async function processScene(
+export async function processScene(
   videoFile: S3FileObject,
   audioFile: S3FileObject | null,
   subtitleFile: S3FileObject | null,
@@ -405,6 +405,16 @@ async function processScene(
     fs.writeFileSync(subtitlePath, subtitleBuffer);
   }
 
+  // Probe durations to ensure the final mux runs for the longer of the two
+  // streams — for animated scenes (looped below) the audio is expected to be
+  // longer, so the target duration naturally becomes the audio's length.
+  const videoDuration = await probeDuration(videoPath);
+  const audioDuration = audioPath ? await probeDuration(audioPath) : 0;
+  const targetDuration = Math.max(videoDuration, audioDuration);
+  const padVideoSeconds = audioPath
+    ? Math.max(0, audioDuration - videoDuration)
+    : 0;
+
   // Combine video + audio + subtitle for this scene
   const combinedScenePath = path.join(
     os.tmpdir(),
@@ -423,9 +433,8 @@ async function processScene(
 
     if (isAnimated) {
       // Animated scenes have a fixed-length Runway clip (e.g. 5s) that is
-      // often shorter than the narration — loop it indefinitely so the
-      // -shortest output option below trims it to exactly the audio length
-      // instead of the audio getting cut short.
+      // often shorter than the narration — loop it indefinitely and rely on
+      // the explicit -t below to cut it to exactly the target duration.
       command.inputOptions(['-stream_loop', '-1']);
     }
 
@@ -458,15 +467,23 @@ async function processScene(
       '1',
       '-threads',
       '0',
-      '-shortest',
+      '-t',
+      targetDuration.toFixed(3),
     ]);
 
-    console.log('🔍 command output options new:', command.outputOptions());
-
-    // Add subtitle overlay if available
+    // Build video filters: subtitles + optional freeze-frame padding when
+    // the (non-looped) video is naturally a little shorter than the audio.
+    const vfParts: string[] = [];
     if (subtitlePath && fs.existsSync(subtitlePath)) {
-      const subtitleFilter = `ass=${subtitlePath}:fontsdir=/opt/fonts`;
-      command.outputOptions(['-vf', subtitleFilter]);
+      vfParts.push(`ass=${subtitlePath}:fontsdir=/opt/fonts`);
+    }
+    if (!isAnimated && padVideoSeconds > 0.005) {
+      vfParts.push(
+        `tpad=stop_mode=clone:stop_duration=${padVideoSeconds.toFixed(3)}`,
+      );
+    }
+    if (vfParts.length > 0) {
+      command.outputOptions(['-vf', vfParts.join(',')]);
     }
 
     command

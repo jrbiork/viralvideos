@@ -34,6 +34,7 @@ interface Video {
   totalDuration: number;
   sceneCount: number;
   videoGenerated: boolean;
+  isCombining?: boolean;
   size?: number;
 }
 
@@ -220,6 +221,13 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
     };
 
     const navigateToEdit = (video: Video) => {
+      if (video.isCombining) {
+        showToasterMessage(
+          "This video is still being generated — you can't edit it until it's done.",
+          'error',
+        );
+        return;
+      }
       // Navigate to create page with the video's timestamp and step=2
       router.push(`/create?timestamp=${video.timestamp}&step=2`);
     };
@@ -447,18 +455,28 @@ const VideoGallery = forwardRef<VideoGalleryHandle, VideoGalleryProps>(
                         </div>
                       )}
 
-                      {/* Done Tag - Bottom Right */}
-                      {(video.finalVideoUrl || video.videoGenerated) && (
+                      {/* Generating Tag - Bottom Right (takes priority: the
+                          video is mid-render and can't be edited yet) */}
+                      {video.isCombining ? (
                         <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
-                          Done
+                          Generating...
                         </div>
-                      )}
+                      ) : (
+                        <>
+                          {/* Done Tag - Bottom Right */}
+                          {(video.finalVideoUrl || video.videoGenerated) && (
+                            <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
+                              Done
+                            </div>
+                          )}
 
-                      {/* Not Finished Tag - Bottom Right */}
-                      {!video.finalVideoUrl && !video.videoGenerated && (
-                        <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
-                          Draft
-                        </div>
+                          {/* Not Finished Tag - Bottom Right */}
+                          {!video.finalVideoUrl && !video.videoGenerated && (
+                            <div className="absolute bottom-2 right-2 text-white text-[10px] p-1.5 rounded-md bg-black/60 z-10">
+                              Draft
+                            </div>
+                          )}
+                        </>
                       )}
 
                       {/* Play Button - Show when a playable URL exists */}

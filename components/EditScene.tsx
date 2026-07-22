@@ -14,6 +14,11 @@ export interface Scene {
   removed?: boolean;
   animated?: boolean;
   animationPrompt?: string;
+  // True once the scene has a "-combined.mp4" (narration-length, subtitles
+  // and — for animated scenes — the looped clip already muxed together).
+  // The preview must play that file alone, without the separate hidden
+  // <audio> track or HTML subtitle overlay used for raw (silent) videos.
+  hasCombined?: boolean;
 }
 
 interface EditSceneProps {
@@ -693,10 +698,25 @@ export default function EditScene({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
+                      if (scene.isUserAdded) {
+                        showToasterMessage?.(
+                          'Click "Apply changes" to save this scene before animating it',
+                          'error',
+                        );
+                        return;
+                      }
                       setIsAnimateModalOpen(true);
                     }}
-                    className="pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md"
-                    title={scene.animated ? 'Re-animate scene' : 'Animate scene'}
+                    className={`pointer-events-auto bg-black/60 hover:bg-black/70 p-1.5 rounded-md ${
+                      scene.isUserAdded ? 'opacity-50 cursor-not-allowed' : ''
+                    }`}
+                    title={
+                      scene.isUserAdded
+                        ? 'Apply changes first to animate this scene'
+                        : scene.animated
+                        ? 'Re-animate scene'
+                        : 'Animate scene'
+                    }
                   >
                     <svg
                       className="w-4 h-4 text-white"

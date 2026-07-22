@@ -97,6 +97,33 @@ export function useCreateUrlParams({
           const response = await previewResponse.json();
           const manifest = response.manifest;
 
+          if (manifest?.isCombining) {
+            // Video is still being rendered in the background (e.g. this
+            // URL was opened directly, or in another tab) — bounce to the
+            // "creating your video" step instead of allowing edits.
+            setCurrentStep(3);
+            onInitialStep && onInitialStep(3);
+            setIsVideoGenerating && setIsVideoGenerating(true);
+            setVideoGenerationState((prev) => ({
+              ...prev,
+              currentTimestamp: timestampFromUrl,
+              isLoadingAudioSubtitles: false,
+              isLoadingVideoScenes: false,
+            }));
+            try {
+              const params = new URLSearchParams(window.location.search);
+              params.set('step', '3');
+              window.history.replaceState(
+                null,
+                '',
+                `${window.location.pathname}?${params.toString()}`,
+              );
+            } catch (e) {
+              console.warn('Failed to update URL to step=3', e);
+            }
+            return;
+          }
+
           if (manifest?.scenes) {
             const removedScenes = new Set<number>();
             manifest.scenes.forEach((scene: any) => {

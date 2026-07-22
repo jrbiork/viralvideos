@@ -198,6 +198,7 @@ export const handler = async (
               totalDuration: manifest.totalDuration || 0,
               sceneCount: manifest.sceneCount || 0,
               videoGenerated: manifest.videoGenerated || false,
+              isCombining: manifest.isCombining || false,
               finalVideoUrl,
               size: videoSize,
             };

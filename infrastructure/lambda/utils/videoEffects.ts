@@ -12,6 +12,7 @@ import { promisify } from 'util';
 import { exec, execFile } from 'child_process';
 import { UserItem } from './user';
 import { resolveFfmpegPath } from './ffmpeg';
+import { getObjectFromS3 } from './s3Uploader';
 
 const execAsync = promisify(exec);
 const execFileAsync = promisify(execFile);
@@ -408,8 +409,49 @@ export async function generateSceneVideo(
       throw new Error('FFmpeg did not generate output video file');
     }
 
-    // Upload to S3
+    const cleanupTempFiles = () => {
+      try {
+        fs.unlinkSync(inputImagePath);
+        if (hasWatermark && fs.existsSync(watermarkPath)) {
+          fs.unlinkSync(watermarkPath);
+        }
+        fs.unlinkSync(outputVideoPath);
+      } catch (cleanupError) {
+        console.warn(
+          '⚠️ Warning: Could not clean up temporary files:',
+          cleanupError,
+        );
+      }
+    };
+
     const videoKey = `${userId}/${timestamp}.scene-${scene.id}.mp4`;
+
+    // Runway's animate-scene flow uploads its clip to this exact same key,
+    // and can complete while this Ken-Burns render (kicked off at video
+    // creation time) is still in flight. Re-check the manifest right before
+    // uploading so the slower writer never clobbers the animated clip.
+    const manifest = await getObjectFromS3(
+      `${userId}/${timestamp}.manifest.json`,
+    ).catch(() => null);
+    const manifestScene = manifest?.scenes?.find(
+      (s: { id: number; animated?: boolean }) => s.id === scene.id,
+    );
+    if (manifestScene?.animated) {
+      console.warn(
+        `⚠️ Scene ${scene.id} was animated while its Ken-Burns clip was rendering — skipping upload to avoid overwriting the animation.`,
+      );
+      cleanupTempFiles();
+      return await getSignedUrl(
+        s3,
+        new GetObjectCommand({
+          Bucket: process.env.VIDEO_PARTS_BUCKET_NAME,
+          Key: videoKey,
+        }),
+        { expiresIn: 36000 },
+      );
+    }
+
+    // Upload to S3
     const videoBuffer = fs.readFileSync(outputVideoPath);
 
     console.log(
@@ -425,19 +467,7 @@ export async function generateSceneVideo(
       }),
     );
 
-    // Clean up temporary files
-    try {
-      fs.unlinkSync(inputImagePath);
-      if (hasWatermark && fs.existsSync(watermarkPath)) {
-        fs.unlinkSync(watermarkPath);
-      }
-      fs.unlinkSync(outputVideoPath);
-    } catch (cleanupError) {
-      console.warn(
-        '⚠️ Warning: Could not clean up temporary files:',
-        cleanupError,
-      );
-    }
+    cleanupTempFiles();
 
     console.log(`✅ Video uploaded to S3: ${videoKey}`);
 

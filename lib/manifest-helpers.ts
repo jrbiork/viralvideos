@@ -14,8 +14,13 @@ export function buildMediaFiles(manifest?: Manifest): Record<string, string> {
       mediaFiles[`${timestamp}.scene-${sceneNumber}.jpg`] = files.jpg;
     if (files.mp3)
       mediaFiles[`${timestamp}.scene-${sceneNumber}.mp3`] = files.mp3;
+    // Prefer the fully-combined clip (narration-length, with the animation
+    // looped and subtitles baked in) over the raw source video whenever it
+    // exists, so the editor preview matches what the final export produces.
     if (files.mp4)
       mediaFiles[`${timestamp}.scene-${sceneNumber}.mp4`] = files.mp4;
+    if (files.combined)
+      mediaFiles[`${timestamp}.scene-${sceneNumber}.mp4`] = files.combined;
   });
   return mediaFiles;
 }

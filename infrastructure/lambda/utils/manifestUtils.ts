@@ -54,6 +54,7 @@ export async function createManifest(
       totalDuration,
       finalVideoUrl: '',
       videoGenerated: false,
+      isCombining: false,
     };
 
     // Convert manifest to JSON string
@@ -201,7 +202,7 @@ export async function hydrateManifest(
     // Validate required file keys before making S3 requests
     console.log(`🔍 Hydrating scene ${scene.scenePosition}, files:`, files);
 
-    const [audioUrl, videoUrl, imageUrl, subtitleContent, assContent] =
+    const [audioUrl, videoUrl, combinedUrl, imageUrl, subtitleContent, assContent] =
       await Promise.all([
         getSignedUrl(
           s3,
@@ -217,6 +218,20 @@ export async function hydrateManifest(
           ? getSignedUrl(
               s3,
               new GetObjectCommand({ Bucket: bucketName, Key: files.mp4 }),
+              {
+                expiresIn,
+              },
+            )
+          : Promise.resolve(''),
+        // The per-scene "-combined.mp4" (narration-length, subtitle-baked,
+        // animation-looped) only exists after the video has been exported at
+        // least once via combineVideoAndAudio — sign it when present so the
+        // editor preview can show the real, full-duration clip instead of
+        // the raw (5s, for animated scenes) source video.
+        files.combined && existingMp4Keys.has(files.combined)
+          ? getSignedUrl(
+              s3,
+              new GetObjectCommand({ Bucket: bucketName, Key: files.combined }),
               {
                 expiresIn,
               },
@@ -278,6 +293,7 @@ export async function hydrateManifest(
       files: {
         mp3: audioUrl,
         mp4: videoUrl,
+        combined: combinedUrl,
         jpg: imageUrl,
         png: imageUrl,
         ass: assContent || '',
