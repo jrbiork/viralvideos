@@ -142,6 +142,15 @@ export default function GeneratePage() {
     Set<number>
   >(new Set());
 
+  // Scenes the user has restored after their removal was already persisted
+  // to the manifest (i.e. a prior Apply/Generate). `manifestScene.removed`
+  // never gets cleared retroactively by the manifest itself, so this set is
+  // the only way to override it back to "active" until the restoration is
+  // itself applied to the backend.
+  const [restoredSceneIds, setRestoredSceneIds] = useState<Set<number>>(
+    new Set(),
+  );
+
   // In-memory edits accumulated in the UI until the user clicks "Apply changes"
   const [pendingEdits, setPendingEdits] = useState<{
     narrationEdits: {
@@ -197,7 +206,15 @@ export default function GeneratePage() {
   }, [videoGenerationState.manifest]);
 
   const pendingRemovedSceneIds = Array.from(removedOriginalScenes).filter(
-    (id) => !manifestRemovedSceneIds.has(id),
+    (id) => !manifestRemovedSceneIds.has(id) && !restoredSceneIds.has(id),
+  );
+
+  // Scenes whose manifest-persisted removal the user has undone in this
+  // session — these need to be sent on Apply/Generate so the backend clears
+  // `removed` for them too, otherwise the restoration only ever exists
+  // client-side and the scene stays excluded from the generated video.
+  const pendingRestoredSceneIds = Array.from(restoredSceneIds).filter((id) =>
+    manifestRemovedSceneIds.has(id),
   );
 
   // A new scene only reaches pendingEdits.addedScenes once it has an image
@@ -382,6 +399,14 @@ export default function GeneratePage() {
     console.log('[Scenes] Marking original scene as removed:', sceneId);
     // Mark original scene as removed
     setRemovedOriginalScenes((prev) => new Set(prev).add(sceneId));
+    // Clear any prior "restored" override — re-deleting a scene that was
+    // restored earlier this session should stick as removed again.
+    setRestoredSceneIds((prev) => {
+      if (!prev.has(sceneId)) return prev;
+      const next = new Set(prev);
+      next.delete(sceneId);
+      return next;
+    });
     showToasterMessage('Scene marked as removed', 'success');
     setDeletingSceneId(null);
   };
@@ -627,8 +652,9 @@ export default function GeneratePage() {
         narration: narration,
         duration: actualDuration,
         scenePosition: manifestScene.scenePosition,
-        removed:
-          manifestScene.removed || removedOriginalScenes.has(actualSceneId), // Manifest is authoritative; local state covers not-yet-applied removals
+        removed: restoredSceneIds.has(actualSceneId)
+          ? false
+          : manifestScene.removed || removedOriginalScenes.has(actualSceneId), // Manifest is authoritative; local state covers not-yet-applied removals; restoredSceneIds overrides a manifest removal the user has since undone
         animated: manifestScene.animated,
         hasCombined: !!manifestScene.files?.combined,
       };
@@ -636,6 +662,7 @@ export default function GeneratePage() {
   }, [
     videoGenerationState.manifest,
     removedOriginalScenes,
+    restoredSceneIds,
     pendingEdits.narrationEdits,
   ]);
 
@@ -737,6 +764,7 @@ export default function GeneratePage() {
     pendingEdits.addedScenes.length +
     pendingEdits.animationEdits.length +
     pendingRemovedSceneIds.length +
+    pendingRestoredSceneIds.length +
     (hasSceneReorder ? 1 : 0);
 
   useEffect(() => {
@@ -974,6 +1002,7 @@ export default function GeneratePage() {
             imageEdits: pendingEdits.imageEdits,
             addedScenes: pendingEdits.addedScenes,
             removedSceneIds: pendingRemovedSceneIds,
+            restoredSceneIds: pendingRestoredSceneIds,
             animationEdits: pendingEdits.animationEdits,
             sceneOrder: hasSceneReorder ? reorderedManifestSceneIds : null,
           },
@@ -1090,6 +1119,10 @@ export default function GeneratePage() {
   // queued-but-unapplied edits, since those edits are not sent as part of
   // /api/combine-video and would otherwise be silently dropped.
   const handleGenerateVideoClick = () => {
+    if (hasIncompleteAddedScenes) {
+      showToasterMessage(incompleteAddedSceneMessage, 'error');
+      return;
+    }
     if (pendingEditsCount > 0) {
       setShowPendingChangesModal(true);
       return;
@@ -1138,7 +1171,7 @@ export default function GeneratePage() {
             {pendingEditsCount > 0 && (
               <button
                 onClick={handleApplyEdits}
-                disabled={isApplyingEdits || hasIncompleteAddedScenes}
+                disabled={isApplyingEdits}
                 title={
                   hasIncompleteAddedScenes
                     ? incompleteAddedSceneMessage
@@ -1168,8 +1201,7 @@ export default function GeneratePage() {
               disabled={
                 !isManifestFullyReady(videoGenerationState.manifest) ||
                 isApplyingEdits ||
-                allScenesDisabled ||
-                hasIncompleteAddedScenes
+                allScenesDisabled
               }
               title={
                 hasIncompleteAddedScenes
@@ -1232,6 +1264,10 @@ export default function GeneratePage() {
                 : currentStep > 1
                 ? '-translate-x-full'
                 : 'translate-x-full'
+            } ${
+              currentStep === 1
+                ? ''
+                : 'invisible pointer-events-none'
             }`}
           >
             <div className="space-y-6">
@@ -1280,6 +1316,8 @@ export default function GeneratePage() {
                 : currentStep > 2
                 ? '-translate-x-full'
                 : 'translate-x-full'
+            } ${
+              currentStep === 2 ? '' : 'invisible pointer-events-none'
             }`}
           >
             {/* Scene Cards Container */}
@@ -1320,6 +1358,14 @@ export default function GeneratePage() {
                   next.delete(sceneId);
                   return next;
                 });
+                // If this scene's removal was already applied to the
+                // manifest, clearing removedOriginalScenes alone won't bring
+                // it back (manifestScene.removed still wins) — also mark it
+                // as explicitly restored so the override in
+                // createScenesFromSubtitleFiles kicks in immediately.
+                if (manifestRemovedSceneIds.has(sceneId)) {
+                  setRestoredSceneIds((prev) => new Set(prev).add(sceneId));
+                }
                 showToasterMessage('Scene restored', 'success');
               }}
               deletingSceneId={deletingSceneId}
@@ -1344,7 +1390,9 @@ export default function GeneratePage() {
               disableInitialTransition
                 ? ''
                 : 'transition-transform duration-500 ease-in-out'
-            } ${currentStep === 3 ? 'translate-x-0' : 'translate-x-full'}`}
+            } ${currentStep === 3 ? 'translate-x-0' : 'translate-x-full'} ${
+              currentStep === 3 ? '' : 'invisible pointer-events-none'
+            }`}
           >
             <div className="flex flex-col md:flex-row h-full">
               <div className="flex-[2]">

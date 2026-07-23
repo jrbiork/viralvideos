@@ -39,6 +39,11 @@ export interface BatchEditRequest {
       imageUrl: string;
     }[];
     removedSceneIds: number[];
+    // Scenes whose removal was already persisted on the manifest (from a
+    // prior Apply/Generate) that the user has since restored — clears
+    // `removed` back to false. Without this, `removed` is monotonic: once
+    // true it can never be un-set by removedSceneIds alone.
+    restoredSceneIds?: number[];
     animationEdits?: {
       sceneId: number;
       animatedVideoUrl: string;
@@ -62,6 +67,7 @@ export async function processBatchEdit(
     imageEdits: requestedImageEdits,
     addedScenes,
     removedSceneIds,
+    restoredSceneIds = [],
     animationEdits = [],
     sceneOrder,
   } = edits;
@@ -81,7 +87,10 @@ export async function processBatchEdit(
       (s) => !s.removed,
     ).length;
     const resultingCount =
-      currentNonRemovedCount - removedSceneIds.length + addedScenes.length;
+      currentNonRemovedCount -
+      removedSceneIds.length +
+      addedScenes.length +
+      restoredSceneIds.length;
 
     const maxScenes = await getMaxScenesForUser(userId);
     if (resultingCount > maxScenes) {
@@ -198,7 +207,9 @@ export async function processBatchEdit(
       const isAnimated = animatedSceneIds.has(scene.id);
       return {
         ...scene,
-        removed: removedSceneIds.includes(scene.id) || scene.removed || false,
+        removed: restoredSceneIds.includes(scene.id)
+          ? false
+          : removedSceneIds.includes(scene.id) || scene.removed || false,
         animated: isAnimated,
         animationPrompt: animationEdit?.animationPrompt ?? scene.animationPrompt,
         files: {

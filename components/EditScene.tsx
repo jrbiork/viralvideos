@@ -318,10 +318,18 @@ export default function EditScene({
   // dispatching to a shared cross-scene reducer on every keystroke was
   // expensive enough to blow React's nested-update budget under fast input.
   const [localNarration, setLocalNarration] = useState(editedNarration);
+  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => {
     if (isEditing) {
       setLocalNarration(editedNarration);
+      // Editing is a single shared (editingScene/editedNarration) slot across
+      // all scene cards, so whichever textarea last had DOM focus can still
+      // hold it after switching to a different scene (unmounting doesn't
+      // always hand focus back). Force focus onto *this* scene's textarea
+      // whenever it becomes the active one, so keystrokes can't leak into a
+      // previously-focused card.
+      textareaRef.current?.focus();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isEditing, scene.id]);
@@ -806,6 +814,7 @@ export default function EditScene({
               <div className="space-y-1">
                 <div className="relative">
                   <textarea
+                    ref={textareaRef}
                     className="w-full h-32 bg-slate-700/50 border border-purple-500/30 rounded-xl text-white placeholder-gray-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                     style={{
                       padding: '20px 24px 24px 24px',

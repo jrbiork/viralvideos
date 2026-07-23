@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
     const imageEdits = edits?.imageEdits || [];
     const addedScenes = edits?.addedScenes || [];
     const removedSceneIds = edits?.removedSceneIds || [];
+    const restoredSceneIds = edits?.restoredSceneIds || [];
     const animationEdits = edits?.animationEdits || [];
     const sceneOrder = edits?.sceneOrder || null;
 
@@ -39,6 +40,7 @@ export async function POST(request: NextRequest) {
       imageEdits.length === 0 &&
       addedScenes.length === 0 &&
       removedSceneIds.length === 0 &&
+      restoredSceneIds.length === 0 &&
       animationEdits.length === 0 &&
       !sceneOrder
     ) {
@@ -70,6 +72,7 @@ export async function POST(request: NextRequest) {
         imageEdits,
         addedScenes,
         removedSceneIds,
+        restoredSceneIds,
         animationEdits,
         sceneOrder,
       },
